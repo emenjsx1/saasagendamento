@@ -1,13 +1,17 @@
 import React from 'react';
 import { useBusiness } from '@/hooks/use-business';
-import { Loader2, Link as LinkIcon } from 'lucide-react';
+import { useAppointmentsSummary } from '@/hooks/use-appointments-summary';
+import { Loader2, Link as LinkIcon, CalendarCheck, Clock } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const DashboardPage = () => {
-  const { business, isLoading, isRegistered, businessId } = useBusiness();
+  const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
+  const { todayCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(businessId);
+
+  const isLoading = isBusinessLoading || isSummaryLoading;
 
   if (isLoading) {
     return (
@@ -32,9 +36,11 @@ const DashboardPage = () => {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Bem-vindo, {business?.name}!</h1>
-      <p className="text-gray-600">Visão geral e estatísticas do seu negócio.</p>
+      <p className="text-gray-600">{business?.description || "Visão geral e estatísticas do seu negócio."}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Card 1: Link de Agendamento */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Link de Agendamento</CardTitle>
@@ -51,28 +57,55 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
         
-        {/* Placeholder for future stats */}
+        {/* Card 2: Agendamentos Hoje */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Agendamentos Pendentes</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Nenhum novo agendamento hoje.</p>
+            <div className="text-2xl font-bold">{todayCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {todayCount === 0 ? "Nenhum agendamento pendente/confirmado." : `${todayCount} agendamento(s) para hoje.`}
+            </p>
+            <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
+              <Link to="/dashboard/agenda">Ver Agenda</Link>
+            </Button>
           </CardContent>
         </Card>
 
+        {/* Card 3: Agendamentos Semana */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Serviços Ativos</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Agendamentos na Semana</CardTitle>
+            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              <Link to="/dashboard/services" className="text-primary hover:underline">Gerenciar</Link>
-            </div>
-            <p className="text-xs text-muted-foreground">Configure seus serviços e preços.</p>
+            <div className="text-2xl font-bold">{weekCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {weekCount} agendamento(s) pendente(s)/confirmado(s) esta semana.
+            </p>
+            <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
+              <Link to="/dashboard/agenda">Ver Agenda</Link>
+            </Button>
           </CardContent>
         </Card>
+      </div>
+      
+      {/* Quick Actions Section */}
+      <div className="pt-4">
+        <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Button asChild variant="secondary">
+            <Link to="/dashboard/agenda">Ver Todos os Agendamentos</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link to="/dashboard/services">Adicionar/Editar Serviços</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link to="/register-business">Editar Página de Agendamento</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
