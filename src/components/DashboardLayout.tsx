@@ -20,7 +20,7 @@ const Sidebar: React.FC = () => {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Meu Negócio', href: '/register-business', icon: Briefcase },
+    { name: 'Meu Negócio', href: '/register-business', icon: Briefcase }, // Keep this link for editing business details
     { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
     { name: 'Serviços', href: '/dashboard/services', icon: Settings },
   ];
