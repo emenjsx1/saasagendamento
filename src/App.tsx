@@ -15,6 +15,7 @@ import DashboardPage from "./pages/DashboardPage";
 import RegisterBusinessPage from "./pages/RegisterBusinessPage";
 import BookingPage from "./pages/BookingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
+import ServicesPage from "./pages/ServicesPage"; // Importar ServicesPage
 
 
 const queryClient = new QueryClient();
@@ -37,7 +38,7 @@ const App = () => (
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/register-business" element={<RegisterBusinessPage />} />
-                {/* Rotas futuras: /dashboard/agenda, /dashboard/services */}
+                <Route path="/dashboard/services" element={<ServicesPage />} /> {/* Nova Rota */}
               </Route>
             </Route>
 
