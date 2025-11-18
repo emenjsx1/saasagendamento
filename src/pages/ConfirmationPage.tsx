@@ -56,7 +56,13 @@ const ConfirmationPage = () => {
         toast.error("Agendamento não encontrado.");
         console.error(error);
       } else {
-        setAppointment(data as AppointmentDetails);
+        // Garantir que o objeto services não seja um array (resultado de join)
+        const mappedData = {
+            ...data,
+            services: Array.isArray(data.services) ? data.services[0] : data.services,
+        } as AppointmentDetails;
+        
+        setAppointment(mappedData);
       }
       setIsLoading(false);
     };
