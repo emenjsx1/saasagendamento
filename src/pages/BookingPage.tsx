@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -10,17 +10,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { format, addDays, startOfToday } from 'date-fns';
+import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute, isSameHour } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Tipos de dados
+interface DaySchedule {
+  day: string;
+  is_open: boolean;
+  start_time: string;
+  end_time: string;
+}
+
 interface Business {
   id: string;
   name: string;
   description: string;
   address: string;
+  working_hours: DaySchedule[] | null;
 }
 
 interface Service {
@@ -30,13 +38,18 @@ interface Service {
   price: number;
 }
 
+interface Appointment {
+  start_time: string;
+  end_time: string;
+}
+
 interface ClientDetails {
   client_name: string;
   client_whatsapp: string;
   client_email: string;
 }
 
-// Componente de Seleção de Serviço
+// Componente de Seleção de Serviço (Mantido)
 const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service) => void }> = ({ services, selectedService, onSelectService }) => (
   <div className="space-y-4">
     <h2 className="text-xl font-semibold">1. Escolha o Serviço</h2>
@@ -62,29 +75,120 @@ const ServiceSelector: React.FC<{ services: Service[], selectedService: Service 
   </div>
 );
 
-// Componente de Agendamento (Simplificado para MVP)
+// Componente de Agendamento
 const AppointmentScheduler: React.FC<{ 
+  business: Business;
   selectedService: Service; 
   selectedDate: Date | undefined; 
   setSelectedDate: (date: Date | undefined) => void;
   selectedTime: string | null;
   setSelectedTime: (time: string | null) => void;
-}> = ({ selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime }) => {
+}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime }) => {
   
-  // Geração de horários disponíveis (Mockup simples: 9h às 17h, a cada 30 min)
-  const generateAvailableTimes = () => {
-    const times: string[] = [];
-    for (let h = 9; h <= 17; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        // Em um app real, aqui você verificaria a disponibilidade no banco de dados
-        times.push(time);
-      }
-    }
-    return times;
-  };
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [isTimesLoading, setIsTimesLoading] = useState(false);
 
-  const availableTimes = generateAvailableTimes();
+  const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+  const fetchAvailableTimes = useCallback(async (date: Date) => {
+    if (!business.working_hours) return;
+
+    setIsTimesLoading(true);
+    setAvailableTimes([]);
+    setSelectedTime(null);
+
+    const dayIndex = date.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+    const daySchedule = business.working_hours.find(d => d.day === dayNames[dayIndex]);
+
+    if (!daySchedule || !daySchedule.is_open) {
+      setIsTimesLoading(false);
+      return;
+    }
+
+    const [startHour, startMinute] = daySchedule.start_time.split(':').map(Number);
+    const [endHour, endMinute] = daySchedule.end_time.split(':').map(Number);
+    const duration = selectedService.duration_minutes;
+
+    let currentTime = setMinutes(setHours(date, startHour), startMinute);
+    const endTimeLimit = setMinutes(setHours(date, endHour), endMinute);
+
+    // 1. Buscar agendamentos existentes para o dia
+    const startOfDay = format(date, 'yyyy-MM-dd 00:00:00');
+    const endOfDay = format(date, 'yyyy-MM-dd 23:59:59');
+
+    const { data: existingAppointments, error } = await supabase
+      .from('appointments')
+      .select('start_time, end_time')
+      .eq('business_id', business.id)
+      .gte('start_time', startOfDay)
+      .lte('start_time', endOfDay)
+      .in('status', ['pending', 'confirmed']); // Considerar pendentes e confirmados
+
+    if (error) {
+      toast.error("Erro ao carregar horários existentes.");
+      console.error(error);
+      setIsTimesLoading(false);
+      return;
+    }
+
+    const occupiedSlots = existingAppointments.map(app => ({
+      start: parseISO(app.start_time),
+      end: parseISO(app.end_time),
+    }));
+
+    const newAvailableTimes: string[] = [];
+    const now = new Date();
+
+    while (isBefore(addMinutes(currentTime, duration), endTimeLimit) || isSameMinute(addMinutes(currentTime, duration), endTimeLimit)) {
+      
+      // 2. Verificar se o slot está no futuro (apenas para o dia de hoje)
+      if (isSameDay(currentTime, now) && isBefore(currentTime, now)) {
+        currentTime = addMinutes(currentTime, 30); // Avança para o próximo slot de 30 min
+        continue;
+      }
+
+      const slotStart = currentTime;
+      const slotEnd = addMinutes(currentTime, duration);
+      let isAvailable = true;
+
+      // 3. Verificar conflito com agendamentos existentes
+      for (const occupied of occupiedSlots) {
+        // Conflito se o novo slot começar durante um agendamento existente
+        // OU se o novo slot terminar durante um agendamento existente
+        // OU se o novo slot englobar um agendamento existente
+        if (
+          (isAfter(slotStart, occupied.start) && isBefore(slotStart, occupied.end)) ||
+          (isAfter(slotEnd, occupied.start) && isBefore(slotEnd, occupied.end)) ||
+          (isBefore(slotStart, occupied.start) && isAfter(slotEnd, occupied.end)) ||
+          isSameMinute(slotStart, occupied.start) // Começa exatamente na mesma hora
+        ) {
+          isAvailable = false;
+          break;
+        }
+      }
+
+      if (isAvailable) {
+        newAvailableTimes.push(format(slotStart, 'HH:mm'));
+      }
+
+      // Avança para o próximo slot (intervalo de 30 minutos)
+      currentTime = addMinutes(currentTime, 30);
+    }
+
+    setAvailableTimes(newAvailableTimes);
+    setIsTimesLoading(false);
+  }, [business.id, business.working_hours, selectedService.duration_minutes, setSelectedTime]);
+
+  useEffect(() => {
+    if (selectedDate && business.working_hours && selectedService) {
+      fetchAvailableTimes(selectedDate);
+    }
+  }, [selectedDate, business.working_hours, selectedService, fetchAvailableTimes]);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setSelectedTime(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -108,34 +212,58 @@ const AppointmentScheduler: React.FC<{
           <ShadcnCalendar
             mode="single"
             selected={selectedDate}
-            onSelect={setSelectedDate}
+            onSelect={handleDateSelect}
             initialFocus
             locale={ptBR}
-            disabled={(date) => date < startOfToday()}
+            // Desabilita datas passadas e domingos/dias fechados
+            disabled={(date) => {
+              const today = startOfToday();
+              if (isBefore(date, today) && !isSameDay(date, today)) return true;
+              
+              if (business.working_hours) {
+                const dayIndex = date.getDay();
+                const daySchedule = business.working_hours.find(d => d.day === dayNames[dayIndex]);
+                return !daySchedule?.is_open;
+              }
+              return false;
+            }}
           />
         </PopoverContent>
       </Popover>
 
       {/* Seleção de Hora */}
       {selectedDate && (
-        <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded-md">
-          {availableTimes.map((time) => (
-            <Button
-              key={time}
-              variant={selectedTime === time ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedTime(time)}
-            >
-              {time}
-            </Button>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="font-medium mb-3">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
+            {isTimesLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : availableTimes.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                {availableTimes.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedTime(time)}
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground py-4">Nenhum horário disponível neste dia.</p>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 };
 
-// Componente de Detalhes do Cliente
+// Componente de Detalhes do Cliente (Mantido)
 const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void }> = ({ clientDetails, setClientDetails }) => (
   <div className="space-y-4">
     <h2 className="text-xl font-semibold">3. Seus Dados</h2>
@@ -197,10 +325,10 @@ const BookingPage = () => {
     }
 
     const fetchData = async () => {
-      // Buscar dados do negócio
+      // Buscar dados do negócio (incluindo working_hours)
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, description, address')
+        .select('id, name, description, address, working_hours')
         .eq('id', businessId)
         .single();
 
@@ -248,12 +376,13 @@ const BookingPage = () => {
 
     // Combina data e hora para criar o timestamp de início
     const [hours, minutes] = selectedTime.split(':').map(Number);
-    const startTime = new Date(selectedDate);
-    startTime.setHours(hours, minutes, 0, 0);
+    let startTime = new Date(selectedDate);
+    startTime = setHours(startTime, hours);
+    startTime = setMinutes(startTime, minutes);
+    startTime.setSeconds(0, 0); // Zera segundos e milissegundos
 
     // Calcula o tempo final
-    const endTime = addDays(startTime, 0); // Copia a data
-    endTime.setMinutes(startTime.getMinutes() + selectedService.duration_minutes);
+    const endTime = addMinutes(startTime, selectedService.duration_minutes);
 
     const appointmentData = {
       business_id: businessId,
@@ -294,6 +423,24 @@ const BookingPage = () => {
   if (!business) {
     return <div className="text-center p-10">Negócio não encontrado.</div>;
   }
+  
+  if (services.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-3xl text-primary">{business.name}</CardTitle>
+              <p className="text-gray-600">{business.description || "Agende seu horário de forma rápida e fácil."}</p>
+            </CardHeader>
+          </Card>
+          <Card className="p-6 text-center">
+            <p className="text-muted-foreground">Desculpe, este negócio não possui serviços ativos para agendamento no momento.</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -313,20 +460,18 @@ const BookingPage = () => {
           {/* Coluna de Seleção */}
           <div className="lg:col-span-2 space-y-8">
             
-            {services.length > 0 ? (
-              <ServiceSelector 
-                services={services} 
-                selectedService={selectedService} 
-                onSelectService={setSelectedService} 
-              />
-            ) : (
-              <Card className="p-6 text-center">
-                <p className="text-muted-foreground">Nenhum serviço ativo encontrado para este negócio.</p>
-              </Card>
-            )}
+            <ServiceSelector 
+              services={services} 
+              selectedService={selectedService} 
+              onSelectService={(service) => {
+                setSelectedService(service);
+                setSelectedTime(null); // Reset time when service changes
+              }} 
+            />
 
-            {selectedService && (
+            {selectedService && business.working_hours && (
               <AppointmentScheduler 
+                business={business}
                 selectedService={selectedService}
                 selectedDate={selectedDate}
                 setSelectedDate={setSelectedDate}
