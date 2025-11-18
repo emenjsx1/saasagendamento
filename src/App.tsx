@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardLayout from "./components/DashboardLayout"; // Importar o novo layout
 import { SessionContextProvider } from "./integrations/supabase/session-context";
 
 // Importar placeholders para as novas páginas
@@ -33,8 +34,11 @@ const App = () => (
 
             {/* Rotas Protegidas para o Dono do Negócio */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/register-business" element={<RegisterBusinessPage />} />
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/register-business" element={<RegisterBusinessPage />} />
+                {/* Rotas futuras: /dashboard/agenda, /dashboard/services */}
+              </Route>
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
