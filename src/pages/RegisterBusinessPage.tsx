@@ -11,17 +11,37 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { Loader2, Upload } from 'lucide-react';
+import WorkingHoursForm from '@/components/WorkingHoursForm'; // Import the new component
+
+// Define the structure for a single day's schedule
+const DayScheduleSchema = z.object({
+  day: z.string(),
+  is_open: z.boolean(),
+  start_time: z.string(),
+  end_time: z.string(),
+});
 
 // Esquema de validação para o formulário
 const BusinessSchema = z.object({
   name: z.string().min(3, "O nome do negócio é obrigatório."),
   description: z.string().optional(),
   address: z.string().optional(),
-  // Simplificando working_hours para uma string por enquanto, mas o backend espera JSONB
-  // Vamos tratar a lógica de horários separadamente para simplificar o MVP inicial do formulário.
+  working_hours: z.array(DayScheduleSchema).optional(), // New field
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
+
+// Initial schedule definition (must match the one in WorkingHoursForm for consistency)
+const initialSchedule = [
+  { day: 'Segunda', is_open: true, start_time: '09:00', end_time: '18:00' },
+  { day: 'Terça', is_open: true, start_time: '09:00', end_time: '18:00' },
+  { day: 'Quarta', is_open: true, start_time: '09:00', end_time: '18:00' },
+  { day: 'Quinta', is_open: true, start_time: '09:00', end_time: '18:00' },
+  { day: 'Sexta', is_open: true, start_time: '09:00', end_time: '18:00' },
+  { day: 'Sábado', is_open: false, start_time: '09:00', end_time: '13:00' },
+  { day: 'Domingo', is_open: false, start_time: '00:00', end_time: '00:00' },
+];
+
 
 const RegisterBusinessPage = () => {
   const { user } = useSession();
@@ -34,6 +54,7 @@ const RegisterBusinessPage = () => {
       name: "",
       description: "",
       address: "",
+      working_hours: initialSchedule, // Set initial default
     },
   });
 
@@ -44,7 +65,7 @@ const RegisterBusinessPage = () => {
 
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address')
+        .select('id, name, description, address, working_hours')
         .eq('owner_id', user.id)
         .single();
 
@@ -60,6 +81,8 @@ const RegisterBusinessPage = () => {
           name: data.name || "",
           description: data.description || "",
           address: data.address || "",
+          // Use existing working_hours or fall back to initial schedule if null/empty
+          working_hours: data.working_hours || initialSchedule, 
         });
       }
     };
@@ -76,7 +99,7 @@ const RegisterBusinessPage = () => {
       name: values.name,
       description: values.description,
       address: values.address,
-      // working_hours: [], // Implementação futura
+      working_hours: values.working_hours, // Now saving the JSONB structure
     };
 
     let result;
@@ -164,6 +187,18 @@ const RegisterBusinessPage = () => {
             </CardContent>
           </Card>
 
+          {/* Horários de Funcionamento */}
+          <FormField
+            control={form.control}
+            name="working_hours"
+            render={() => (
+              <FormItem>
+                <WorkingHoursForm fieldName="working_hours" />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           {/* Uploads (Placeholder) */}
           <Card>
             <CardHeader>
@@ -180,18 +215,6 @@ const RegisterBusinessPage = () => {
                   Upload Foto de Capa (Futuro)
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Horários de Funcionamento (Placeholder) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Horários de Funcionamento</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                A configuração detalhada dos horários será implementada em seguida.
-              </p>
             </CardContent>
           </Card>
 
