@@ -99,6 +99,7 @@ const AppointmentsPage: React.FC = () => {
   }, [user]);
 
   const updateAppointmentStatus = async (id: string, newStatus: Appointment['status']) => {
+    // 1. Atualizar status no DB
     const { error } = await supabase
       .from('appointments')
       .update({ status: newStatus })
@@ -107,12 +108,34 @@ const AppointmentsPage: React.FC = () => {
     if (error) {
       toast.error(`Erro ao atualizar status: ${error.message}`);
       console.error(error);
-    } else {
-      setAppointments(prev => 
-        prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
-      );
-      toast.success(`Agendamento atualizado para ${statusMap[newStatus].label}.`);
+      return;
     }
+
+    // 2. Chamar Edge Function para notificação (apenas para Confirmed ou Rejected)
+    if (newStatus === 'confirmed' || newStatus === 'rejected') {
+      try {
+        // Nota: O nome da função é 'notify-appointment'
+        const { data, error: fnError } = await supabase.functions.invoke('notify-appointment', {
+          body: { appointmentId: id, newStatus },
+        });
+
+        if (fnError) {
+          console.error("Erro ao chamar Edge Function:", fnError);
+          toast.warning("Status atualizado, mas houve um erro ao enviar a notificação.");
+        } else {
+          console.log("Notificação enviada (simulada):", data);
+        }
+      } catch (e) {
+        console.error("Erro de rede ao chamar Edge Function:", e);
+        toast.warning("Status atualizado, mas houve um erro de rede ao tentar notificar o cliente.");
+      }
+    }
+
+    // 3. Atualizar estado local e mostrar sucesso
+    setAppointments(prev => 
+      prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
+    );
+    toast.success(`Agendamento atualizado para ${statusMap[newStatus].label}.`);
   };
 
   if (isLoading) {
