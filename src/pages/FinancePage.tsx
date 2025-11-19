@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, ArrowUp, ArrowDown, Loader2, Plus } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, Loader2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { useBusiness } from '@/hooks/use-business';
 import { useFinanceSummary } from '@/hooks/use-finance-summary';
+import { useRecentTransactions, Transaction } from '@/hooks/use-recent-transactions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import TransactionForm from '@/components/TransactionForm'; // Novo componente
+import TransactionForm from '@/components/TransactionForm';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const formatCurrency = (value: number) => 
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -15,10 +19,17 @@ const formatCurrency = (value: number) =>
 const FinancePage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
   const { totalRevenue, totalExpense, netProfit, isLoading: isSummaryLoading } = useFinanceSummary(businessId);
+  const { transactions, isLoading: isTransactionsLoading, refresh } = useRecentTransactions(businessId);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isLoading = isBusinessLoading || isSummaryLoading;
+  const isLoading = isBusinessLoading || isSummaryLoading || isTransactionsLoading;
   const currentMonth = format(new Date(), 'MMMM yyyy', { locale: ptBR });
+
+  const handleTransactionSuccess = () => {
+    setIsModalOpen(false);
+    refresh(); // Atualiza a lista e o resumo
+  };
 
   if (isLoading) {
     return (
@@ -58,7 +69,7 @@ const FinancePage: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Registrar Transação</DialogTitle>
             </DialogHeader>
-            <TransactionForm businessId={businessId} onSuccess={() => setIsModalOpen(false)} />
+            <TransactionForm businessId={businessId} onSuccess={handleTransactionSuccess} />
           </DialogContent>
         </Dialog>
       </div>
@@ -110,13 +121,56 @@ const FinancePage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Tabela de Transações (Placeholder) */}
+      {/* Tabela de Transações */}
       <Card>
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">A listagem detalhada das transações será implementada em seguida.</p>
+          {transactions.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">Nenhuma transação registrada neste período.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell>{format(t.date, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{t.description}</div>
+                        {t.type === 'expense' && t.category && (
+                          <div className="text-xs text-muted-foreground">Categoria: {t.category}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={cn(
+                            t.type === 'revenue' ? 'bg-green-100 text-green-700 hover:bg-green-100/80' : 'bg-red-100 text-red-700 hover:bg-red-100/80'
+                          )}
+                        >
+                          {t.type === 'revenue' ? 'Receita' : 'Despesa'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={cn(
+                        "text-right font-semibold",
+                        t.type === 'revenue' ? 'text-green-600' : 'text-red-600'
+                      )}>
+                        {t.type === 'revenue' ? '+' : '-'} {formatCurrency(t.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
