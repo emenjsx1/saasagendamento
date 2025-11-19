@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Loader2, Search, Filter, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
+import { Users, Loader2, Search, Filter, Edit, Trash2, UserCheck, UserX, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ interface UserProfile {
   created_at: string;
   role: 'Admin' | 'Owner' | 'Client';
   is_active: boolean; // Simulado
+  business_name: string | null; // Nome do negócio associado
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -28,16 +29,19 @@ const AdminUsersPage: React.FC = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     
-    // Nota: A tabela auth.users não é diretamente acessível via RLS para todos os campos.
-    // Usaremos uma combinação de profiles e admin_users para simular a listagem.
-    
-    // 1. Buscar todos os perfis (que representam donos de negócios e clientes)
+    // 1. Buscar todos os perfis e dados de autenticação
     let profilesQuery = supabase
       .from('profiles')
-      .select('id, first_name, last_name, created_at, auth_users:auth.users(email, created_at)');
+      .select(`
+        id, 
+        first_name, 
+        last_name, 
+        created_at, 
+        auth_users:auth.users(email, created_at)
+      `);
 
     if (searchTerm) {
-      profilesQuery = profilesQuery.ilike('first_name', `%${searchTerm}%`); // Busca limitada
+      profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`);
     }
 
     const { data: profilesData, error: profilesError } = await profilesQuery;
@@ -49,14 +53,19 @@ const AdminUsersPage: React.FC = () => {
       return;
     }
 
-    // 2. Buscar administradores (para garantir que estão incluídos)
+    // 2. Buscar administradores e donos de negócios para determinar o papel
     const { data: adminData } = await supabase.from('admin_users').select('user_id');
     const adminIds = new Set(adminData?.map(a => a.user_id) || []);
+    
+    const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
+    const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
+
 
     // 3. Mapear e combinar
     const mappedUsers: UserProfile[] = (profilesData || []).map((p: any) => {
-      const isOwner = true; // Simplificação: todo perfil é tratado como potencial Owner/Client
       const isAdministrator = adminIds.has(p.id);
+      const businessName = businessMap.get(p.id) || null;
+      const isOwner = !!businessName;
       
       let role: UserProfile['role'] = 'Client';
       if (isAdministrator) {
@@ -73,6 +82,7 @@ const AdminUsersPage: React.FC = () => {
         created_at: p.auth_users?.created_at || p.created_at,
         role: role,
         is_active: true, // Simulado
+        business_name: businessName,
       };
     });
 
@@ -150,6 +160,7 @@ const AdminUsersPage: React.FC = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>Negócio</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Cadastro</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -161,6 +172,15 @@ const AdminUsersPage: React.FC = () => {
                       <TableCell className="font-medium">{user.first_name} {user.last_name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell>
+                        {user.business_name ? (
+                            <div className="flex items-center text-xs text-gray-600">
+                                <Briefcase className="h-3 w-3 mr-1" /> {user.business_name}
+                            </div>
+                        ) : (
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge 
                           className={cn(
