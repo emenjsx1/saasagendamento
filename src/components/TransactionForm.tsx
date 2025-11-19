@@ -18,7 +18,7 @@ const TransactionSchema = z.object({
   }),
   amount: z.coerce.number().min(0.01, "O valor deve ser maior que zero."),
   description: z.string().min(3, "A descrição é obrigatória."),
-  category: z.string().optional(), // Apenas para despesas
+  category: z.string().optional(), 
   date: z.string().min(1, "A data é obrigatória."),
 });
 
@@ -35,6 +35,7 @@ const expenseCategories = [
 
 const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOtherCategorySelected, setIsOtherCategorySelected] = useState(false);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(TransactionSchema),
@@ -67,13 +68,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess
         toast.success("Receita registrada com sucesso!");
 
       } else { // expense
+        // Se 'category' for 'Outra', o campo de texto livre deve ter sido preenchido
+        const finalCategory = values.category === 'Outra' ? form.getValues('description') : values.category;
+        
         const { error } = await supabase
           .from('expenses')
           .insert({
             business_id: businessId,
             amount: values.amount,
             description: values.description,
-            category: values.category,
+            category: finalCategory,
             expense_date: values.date,
           });
 
@@ -88,6 +92,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess
       console.error(error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  const handleCategoryChange = (value: string) => {
+    if (value === 'Outra') {
+      setIsOtherCategorySelected(true);
+      form.setValue('category', 'Outra'); // Mantém o valor 'Outra' no campo category
+    } else {
+      setIsOtherCategorySelected(false);
+      form.setValue('category', value);
     }
   };
 
@@ -152,28 +166,47 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess
         />
 
         {transactionType === 'expense' && (
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categoria da Despesa</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {expenseCategories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+          <>
+            <FormItem>
+              <FormLabel>Categoria da Despesa</FormLabel>
+              <Select onValueChange={handleCategoryChange} defaultValue={form.watch('category')}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione ou adicione uma categoria" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {expenseCategories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="Outra">Adicionar Nova Categoria...</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+            
+            {isOtherCategorySelected && (
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da Nova Categoria</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Ex: Software de Gestão" 
+                        value={field.value === 'Outra' ? '' : field.value} // Limpa se for 'Outra'
+                        onChange={e => field.onChange(e.target.value)}
+                      />
+                    </FormControl>
+                    <FormMessage>
+                        A descrição da nova categoria será usada como nome da categoria.
+                    </FormMessage>
+                  </FormItem>
+                )}
+              />
             )}
-          />
+          </>
         )}
 
         <FormField

@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSubscription } from '@/hooks/use-subscription'; // Importar novo hook
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import SubscriptionManagementSection from '@/components/SubscriptionManagementSection'; // Importar novo componente
 
 // Esquema de validação para o perfil
 const ProfileSchema = z.object({
@@ -30,6 +31,7 @@ const ProfilePage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const { subscription, daysLeft, isLoading: isSubscriptionLoading } = useSubscription();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPlanManagement, setShowPlanManagement] = useState(false); // Novo estado para o toggle
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(ProfileSchema),
@@ -221,17 +223,34 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
               
-              <Button asChild className="w-full mt-4">
-                <Link to="/#pricing">
-                    Mudar de Plano / Renovar <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={() => setShowPlanManagement(prev => !prev)}
+              >
+                {showPlanManagement ? (
+                    <>
+                        <ChevronUp className="h-4 w-4 mr-2" /> Esconder Planos
+                    </>
+                ) : (
+                    <>
+                        <ChevronDown className="h-4 w-4 mr-2" /> Mudar de Plano / Renovar
+                    </>
+                )}
               </Button>
             </div>
           ) : (
-            <p className="text-muted-foreground">Nenhuma assinatura encontrada. <Link to="/#pricing" className="text-primary hover:underline">Escolha um plano.</Link></p>
+            <p className="text-muted-foreground">Nenhuma assinatura encontrada. <Button variant="link" onClick={() => setShowPlanManagement(true)} className="p-0 h-auto">Escolha um plano.</Button></p>
           )}
         </CardContent>
       </Card>
+      
+      {/* Seção de Gerenciamento de Planos (Toggle) */}
+      {showPlanManagement && (
+        <div className="mt-8">
+          <SubscriptionManagementSection />
+        </div>
+      )}
     </div>
   );
 };
