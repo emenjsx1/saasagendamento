@@ -39,7 +39,7 @@ const AdminUsersPage: React.FC = () => {
         first_name, 
         last_name, 
         created_at, 
-        auth_user:id (email:auth.users(email, created_at)),
+        auth_user:id (email, created_at),
         subscriptions:id (status, plan_name)
       `);
 
@@ -82,7 +82,9 @@ const AdminUsersPage: React.FC = () => {
       }
       
       // Acessando o email e created_at do auth.users
-      const authUser = p.auth_user?.email?.[0];
+      // A sintaxe 'auth_user:id (email, created_at)' retorna um array de objetos, 
+      // onde cada objeto tem as chaves 'email' e 'created_at'.
+      const authUser = p.auth_user?.[0];
 
       return {
         id: p.id,
