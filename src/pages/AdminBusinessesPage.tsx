@@ -18,11 +18,12 @@ interface Business {
   owner_id: string;
   created_at: string;
   owner_email: string;
+  owner_name: string; // NEW
   subscription_status: string;
-  plan_name: string; // NEW
-  renewal_date: string | null; // NEW
-  appointment_count: number; // Placeholder/Future count
-  is_active: boolean; // Simulado
+  plan_name: string;
+  renewal_date: string | null;
+  appointment_count: number;
+  is_active: boolean;
 }
 
 const AdminBusinessesPage: React.FC = () => {
@@ -33,6 +34,9 @@ const AdminBusinessesPage: React.FC = () => {
   const fetchBusinesses = async () => {
     setIsLoading(true);
     
+    // Tentativa de join: businesses.owner_id -> profiles.id e subscriptions.user_id
+    // Nota: O PostgREST pode ter dificuldade em fazer join direto com auth.users.
+    // Usamos a sintaxe de join implícita do PostgREST.
     let query = supabase
       .from('businesses')
       .select(`
@@ -41,8 +45,8 @@ const AdminBusinessesPage: React.FC = () => {
         slug, 
         owner_id, 
         created_at,
-        owner:owner_id (email),
-        subscriptions:owner_id (status, plan_name, trial_ends_at)
+        profiles!inner(first_name, last_name),
+        subscriptions!inner(status, plan_name, trial_ends_at)
       `);
 
     if (searchTerm) {
@@ -52,14 +56,17 @@ const AdminBusinessesPage: React.FC = () => {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      toast.error("Erro ao carregar negócios.");
+      toast.error("Erro ao carregar negócios: " + error.message);
       console.error(error);
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
-        // Handle nested data from joins
-        // owner:owner_id (email) -> b.owner[0].email (assuming owner_id is a foreign key to auth.users)
-        const ownerEmail = b.owner?.[0]?.email || 'N/A';
+        // O PostgREST retorna os dados do join como um array se for um relacionamento 1:N, 
+        // ou um objeto se for 1:1 (que é o caso de profiles e subscriptions via owner_id/user_id).
+        
+        const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
         const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
+        
+        const ownerName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A';
         
         const subStatus = subscription?.status || 'N/A';
         const planName = subscription?.plan_name || 'N/A';
@@ -75,12 +82,13 @@ const AdminBusinessesPage: React.FC = () => {
           slug: b.slug,
           owner_id: b.owner_id,
           created_at: b.created_at,
-          owner_email: ownerEmail,
+          owner_email: 'N/A (Busca separada)', // Não podemos buscar o email diretamente aqui
+          owner_name: ownerName,
           subscription_status: subStatus,
           plan_name: planName,
           renewal_date: renewalDate,
-          appointment_count: 0, // Placeholder for future count query
-          is_active: true, // Placeholder
+          appointment_count: 0,
+          is_active: true,
         };
       });
       setBusinesses(mappedData);
@@ -93,13 +101,11 @@ const AdminBusinessesPage: React.FC = () => {
   }, [searchTerm]);
 
   const handleToggleActive = (business: Business) => {
-    // Lógica de ativação/inativação (requer coluna 'is_active' na tabela 'businesses')
     toast.info(`Funcionalidade de Ativar/Inativar Negócio para ${business.name} em desenvolvimento.`);
   };
 
   const handleDelete = (business: Business) => {
     if (window.confirm(`Tem certeza que deseja excluir o negócio ${business.name}? Esta ação é irreversível.`)) {
-      // Lógica de exclusão
       toast.info(`Funcionalidade de Excluir Negócio para ${business.name} em desenvolvimento.`);
     }
   };
@@ -107,7 +113,6 @@ const AdminBusinessesPage: React.FC = () => {
   const handleSendPaymentReminder = (business: Business) => {
     if (business.subscription_status === 'pending_payment') {
         toast.info(`Lembrete de pagamento enviado para ${business.owner_email}. (Simulado)`);
-        // Futuramente: Implementar chamada para Edge Function de envio de email
     } else {
         toast.warning(`O negócio ${business.name} não está com pagamento pendente.`);
     }
@@ -181,7 +186,11 @@ const AdminBusinessesPage: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         <div className="flex items-center">
-                            <Mail className="h-3 w-3 mr-1" /> {business.owner_email}
+                            <User className="h-3 w-3 mr-1" /> {business.owner_name}
+                        </div>
+                        {/* O email não pode ser buscado diretamente via join com auth.users */}
+                        <div className="flex items-center">
+                            <Mail className="h-3 w-3 mr-1" /> {business.owner_id} (ID)
                         </div>
                       </TableCell>
                       <TableCell>

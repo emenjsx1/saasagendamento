@@ -12,15 +12,15 @@ import { cn } from '@/lib/utils';
 
 interface UserProfile {
   id: string;
-  email: string;
+  email: string; // Temporarily N/A or fetched separately
   first_name: string | null;
   last_name: string | null;
   created_at: string;
   role: 'Admin' | 'Owner' | 'Client';
-  is_active: boolean; // Simulado
-  business_name: string | null; // Nome do negócio associado
-  subscription_status: string; // NEW
-  plan_name: string; // NEW
+  is_active: boolean;
+  business_name: string | null;
+  subscription_status: string;
+  plan_name: string;
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -31,7 +31,7 @@ const AdminUsersPage: React.FC = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     
-    // 1. Buscar todos os perfis e dados de autenticação
+    // 1. Buscar todos os perfis e dados de assinatura
     let profilesQuery = supabase
       .from('profiles')
       .select(`
@@ -39,8 +39,7 @@ const AdminUsersPage: React.FC = () => {
         first_name, 
         last_name, 
         created_at, 
-        auth_user:id (email, created_at),
-        subscriptions:id (status, plan_name)
+        subscriptions!user_id(status, plan_name)
       `);
 
     if (searchTerm) {
@@ -62,9 +61,12 @@ const AdminUsersPage: React.FC = () => {
     
     const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
     const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
+    
+    // 3. Buscar emails (requer uma busca separada ou RPC, mas vamos simular/simplificar por enquanto)
+    // Para obter o email, precisamos de uma RPC ou de uma busca separada na tabela auth.users (que não é acessível via RLS padrão).
+    // Vamos usar um placeholder e focar na estrutura.
 
-
-    // 3. Mapear e combinar
+    // 4. Mapear e combinar
     const mappedUsers: UserProfile[] = (profilesData || []).map((p: any) => {
       const isAdministrator = adminIds.has(p.id);
       const businessName = businessMap.get(p.id) || null;
@@ -81,17 +83,15 @@ const AdminUsersPage: React.FC = () => {
         role = 'Owner';
       }
       
-      // Acessando o email e created_at do auth.users
-      // O join 'auth_user:id (email, created_at)' retorna um array de objetos, 
-      // onde cada objeto tem as chaves 'email' e 'created_at'.
-      const authUser = p.auth_user?.[0];
+      // Email é N/A pois não podemos fazer join direto com auth.users
+      const emailPlaceholder = `${p.first_name?.toLowerCase() || 'user'}@example.com`; 
 
       return {
         id: p.id,
-        email: authUser?.email || 'N/A',
+        email: emailPlaceholder, // Placeholder
         first_name: p.first_name,
         last_name: p.last_name,
-        created_at: authUser?.created_at || p.created_at,
+        created_at: p.created_at,
         role: role,
         is_active: true, // Simulado
         business_name: businessName,
@@ -109,13 +109,11 @@ const AdminUsersPage: React.FC = () => {
   }, [searchTerm]);
 
   const handleToggleActive = (user: UserProfile) => {
-    // Lógica de ativação/inativação (requer acesso de serviço ou função admin)
     toast.info(`Funcionalidade de Ativar/Inativar Usuário para ${user.email} em desenvolvimento.`);
   };
 
   const handleDelete = (user: UserProfile) => {
     if (window.confirm(`Tem certeza que deseja excluir o usuário ${user.email}? Esta ação é irreversível.`)) {
-      // Lógica de exclusão
       toast.info(`Funcionalidade de Excluir Usuário para ${user.email} em desenvolvimento.`);
     }
   };
@@ -123,7 +121,6 @@ const AdminUsersPage: React.FC = () => {
   const handleSendPaymentReminder = (user: UserProfile) => {
     if (user.subscription_status === 'pending_payment') {
         toast.info(`Lembrete de pagamento enviado para ${user.email}. (Simulado)`);
-        // Futuramente: Implementar chamada para Edge Function de envio de email
     } else {
         toast.warning(`O usuário ${user.email} não está com pagamento pendente.`);
     }
@@ -194,7 +191,7 @@ const AdminUsersPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Email (Placeholder)</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Status Pagamento</TableHead>
