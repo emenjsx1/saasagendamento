@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -16,7 +16,9 @@ interface Business {
   slug: string;
   owner_id: string;
   created_at: string;
-  is_active: boolean; // Assumindo que adicionaremos esta coluna futuramente para controle admin
+  owner_email: string;
+  subscription_status: string;
+  is_active: boolean; // Simulado
 }
 
 const AdminBusinessesPage: React.FC = () => {
@@ -29,7 +31,15 @@ const AdminBusinessesPage: React.FC = () => {
     
     let query = supabase
       .from('businesses')
-      .select('id, name, slug, owner_id, created_at'); // is_active não existe na tabela, vamos simular por enquanto
+      .select(`
+        id, 
+        name, 
+        slug, 
+        owner_id, 
+        created_at,
+        auth_users:owner_id (email),
+        subscriptions:owner_id (status)
+      `);
 
     if (searchTerm) {
       query = query.ilike('name', `%${searchTerm}%`);
@@ -41,8 +51,24 @@ const AdminBusinessesPage: React.FC = () => {
       toast.error("Erro ao carregar negócios.");
       console.error(error);
     } else {
-      // Adicionando is_active como true por padrão, pois a coluna não existe no esquema atual
-      setBusinesses(data.map(b => ({ ...b, is_active: true })) as Business[]);
+      const mappedData: Business[] = (data || []).map((b: any) => {
+        // Supabase returns related data as arrays if multiple rows match, 
+        // but for owner_id (unique user ID), it should be a single object or array of one.
+        const ownerEmail = Array.isArray(b.auth_users) ? b.auth_users[0]?.email : b.auth_users?.email || 'N/A';
+        const subStatus = Array.isArray(b.subscriptions) ? b.subscriptions[0]?.status : b.subscriptions?.status || 'N/A';
+        
+        return {
+          id: b.id,
+          name: b.name,
+          slug: b.slug,
+          owner_id: b.owner_id,
+          created_at: b.created_at,
+          owner_email: ownerEmail,
+          subscription_status: subStatus,
+          is_active: true, // Placeholder
+        };
+      });
+      setBusinesses(mappedData);
     }
     setIsLoading(false);
   };
@@ -60,6 +86,19 @@ const AdminBusinessesPage: React.FC = () => {
     if (window.confirm(`Tem certeza que deseja excluir o negócio ${business.name}? Esta ação é irreversível.`)) {
       // Lógica de exclusão
       toast.info(`Funcionalidade de Excluir Negócio para ${business.name} em desenvolvimento.`);
+    }
+  };
+  
+  const getSubscriptionBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100/80">Ativo</Badge>;
+      case 'pending_payment':
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100/80">Pagamento Pendente</Badge>;
+      case 'trial':
+        return <Badge variant="secondary">Teste Gratuito</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -102,8 +141,9 @@ const AdminBusinessesPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Proprietário</TableHead>
+                    <TableHead>Plano</TableHead>
+                    <TableHead>Status Negócio</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -111,8 +151,18 @@ const AdminBusinessesPage: React.FC = () => {
                 <TableBody>
                   {businesses.map((business) => (
                     <TableRow key={business.id}>
-                      <TableCell className="font-medium">{business.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{business.slug}</TableCell>
+                      <TableCell className="font-medium">
+                        {business.name}
+                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{business.slug}</p>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div className="flex items-center">
+                            <Mail className="h-3 w-3 mr-1" /> {business.owner_email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getSubscriptionBadge(business.subscription_status)}
+                      </TableCell>
                       <TableCell>
                         <Badge 
                           className={cn(
