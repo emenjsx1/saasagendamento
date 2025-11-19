@@ -9,20 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, User, Phone, Mail, Briefcase } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight } from 'lucide-react';
+import { useSubscription } from '@/hooks/use-subscription'; // Importar novo hook
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Esquema de validação para o perfil
 const ProfileSchema = z.object({
   first_name: z.string().min(1, "O primeiro nome é obrigatório."),
   last_name: z.string().min(1, "O sobrenome é obrigatório."),
   phone: z.string().optional(),
-  // Futuramente: category_id: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof ProfileSchema>;
 
 const ProfilePage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
+  const { subscription, daysLeft, isLoading: isSubscriptionLoading } = useSubscription();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -41,11 +47,11 @@ const ProfilePage: React.FC = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone') // Assumindo que 'phone' será adicionado ao perfil
+        .select('first_name, last_name, phone')
         .eq('id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
         toast.error("Erro ao carregar perfil.");
         console.error(error);
         return;
@@ -87,13 +93,26 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  if (isSessionLoading) {
+  if (isSessionLoading || isSubscriptionLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+  
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Ativo</Badge>;
+      case 'trial':
+        return <Badge variant="secondary">Teste Gratuito</Badge>;
+      case 'pending_payment':
+        return <Badge variant="destructive">Pagamento Pendente</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
@@ -164,14 +183,53 @@ const ProfilePage: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Seção de Status do Plano (Futuro) */}
+      {/* Seção de Status do Plano */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><Briefcase className="h-5 w-5 mr-2" /> Status do Plano</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Aqui você verá seu plano atual e a data de expiração do teste gratuito.</p>
-          {/* Lógica para exibir o plano virá em uma etapa futura */}
+        <CardContent className="space-y-4">
+          {subscription ? (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Plano Atual:</span>
+                <span className="font-bold">{subscription.plan_name}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Status:</span>
+                {getStatusBadge(subscription.status)}
+              </div>
+              
+              {subscription.is_trial && subscription.trial_ends_at && (
+                <div className={cn(
+                    "p-3 rounded-md border",
+                    daysLeft !== null && daysLeft <= 1 ? "bg-red-50 border-red-300" : "bg-yellow-50 border-yellow-300"
+                )}>
+                    <div className="flex justify-between items-center text-sm font-semibold">
+                        <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Expiração do Teste:</span>
+                        <span>{format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                    </div>
+                    {daysLeft !== null && (
+                        <p className={cn(
+                            "text-xs mt-1",
+                            daysLeft <= 1 ? "text-red-600 font-bold" : "text-yellow-700"
+                        )}>
+                            {daysLeft === 0 ? 'Seu teste expira hoje!' : `Faltam ${daysLeft} dia(s) para o fim do teste.`}
+                        </p>
+                    )}
+                </div>
+              )}
+              
+              <Button asChild className="w-full mt-4">
+                <Link to="/#pricing">
+                    Mudar de Plano / Renovar <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Nenhuma assinatura encontrada. <Link to="/#pricing" className="text-primary hover:underline">Escolha um plano.</Link></p>
+          )}
         </CardContent>
       </Card>
     </div>
