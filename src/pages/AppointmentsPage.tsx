@@ -14,7 +14,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, formatCurrency } from '@/lib/utils';
 import RescheduleDialog from '@/components/RescheduleDialog';
 import { useBusinessSchedule } from '@/hooks/use-business-schedule';
-import { useEmailNotifications } from '@/hooks/use-email-notifications'; // Importar hook
+import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
+import { useEmailTemplates } from '@/hooks/use-email-templates'; // Importar hook de templates
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
 
@@ -48,7 +49,8 @@ const statusMap: Record<AppointmentStatus, { label: string, variant: 'default' |
 const AppointmentsPage: React.FC = () => {
   const { user } = useSession();
   const { businessSchedule, businessId, isLoading: isScheduleLoading } = useBusinessSchedule();
-  const { sendEmail } = useEmailNotifications(); // Usar hook de notificação
+  const { sendEmail } = useEmailNotifications(); 
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates(); // Usar templates
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
@@ -142,46 +144,50 @@ const AppointmentsPage: React.FC = () => {
       }
 
       // Enviar Notificação por E-mail (se o cliente tiver e-mail)
-      if (app.client_email) {
+      if (app.client_email && templates) {
         const startTime = parseISO(app.start_time);
         const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
         const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
         
-        let subject = '';
-        let statusText = '';
+        let templateKey: keyof typeof templates | null = null;
         
         if (newStatus === 'confirmed') {
-            subject = `Agendamento CONFIRMADO: ${app.services.name}`;
-            statusText = `Seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>CONFIRMADO</strong>.`;
-        } else if (newStatus === 'rejected') {
-            subject = `Agendamento REJEITADO: ${app.services.name}`;
-            statusText = `Lamentamos informar que seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>REJEITADO</strong>. Por favor, tente remarcar.`;
-        } else if (newStatus === 'cancelled') {
-            subject = `Agendamento CANCELADO: ${app.services.name}`;
-            statusText = `Seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>CANCELADO</strong>.`;
+            templateKey = 'appointment_confirmed';
+        } else if (newStatus === 'rejected' || newStatus === 'cancelled') {
+            // Usamos o template de pendente/genérico para rejeitado/cancelado por enquanto
+            // Em um sistema mais complexo, teríamos templates específicos
+            templateKey = 'appointment_pending'; 
         } else if (newStatus === 'completed') {
-            subject = `Serviço CONCLUÍDO: ${app.services.name}`;
-            statusText = `Seu serviço de ${app.services.name} em ${formattedDate} foi <strong>CONCLUÍDO</strong>. Obrigado!`;
+            // Não enviamos notificação de conclusão para o cliente, apenas logamos a receita
+            templateKey = null; 
         }
 
-        if (subject) {
-            const emailBody = `
-              <h1>Atualização de Agendamento</h1>
-              <p>Olá ${app.client_name},</p>
-              <p>${statusText}</p>
-              <p><strong>Detalhes:</strong></p>
-              <ul>
-                <li>Serviço: ${app.services.name}</li>
-                <li>Data: ${formattedDate}</li>
-                <li>Hora: ${formattedTime}</li>
-                <li>Código de Cliente: ${app.client_code}</li>
-              </ul>
-            `;
+        if (templateKey) {
+            const template = templates[templateKey];
+            let subject = template.subject;
+            let body = template.body;
             
+            // Substituição de Placeholders
+            subject = subject.replace(/\{\{service_name\}\}/g, app.services.name);
+            body = body.replace(/\{\{client_name\}\}/g, app.client_name);
+            body = body.replace(/\{\{service_name\}\}/g, app.services.name);
+            body = body.replace(/\{\{date\}\}/g, formattedDate);
+            body = body.replace(/\{\{time\}\}/g, formattedTime);
+            body = body.replace(/\{\{client_code\}\}/g, app.client_code);
+            
+            // Adicionar status específico para rejeitado/cancelado se usarmos o template pending
+            if (newStatus === 'rejected') {
+                subject = subject.replace('Pendente', 'REJEITADO');
+                body = body.replace('PENDENTE', 'REJEITADO');
+            } else if (newStatus === 'cancelled') {
+                subject = subject.replace('Pendente', 'CANCELADO');
+                body = body.replace('PENDENTE', 'CANCELADO');
+            }
+
             sendEmail({
               to: app.client_email,
               subject: subject,
-              body: emailBody,
+              body: body,
             });
         }
       }
@@ -226,7 +232,7 @@ const AppointmentsPage: React.FC = () => {
     return schedule;
   }, [appointments]);
 
-  if (isScheduleLoading || isLoadingAppointments) {
+  if (isScheduleLoading || isLoadingAppointments || isTemplatesLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

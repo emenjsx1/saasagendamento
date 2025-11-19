@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/compon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateClientCode } from '@/utils/client-code-generator';
 import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
+import { useEmailTemplates } from '@/hooks/use-email-templates'; // Importar hook de templates
 
 // Tipos de dados
 interface DaySchedule {
@@ -339,6 +340,7 @@ const BookingPage = () => {
   const { businessId: businessSlug } = useParams<{ businessId: string }>(); // Renomeado para businessSlug
   const navigate = useNavigate();
   const { sendEmail } = useEmailNotifications(); 
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates(); // Usar templates
   
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -429,7 +431,7 @@ const BookingPage = () => {
       toast.error("Nome e WhatsApp são obrigatórios.");
       return;
     }
-    if (!business) return;
+    if (!business || !templates) return;
 
     setIsSubmitting(true);
 
@@ -479,40 +481,33 @@ const BookingPage = () => {
       
       // 3. Enviar Notificação por E-mail (para o cliente, se tiver e-mail)
       if (clientDetails.client_email) {
+        const template = templates.appointment_pending;
         const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
         const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
         
-        const emailBody = `
-          <h1>Confirmação de Agendamento</h1>
-          <p>Olá ${clientDetails.client_name},</p>
-          <p>Seu agendamento com ${business.name} foi recebido e está <strong>PENDENTE</strong> de confirmação.</p>
-          <p><strong>Detalhes:</strong></p>
-          <ul>
-            <li>Serviço: ${selectedService.name}</li>
-            <li>Data: ${formattedDate}</li>
-            <li>Hora: ${formattedTime}</li>
-            <li>Duração: ${selectedService.duration_minutes} minutos</li>
-            <li>Código de Cliente: ${clientCode}</li>
-          </ul>
-          <p>Aguarde a confirmação do negócio.</p>
-        `;
+        let subject = template.subject;
+        let body = template.body;
+        
+        // Substituição de Placeholders
+        subject = subject.replace(/\{\{service_name\}\}/g, selectedService.name);
+        body = body.replace(/\{\{client_name\}\}/g, clientDetails.client_name);
+        body = body.replace(/\{\{service_name\}\}/g, selectedService.name);
+        body = body.replace(/\{\{date\}\}/g, formattedDate);
+        body = body.replace(/\{\{time\}\}/g, formattedTime);
+        body = body.replace(/\{\{client_code\}\}/g, clientCode);
         
         sendEmail({
           to: clientDetails.client_email,
-          subject: `Agendamento Pendente: ${selectedService.name} em ${formattedDate}`,
-          body: emailBody,
+          subject: subject,
+          body: body,
         });
       }
       
-      // 4. Enviar Notificação para o Admin (se o admin tiver e-mail no perfil)
-      // Nota: Para isso, precisaríamos buscar o email do owner_id do business.
-      // Por enquanto, vamos focar apenas na notificação do cliente.
-
       navigate(`/confirmation/${data.id}`);
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isTemplatesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -611,7 +606,7 @@ const BookingPage = () => {
                     )}
                     {business.facebook_url && (
                         <a href={business.facebook_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 a0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                         </a>
                     )}
                 </div>
