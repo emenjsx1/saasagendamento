@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw, Clock, User, Briefcase, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { format, startOfDay } from 'date-fns';
+import { format, startOfDay, isSameHour, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateFilter } from '@/components/DateFilter';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -20,6 +19,7 @@ interface Appointment {
   id: string;
   client_name: string;
   client_whatsapp: string;
+  client_code: string; // Novo campo
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
@@ -48,7 +48,7 @@ const AppointmentsPage: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchAppointments = useCallback(async () => {
-    if (!user) return;
+    if (!user || !filterDate) return;
 
     setIsLoading(true);
 
@@ -76,28 +76,28 @@ const AppointmentsPage: React.FC = () => {
     setBusinessId(currentBusinessId);
 
     // 2. Construir Query de Agendamentos
+    const startOfDayString = format(filterDate, 'yyyy-MM-dd 00:00:00');
+    const endOfDayString = format(filterDate, 'yyyy-MM-dd 23:59:59');
+
     let query = supabase
       .from('appointments')
       .select(`
         id,
         client_name,
         client_whatsapp,
+        client_code,
         start_time,
         end_time,
         status,
         services (name, duration_minutes, price)
       `)
-      .eq('business_id', currentBusinessId);
+      .eq('business_id', currentBusinessId)
+      .gte('start_time', startOfDayString)
+      .lte('start_time', endOfDayString);
 
     // Aplicar filtro de Status
     if (filterStatus !== 'all') {
       query = query.eq('status', filterStatus);
-    }
-
-    // Aplicar filtro de Data (a partir de)
-    if (filterDate) {
-      const dateString = format(filterDate, 'yyyy-MM-dd HH:mm:ss');
-      query = query.gte('start_time', dateString);
     }
     
     // Ordenar por data de início
@@ -124,19 +124,11 @@ const AppointmentsPage: React.FC = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  const updateAppointmentStatus = async (id: string, newStatus: AppointmentStatus, servicePrice: number) => {
+  const updateAppointmentStatus = async (id: string, newStatus: AppointmentStatus) => {
     const loadingToastId = toast.loading(`Atualizando status para ${statusMap[newStatus].label}...`);
     
     try {
       const updates: any = { status: newStatus };
-
-      // Se o status for 'completed', registrar como receita
-      if (newStatus === 'completed') {
-        // Nota: Não estamos inserindo na tabela 'revenues' aqui, mas sim marcando o agendamento como concluído.
-        // A receita será calculada na Dashboard/Financeiro buscando agendamentos concluídos.
-        // Se quisermos registrar na tabela 'revenues', precisaríamos de uma lógica mais complexa de idempotência.
-        // Por enquanto, vamos apenas atualizar o status e confiar no hook useAppointmentRevenue.
-      }
 
       const { error } = await supabase
         .from('appointments')
@@ -147,17 +139,36 @@ const AppointmentsPage: React.FC = () => {
         throw error;
       }
 
-      setAppointments(prev => 
-        prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
-      );
+      // Força a atualização da lista
+      setRefreshKey(prev => prev + 1); 
       toast.success(`Agendamento atualizado para ${statusMap[newStatus].label}.`, { id: loadingToastId });
-      setRefreshKey(prev => prev + 1); // Força a atualização da dashboard/financeiro
       
     } catch (error: any) {
       toast.error(`Erro ao atualizar status: ${error.message}`, { id: loadingToastId });
       console.error(error);
     }
   };
+
+  // Agrupamento por hora para a visualização de agenda
+  const groupedAppointments = useMemo(() => {
+    const groups = new Map<string, Appointment[]>();
+    
+    appointments.forEach(app => {
+      const startTime = parseISO(app.start_time);
+      const hourKey = format(startTime, 'HH:00');
+      
+      if (!groups.has(hourKey)) {
+        groups.set(hourKey, []);
+      }
+      groups.get(hourKey)?.push(app);
+    });
+
+    // Ordenar as chaves (horas)
+    return Array.from(groups.keys()).sort().map(hour => ({
+      hour,
+      appointments: groups.get(hour) || [],
+    }));
+  }, [appointments]);
 
   if (isLoading) {
     return (
@@ -179,11 +190,27 @@ const AppointmentsPage: React.FC = () => {
     );
   }
 
+  const formattedDate = filterDate ? format(filterDate, 'EEEE, dd \'de\' MMMM', { locale: ptBR }) : 'Selecione uma Data';
+
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Agenda de Agendamentos</h1>
+      <h1 className="text-3xl font-bold">Agenda Diária</h1>
       
       {/* Filtros */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <div className="flex items-center space-x-2">
+          <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium text-lg">{formattedDate}</span>
+        </div>
+        
+        <div className="flex items-center space-x-2 ml-auto">
+          <DateFilter date={filterDate} setDate={setFilterDate} />
+          <Button variant="outline" size="icon" onClick={() => setFilterDate(startOfDay(new Date()))} title="Voltar para Hoje">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
         <div className="flex items-center space-x-2">
           <Filter className="h-5 w-5 text-muted-foreground" />
@@ -210,95 +237,111 @@ const AppointmentsPage: React.FC = () => {
             Todos
           </ToggleGroupItem>
         </ToggleGroup>
-
-        <div className="flex items-center space-x-2 ml-auto">
-          <DateFilter date={filterDate} setDate={setFilterDate} />
-          <Button variant="outline" size="icon" onClick={() => setFilterDate(undefined)} title="Limpar Filtro de Data">
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
+      {/* Visualização da Agenda por Hora */}
       <Card>
         <CardHeader>
-          <CardTitle>Agendamentos Encontrados ({appointments.length})</CardTitle>
+          <CardTitle>Agendamentos do Dia ({appointments.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {appointments.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nenhum agendamento encontrado com os filtros atuais.</p>
+            <p className="text-center text-muted-foreground py-8">Nenhum agendamento encontrado para esta data e status.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Serviço</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Hora</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {appointments.map((appointment) => {
-                    const startTime = new Date(appointment.start_time);
-                    const statusInfo = statusMap[appointment.status] || statusMap.pending;
+            <div className="divide-y divide-gray-100">
+              {groupedAppointments.map(({ hour, appointments: hourlyApps }) => (
+                <div key={hour} className="flex border-b last:border-b-0">
+                  {/* Coluna da Hora */}
+                  <div className="w-20 flex-shrink-0 p-4 bg-gray-50 border-r flex items-start justify-center">
+                    <span className="text-lg font-bold text-gray-700">{hour}</span>
+                  </div>
+                  
+                  {/* Coluna dos Agendamentos */}
+                  <div className="flex-grow p-4 space-y-4">
+                    {hourlyApps.map((app) => {
+                      const startTime = parseISO(app.start_time);
+                      const endTime = parseISO(app.end_time);
+                      const statusInfo = statusMap[app.status] || statusMap.pending;
 
-                    return (
-                      <TableRow key={appointment.id}>
-                        <TableCell>
-                          <div className="font-medium">{appointment.client_name}</div>
-                          <div className="text-sm text-muted-foreground">{appointment.client_whatsapp}</div>
-                        </TableCell>
-                        <TableCell>{appointment.services.name}</TableCell>
-                        <TableCell>{format(startTime, 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                        <TableCell>{format(startTime, 'HH:mm', { locale: ptBR })}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(appointment.services.price)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={statusInfo.variant as any}>{statusInfo.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Abrir menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Gerenciar</DropdownMenuLabel>
-                              {appointment.status !== 'confirmed' && (
-                                <DropdownMenuItem onClick={() => updateAppointmentStatus(appointment.id, 'confirmed', appointment.services.price)}>
-                                  <CheckCircle className="h-4 w-4 mr-2" /> Confirmar
+                      return (
+                        <Card 
+                          key={app.id} 
+                          className={cn(
+                            "p-4 transition-all duration-200 hover:shadow-md",
+                            app.status === 'confirmed' && 'border-l-4 border-primary',
+                            app.status === 'completed' && 'border-l-4 border-green-500',
+                          )}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant={statusInfo.variant as any}>{statusInfo.label}</Badge>
+                                <span className="text-xs font-medium text-muted-foreground flex items-center">
+                                  <Tag className="h-3 w-3 mr-1" /> {app.client_code}
+                                </span>
+                              </div>
+                              <p className="text-lg font-semibold flex items-center">
+                                <User className="h-4 w-4 mr-2 text-primary" />
+                                {app.client_name}
+                              </p>
+                              <p className="text-sm text-gray-600 flex items-center">
+                                <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
+                                {app.services.name} ({app.services.duration_minutes} min)
+                              </p>
+                              <p className="text-sm text-muted-foreground flex items-center">
+                                <Clock className="h-4 w-4 mr-2" />
+                                {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
+                              </p>
+                              <p className="text-md font-bold text-green-600 pt-1">
+                                {formatCurrency(app.services.price)}
+                              </p>
+                            </div>
+                            
+                            {/* Ações */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Gerenciar Agendamento</DropdownMenuLabel>
+                                {app.status !== 'confirmed' && (
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'confirmed')}>
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Confirmar
+                                  </DropdownMenuItem>
+                                )}
+                                {app.status !== 'completed' && (
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'completed')}>
+                                    Concluir (Registrar Receita)
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {/* Ação de Remarcar (Placeholder) */}
+                                <DropdownMenuItem disabled>
+                                  Remarcar (Em breve)
                                 </DropdownMenuItem>
-                              )}
-                              {appointment.status !== 'completed' && (
-                                <DropdownMenuItem onClick={() => updateAppointmentStatus(appointment.id, 'completed', appointment.services.price)}>
-                                  Concluir (Registrar Receita)
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              {appointment.status !== 'rejected' && (
-                                <DropdownMenuItem onClick={() => updateAppointmentStatus(appointment.id, 'rejected', appointment.services.price)}>
-                                  <XCircle className="h-4 w-4 mr-2" /> Rejeitar
-                                </DropdownMenuItem>
-                              )}
-                              {appointment.status !== 'cancelled' && (
-                                <DropdownMenuItem onClick={() => updateAppointmentStatus(appointment.id, 'cancelled', appointment.services.price)}>
-                                  Cancelar
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                                <DropdownMenuSeparator />
+                                {app.status !== 'rejected' && (
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'rejected')}>
+                                    <XCircle className="h-4 w-4 mr-2" /> Rejeitar
+                                  </DropdownMenuItem>
+                                )}
+                                {app.status !== 'cancelled' && (
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'cancelled')}>
+                                    Cancelar
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

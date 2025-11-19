@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, Calendar, Clock, User, DollarSign, ArrowLeft, RefreshCw } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, User, DollarSign, ArrowLeft, RefreshCw, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { formatCurrency } from '@/lib/utils';
 interface AppointmentDetails {
   id: string;
   client_name: string;
+  client_code: string; // Novo campo
   start_time: string;
   status: string;
   services: {
@@ -45,6 +46,7 @@ const ConfirmationPage = () => {
         .select(`
           id,
           client_name,
+          client_code,
           start_time,
           status,
           services (name, price, duration_minutes),
@@ -99,6 +101,13 @@ const ConfirmationPage = () => {
           <div className="space-y-3 text-left border-t pt-4">
             <h2 className="text-xl font-semibold mb-2">Detalhes:</h2>
             
+            {appointment.client_code && (
+                <div className="flex items-center text-sm">
+                    <Tag className="h-4 w-4 mr-3 text-primary" />
+                    <span className="font-medium">Código de Cliente:</span> <span className="font-bold ml-1">{appointment.client_code}</span>
+                </div>
+            )}
+
             <div className="flex items-center text-sm">
               <Calendar className="h-4 w-4 mr-3 text-primary" />
               <span className="font-medium">Data:</span> {format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR })}

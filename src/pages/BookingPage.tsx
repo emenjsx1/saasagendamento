@@ -14,7 +14,8 @@ import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMin
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Importando Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { generateClientCode } from '@/utils/client-code-generator'; // Importando o gerador
 
 // Tipos de dados
 interface DaySchedule {
@@ -380,7 +381,7 @@ const BookingPage = () => {
       } else {
         setServices(servicesData as Service[]);
         // Se houver serviços, pré-seleciona o primeiro para melhor UX
-        if (servicesData.length > 0) {
+        if (servicesData.length > 0 && !selectedService) {
             setSelectedService(servicesData[0] as Service);
         }
       }
@@ -389,7 +390,7 @@ const BookingPage = () => {
     };
 
     fetchData();
-  }, [businessId]);
+  }, [businessId, selectedService]);
 
   // Função para gerar link do Google Maps
   const getMapLink = (address: string) => {
@@ -427,6 +428,9 @@ const BookingPage = () => {
 
     // Calcula o tempo final
     const endTime = addMinutes(startTime, selectedService.duration_minutes);
+    
+    // Gera o código único do cliente
+    const clientCode = generateClientCode();
 
     const appointmentData = {
       business_id: businessId,
@@ -437,6 +441,7 @@ const BookingPage = () => {
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
       status: 'pending', // Começa como pendente
+      client_code: clientCode, // Adiciona o código do cliente
     };
 
     const { data, error } = await supabase
@@ -448,7 +453,12 @@ const BookingPage = () => {
     setIsSubmitting(false);
 
     if (error) {
-      toast.error("Erro ao finalizar agendamento: " + error.message);
+      // Se o erro for de unicidade do client_code, podemos tentar novamente (embora improvável)
+      if (error.code === '23505') { 
+        toast.error("Erro de código duplicado. Tente novamente.");
+      } else {
+        toast.error("Erro ao finalizar agendamento: " + error.message);
+      }
       console.error(error);
     } else {
       toast.success("Agendamento realizado com sucesso!");
@@ -600,7 +610,7 @@ const BookingPage = () => {
 
                     <div className="flex items-center justify-between text-xl font-extrabold pt-2">
                       <span>Preço Total:</span>
-                      <span className="text-2xl font-extrabold text-green-600">
+                      <span className="text-xl font-extrabold text-green-600">
                         {formatCurrency(selectedService.price)}
                       </span>
                     </div>
