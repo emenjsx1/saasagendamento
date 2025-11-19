@@ -1,13 +1,15 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LogOut, Home, Settings, Calendar, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const Sidebar: React.FC = () => {
   const { user } = useSession();
+  const location = useLocation();
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -29,16 +31,27 @@ const Sidebar: React.FC = () => {
     <div className="flex flex-col h-full border-r bg-sidebar text-sidebar-foreground p-4">
       <div className="text-xl font-bold mb-8 text-sidebar-primary-foreground">Painel Admin</div>
       <nav className="flex-grow space-y-2">
-        {navItems.map((item) => (
-          <Link
-            key={item.name}
-            to={item.href}
-            className="flex items-center p-3 rounded-lg text-sm font-medium hover:bg-sidebar-accent transition-colors"
-          >
-            <item.icon className="h-5 w-5 mr-3" />
-            {item.name}
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          // Determine if the link is active.
+          const isActive = location.pathname === item.href || 
+                           (location.pathname.startsWith(item.href) && item.href !== '/');
+
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              className={cn(
+                "flex items-center p-3 rounded-lg text-sm font-medium transition-colors",
+                isActive 
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90' 
+                  : 'hover:bg-sidebar-accent'
+              )}
+            >
+              <item.icon className="h-5 w-5 mr-3" />
+              {item.name}
+            </Link>
+          );
+        })}
       </nav>
       <div className="mt-auto pt-4 border-t border-sidebar-border">
         <p className="text-xs text-gray-400 mb-2 truncate">Logado como: {user?.email}</p>
