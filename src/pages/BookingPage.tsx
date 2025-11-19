@@ -14,6 +14,7 @@ import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMin
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Importando Select
 
 // Tipos de dados
 interface DaySchedule {
@@ -47,40 +48,36 @@ interface ClientDetails {
   client_email: string;
 }
 
-// Componente de Seleção de Serviço (Melhorado)
-const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service) => void }> = ({ services, selectedService, onSelectService }) => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">1. Escolha o Serviço</h2>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {services.map((service) => (
-        <Card
-          key={service.id}
-          className={cn(
-            "cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/80 rounded-xl",
-            selectedService?.id === service.id 
-              ? "border-primary ring-2 ring-primary/20 shadow-lg scale-[1.01] bg-primary/5" 
-              : "border-gray-200 bg-white"
-          )}
-          onClick={() => onSelectService(service)}
-        >
-          <CardContent className="p-5 flex flex-col justify-between h-full">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-gray-900">{service.name}</h3>
-              <p className="text-xs text-muted-foreground">
-                Duração: {service.duration_minutes} min
-              </p>
-            </div>
-            <div className="mt-4 text-right">
-              <span className="text-3xl font-extrabold text-green-600">
-                {formatCurrency(service.price)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+// Componente de Seleção de Serviço (Usando Select para melhor escalabilidade)
+const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service | null) => void }> = ({ services, selectedService, onSelectService }) => {
+  
+  const handleSelectChange = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId) || null;
+    onSelectService(service);
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">1. Escolha o Serviço</h2>
+      <Select onValueChange={handleSelectChange} value={selectedService?.id || ""}>
+        <SelectTrigger className="w-full h-12 text-base rounded-xl shadow-sm hover:shadow-md">
+          <SelectValue placeholder="Selecione um serviço..." />
+        </SelectTrigger>
+        <SelectContent>
+          {services.map((service) => (
+            <SelectItem key={service.id} value={service.id}>
+              <div className="flex justify-between items-center w-full">
+                <span className="font-medium">{service.name}</span>
+                <span className="text-sm text-muted-foreground ml-4">({service.duration_minutes} min)</span>
+                <span className="text-green-600 font-bold ml-auto">{formatCurrency(service.price)}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
-  </div>
-);
+  );
+};
 
 // Componente de Agendamento
 const AppointmentScheduler: React.FC<{ 
@@ -382,6 +379,10 @@ const BookingPage = () => {
         console.error(servicesError);
       } else {
         setServices(servicesData as Service[]);
+        // Se houver serviços, pré-seleciona o primeiro para melhor UX
+        if (servicesData.length > 0) {
+            setSelectedService(servicesData[0] as Service);
+        }
       }
       
       setIsLoading(false);
@@ -551,7 +552,8 @@ const BookingPage = () => {
               selectedService={selectedService} 
               onSelectService={(service) => {
                 setSelectedService(service);
-                setSelectedTime(null); // Reset time when service changes
+                setSelectedDate(undefined); // Reset date/time when service changes
+                setSelectedTime(null); 
               }} 
             />
 
@@ -598,7 +600,7 @@ const BookingPage = () => {
 
                     <div className="flex items-center justify-between text-xl font-extrabold pt-2">
                       <span>Preço Total:</span>
-                      <span className="text-green-600">
+                      <span className="text-2xl font-extrabold text-green-600">
                         {formatCurrency(selectedService.price)}
                       </span>
                     </div>

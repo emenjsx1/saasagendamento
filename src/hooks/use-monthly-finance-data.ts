@@ -15,11 +15,11 @@ interface UseMonthlyFinanceDataResult {
   isLoading: boolean;
 }
 
-const initializeMonthlyData = (): MonthlyData[] => {
+const initializeMonthlyData = (year: number): MonthlyData[] => {
   const data: MonthlyData[] = [];
   for (let i = 0; i < 12; i++) {
-    // Cria uma data fictícia para o mês 'i' do ano atual para obter o nome do mês
-    const date = new Date(new Date().getFullYear(), i, 1);
+    // Cria uma data fictícia para o mês 'i' do ano selecionado para obter o nome do mês
+    const date = new Date(year, i, 1);
     data.push({
       name: format(date, 'MMM', { locale: ptBR }), // Ex: Jan, Fev
       Receita: 0,
@@ -29,23 +29,24 @@ const initializeMonthlyData = (): MonthlyData[] => {
   return data;
 };
 
-export const useMonthlyFinanceData = (businessId: string | null): UseMonthlyFinanceDataResult => {
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>(initializeMonthlyData());
+export const useMonthlyFinanceData = (businessId: string | null, year: number): UseMonthlyFinanceDataResult => {
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>(initializeMonthlyData(year));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!businessId) {
-      setMonthlyData(initializeMonthlyData());
+      setMonthlyData(initializeMonthlyData(year));
       setIsLoading(false);
       return;
     }
 
     const fetchMonthlyData = async () => {
       setIsLoading(true);
-      const initialData = initializeMonthlyData();
+      const initialData = initializeMonthlyData(year);
       
-      const start = startOfYear(new Date());
-      const end = endOfYear(new Date());
+      const start = new Date(year, 0, 1); // 1 de Janeiro do ano
+      const end = new Date(year, 11, 31, 23, 59, 59); // 31 de Dezembro do ano
+      
       const startDate = format(start, 'yyyy-MM-dd HH:mm:ss');
       const endDate = format(end, 'yyyy-MM-dd HH:mm:ss');
 
@@ -92,36 +93,36 @@ export const useMonthlyFinanceData = (businessId: string | null): UseMonthlyFina
       // 4. Agregar dados
       const aggregatedData = [...initialData];
 
-      // Agregar Receitas Manuais
-      (manualRevenueData || []).forEach(r => {
-        const date = parseISO(r.revenue_date);
-        const monthIndex = getMonth(date);
-        aggregatedData[monthIndex].Receita += parseFloat(r.amount as any);
-      });
-      
-      // Agregar Receitas de Agendamentos
-      (appointmentRevenueData || []).forEach(app => {
-        const service = Array.isArray(app.services) ? app.services[0] : app.services;
-        if (service && service.price) {
-            const date = parseISO(app.start_time);
+      // Função auxiliar para agregar
+      const aggregateData = (data: any[] | null, dateKey: string, type: 'Receita' | 'Despesa') => {
+        (data || []).forEach(item => {
+          const date = parseISO(item[dateKey]);
+          if (date.getFullYear() === year) { // Garantir que estamos no ano correto
             const monthIndex = getMonth(date);
-            aggregatedData[monthIndex].Receita += parseFloat(service.price as any);
-        }
-      });
+            if (type === 'Receita' && dateKey === 'start_time') {
+                // Receita de Agendamento
+                const service = Array.isArray(item.services) ? item.services[0] : item.services;
+                if (service && service.price) {
+                    aggregatedData[monthIndex].Receita += parseFloat(service.price as any);
+                }
+            } else {
+                // Receita Manual ou Despesa
+                aggregatedData[monthIndex][type] += parseFloat(item.amount as any);
+            }
+          }
+        });
+      };
 
-      // Agregar Despesas
-      (expenseData || []).forEach(e => {
-        const date = parseISO(e.expense_date);
-        const monthIndex = getMonth(date);
-        aggregatedData[monthIndex].Despesa += parseFloat(e.amount as any);
-      });
+      aggregateData(manualRevenueData, 'revenue_date', 'Receita');
+      aggregateData(appointmentRevenueData, 'start_time', 'Receita');
+      aggregateData(expenseData, 'expense_date', 'Despesa');
 
       setMonthlyData(aggregatedData);
       setIsLoading(false);
     };
 
     fetchMonthlyData();
-  }, [businessId]);
+  }, [businessId, year]);
 
   return {
     data: monthlyData,

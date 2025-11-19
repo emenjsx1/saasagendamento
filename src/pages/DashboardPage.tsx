@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useBusiness } from '@/hooks/use-business';
 import { useAppointmentsSummary } from '@/hooks/use-appointments-summary';
 import { usePeriodFinanceSummary } from '@/hooks/use-period-finance-summary';
@@ -8,33 +8,46 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PeriodFilter } from '@/components/PeriodFilter';
+
+interface DateRange {
+  from: Date;
+  to: Date;
+}
 
 const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
-  const { todayCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(businessId);
-
-  // Definir o período para HOJE de forma estável para evitar loop de renderização.
-  // O useMemo com array vazio garante que dailyRange.from e .to sejam o mesmo objeto
-  // em todas as renderizações, resolvendo o loop.
-  const dailyRange = useMemo(() => {
+  
+  // Inicializa o filtro para a Semana Atual
+  const initialRange: DateRange = useMemo(() => {
     const today = new Date();
     return {
-      from: startOfDay(today),
+      from: startOfWeek(today, { weekStartsOn: 1 }), // Segunda-feira
       to: endOfDay(today),
     };
   }, []);
 
-  const { 
-    totalRevenue: dailyRevenue, 
-    totalExpense: dailyExpense, 
-    netProfit: dailyProfit, 
-    isLoading: isDailyFinanceLoading 
-  } = usePeriodFinanceSummary(businessId, dailyRange.from, dailyRange.to);
+  const [periodRange, setPeriodRange] = useState<DateRange>(initialRange);
 
-  const isLoading = isBusinessLoading || isSummaryLoading || isDailyFinanceLoading;
-  const currentMonth = format(new Date(), 'MMMM', { locale: ptBR });
+  const { periodCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(
+    businessId,
+    periodRange.from,
+    periodRange.to
+  );
+
+  const { 
+    totalRevenue: periodRevenue, 
+    totalExpense: periodExpense, 
+    netProfit: periodProfit, 
+    isLoading: isFinanceLoading 
+  } = usePeriodFinanceSummary(businessId, periodRange.from, periodRange.to);
+
+  const isLoading = isBusinessLoading || isSummaryLoading || isFinanceLoading;
+  
+  const periodLabel = `${format(periodRange.from, 'dd/MM/yyyy', { locale: ptBR })} - ${format(periodRange.to, 'dd/MM/yyyy', { locale: ptBR })}`;
+
 
   if (isLoading) {
     return (
@@ -58,21 +71,26 @@ const DashboardPage = () => {
   // Display Dashboard content
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Painel do Dia ({format(dailyRange.from, 'dd/MM/yyyy')})</h1>
-      <p className="text-gray-600">{business?.description || "Visão geral e estatísticas do seu negócio."}</p>
+      <h1 className="text-3xl font-bold">Painel de Gestão</h1>
+      
+      {/* Filtro de Período */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold text-gray-700">Resumo do Período:</h2>
+        <PeriodFilter range={periodRange} setRange={setPeriodRange} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
-        {/* Card 1: Agendamentos Hoje */}
+        {/* Card 1: Agendamentos no Período */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Agendamentos no Período</CardTitle>
+            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayCount}</div>
+            <div className="text-2xl font-bold">{periodCount}</div>
             <p className="text-xs text-muted-foreground">
-              {todayCount} agendamento(s) pendente(s)/confirmado(s).
+              {periodCount} agendamento(s) pendente(s)/confirmado(s).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/agenda">Ver Agenda</Link>
@@ -80,16 +98,16 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        {/* Card 2: Receita do Dia */}
+        {/* Card 2: Receita do Período */}
         <Card className="border-l-4 border-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita do Dia</CardTitle>
+            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <ArrowUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(dailyRevenue)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(periodRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              Total de entradas (Agendamentos Concluídos + Manuais).
+              Total de entradas no período ({periodLabel}).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/finance">Ver Financeiro</Link>
@@ -97,16 +115,16 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
         
-        {/* Card 3: Despesa do Dia */}
+        {/* Card 3: Despesa do Período */}
         <Card className="border-l-4 border-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesa do Dia</CardTitle>
+            <CardTitle className="text-sm font-medium">Despesa Total</CardTitle>
             <ArrowDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(dailyExpense)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(periodExpense)}</div>
             <p className="text-xs text-muted-foreground">
-              Total de saídas registradas hoje.
+              Total de saídas no período ({periodLabel}).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/finance">Ver Financeiro</Link>
@@ -114,16 +132,16 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        {/* Card 4: Lucro do Dia */}
-        <Card className={`border-l-4 ${dailyProfit >= 0 ? 'border-primary' : 'border-red-700'}`}>
+        {/* Card 4: Lucro do Período */}
+        <Card className={`border-l-4 ${periodProfit >= 0 ? 'border-primary' : 'border-red-700'}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Líquido do Dia</CardTitle>
+            <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${dailyProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(dailyProfit)}</div>
+            <div className={`text-2xl font-bold ${periodProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(periodProfit)}</div>
             <p className="text-xs text-muted-foreground">
-              Resultado financeiro de hoje.
+              Resultado financeiro do período ({periodLabel}).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/finance">Ver Financeiro</Link>
@@ -148,7 +166,7 @@ const DashboardPage = () => {
         </div>
       </div>
       
-      {/* Link de Agendamento (Movido para baixo) */}
+      {/* Link de Agendamento */}
       <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Link de Agendamento Público</CardTitle>
