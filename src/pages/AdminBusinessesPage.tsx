@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Mail, Calendar } from 'lucide-react';
+import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Mail, Calendar, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -47,8 +47,8 @@ const AdminBusinessesPage: React.FC = () => {
         slug, 
         owner_id, 
         created_at,
-        profiles!inner(first_name, last_name, email),
-        subscriptions!inner(status, plan_name, trial_ends_at)
+        profiles:owner_id (first_name, last_name, email),
+        subscriptions:owner_id (status, plan_name, trial_ends_at)
       `);
 
     if (searchTerm) {
@@ -62,6 +62,9 @@ const AdminBusinessesPage: React.FC = () => {
       console.error(error);
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
+        
+        // Usamos 'profiles:owner_id' e 'subscriptions:owner_id' para forçar o join
+        // O Supabase deve inferir que owner_id se relaciona com auth.users, que por sua vez se relaciona com profiles/subscriptions.
         
         const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
         const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
