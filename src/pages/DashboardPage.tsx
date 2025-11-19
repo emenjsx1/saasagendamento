@@ -1,22 +1,35 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useBusiness } from '@/hooks/use-business';
 import { useAppointmentsSummary } from '@/hooks/use-appointments-summary';
-import { useAppointmentRevenue } from '@/hooks/use-appointment-revenue';
-import { Loader2, Link as LinkIcon, CalendarCheck, Clock, DollarSign } from 'lucide-react';
+import { usePeriodFinanceSummary } from '@/hooks/use-period-finance-summary';
+import { Loader2, Link as LinkIcon, CalendarCheck, Clock, DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
   const { todayCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(businessId);
-  const { totalRevenue: appointmentRevenue, isLoading: isRevenueLoading } = useAppointmentRevenue(businessId);
 
-  const isLoading = isBusinessLoading || isSummaryLoading || isRevenueLoading;
+  // Definir o período para HOJE
+  const today = new Date();
+  const dailyRange = useMemo(() => ({
+    from: startOfDay(today),
+    to: endOfDay(today),
+  }), [today]);
+
+  const { 
+    totalRevenue: dailyRevenue, 
+    totalExpense: dailyExpense, 
+    netProfit: dailyProfit, 
+    isLoading: isDailyFinanceLoading 
+  } = usePeriodFinanceSummary(businessId, dailyRange.from, dailyRange.to);
+
+  const isLoading = isBusinessLoading || isSummaryLoading || isDailyFinanceLoading;
   const currentMonth = format(new Date(), 'MMMM', { locale: ptBR });
 
   if (isLoading) {
@@ -41,29 +54,12 @@ const DashboardPage = () => {
   // Display Dashboard content
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Bem-vindo, {business?.name}!</h1>
+      <h1 className="text-3xl font-bold">Painel do Dia ({format(today, 'dd/MM/yyyy')})</h1>
       <p className="text-gray-600">{business?.description || "Visão geral e estatísticas do seu negócio."}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
-        {/* Card 1: Link de Agendamento */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Link de Agendamento</CardTitle>
-            <LinkIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold mb-2">Seu Link Público</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {window.location.origin}/book/{businessId}
-            </p>
-            <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleCopyLink}>
-              Copiar Link
-            </Button>
-          </CardContent>
-        </Card>
-        
-        {/* Card 2: Agendamentos Hoje */}
+        {/* Card 1: Agendamentos Hoje */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
@@ -80,33 +76,50 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        {/* Card 3: Agendamentos Semana */}
-        <Card>
+        {/* Card 2: Receita do Dia */}
+        <Card className="border-l-4 border-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agendamentos na Semana</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Receita do Dia</CardTitle>
+            <ArrowUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{weekCount}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(dailyRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              {weekCount} agendamento(s) pendente(s)/confirmado(s) esta semana.
+              Total de entradas (Agendamentos Concluídos + Manuais).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
-              <Link to="/dashboard/agenda">Ver Agenda</Link>
+              <Link to="/dashboard/finance">Ver Financeiro</Link>
             </Button>
           </CardContent>
         </Card>
         
-        {/* Card 4: Receita de Agendamentos (Mês) */}
-        <Card className="border-l-4 border-green-500">
+        {/* Card 3: Despesa do Dia */}
+        <Card className="border-l-4 border-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita de {currentMonth}</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">Despesa do Dia</CardTitle>
+            <ArrowDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(appointmentRevenue)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(dailyExpense)}</div>
             <p className="text-xs text-muted-foreground">
-              Valor total de serviços CONCLUÍDOS no mês.
+              Total de saídas registradas hoje.
+            </p>
+            <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
+              <Link to="/dashboard/finance">Ver Financeiro</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Card 4: Lucro do Dia */}
+        <Card className={`border-l-4 ${dailyProfit >= 0 ? 'border-primary' : 'border-red-700'}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Lucro Líquido do Dia</CardTitle>
+            <DollarSign className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${dailyProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(dailyProfit)}</div>
+            <p className="text-xs text-muted-foreground">
+              Resultado financeiro de hoje.
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/finance">Ver Financeiro</Link>
@@ -130,6 +143,23 @@ const DashboardPage = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Link de Agendamento (Movido para baixo) */}
+      <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Link de Agendamento Público</CardTitle>
+            <LinkIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold mb-2">Compartilhe este link com seus clientes:</p>
+            <p className="text-sm text-muted-foreground truncate">
+              {window.location.origin}/book/{businessId}
+            </p>
+            <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleCopyLink}>
+              Copiar Link
+            </Button>
+          </CardContent>
+        </Card>
     </div>
   );
 };

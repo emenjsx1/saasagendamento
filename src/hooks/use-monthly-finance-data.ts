@@ -49,20 +49,34 @@ export const useMonthlyFinanceData = (businessId: string | null): UseMonthlyFina
       const startDate = format(start, 'yyyy-MM-dd HH:mm:ss');
       const endDate = format(end, 'yyyy-MM-dd HH:mm:ss');
 
-      // 1. Buscar Receitas do Ano
-      const { data: revenueData, error: revenueError } = await supabase
+      // 1. Buscar Receitas Manuais do Ano
+      const { data: manualRevenueData, error: manualRevenueError } = await supabase
         .from('revenues')
         .select('amount, revenue_date')
         .eq('business_id', businessId)
         .gte('revenue_date', startDate)
         .lte('revenue_date', endDate);
 
-      if (revenueError) {
-        console.error("Error fetching revenues for chart:", revenueError);
-        toast.error("Erro ao carregar dados de receita para o gráfico.");
+      if (manualRevenueError) {
+        console.error("Error fetching manual revenues for chart:", manualRevenueError);
+        toast.error("Erro ao carregar dados de receita manual para o gráfico.");
+      }
+      
+      // 2. Buscar Receitas de Agendamentos CONCLUÍDOS do Ano
+      const { data: appointmentRevenueData, error: appointmentRevenueError } = await supabase
+        .from('appointments')
+        .select(`start_time, services (price)`)
+        .eq('business_id', businessId)
+        .eq('status', 'completed')
+        .gte('start_time', startDate)
+        .lte('start_time', endDate);
+
+      if (appointmentRevenueError) {
+        console.error("Error fetching appointment revenues for chart:", appointmentRevenueError);
+        toast.error("Erro ao carregar dados de receita de agendamentos para o gráfico.");
       }
 
-      // 2. Buscar Despesas do Ano
+      // 3. Buscar Despesas do Ano
       const { data: expenseData, error: expenseError } = await supabase
         .from('expenses')
         .select('amount, expense_date')
@@ -75,15 +89,27 @@ export const useMonthlyFinanceData = (businessId: string | null): UseMonthlyFina
         toast.error("Erro ao carregar dados de despesa para o gráfico.");
       }
 
-      // 3. Agregar dados
+      // 4. Agregar dados
       const aggregatedData = [...initialData];
 
-      (revenueData || []).forEach(r => {
+      // Agregar Receitas Manuais
+      (manualRevenueData || []).forEach(r => {
         const date = parseISO(r.revenue_date);
         const monthIndex = getMonth(date);
         aggregatedData[monthIndex].Receita += parseFloat(r.amount as any);
       });
+      
+      // Agregar Receitas de Agendamentos
+      (appointmentRevenueData || []).forEach(app => {
+        const service = Array.isArray(app.services) ? app.services[0] : app.services;
+        if (service && service.price) {
+            const date = parseISO(app.start_time);
+            const monthIndex = getMonth(date);
+            aggregatedData[monthIndex].Receita += parseFloat(service.price as any);
+        }
+      });
 
+      // Agregar Despesas
       (expenseData || []).forEach(e => {
         const date = parseISO(e.expense_date);
         const monthIndex = getMonth(date);

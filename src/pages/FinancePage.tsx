@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, ArrowUp, ArrowDown, Loader2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { useBusiness } from '@/hooks/use-business';
-import { useFinanceSummary } from '@/hooks/use-finance-summary';
-import { useRecentTransactions, Transaction } from '@/hooks/use-recent-transactions';
-import { format } from 'date-fns';
+import { usePeriodFinanceSummary } from '@/hooks/use-period-finance-summary';
+import { usePeriodTransactions, Transaction } from '@/hooks/use-period-transactions';
+import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,16 +12,41 @@ import TransactionForm from '@/components/TransactionForm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
+import { PeriodFilter } from '@/components/PeriodFilter';
+
+interface DateRange {
+  from: Date;
+  to: Date;
+}
 
 const FinancePage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
-  const { totalRevenue, totalExpense, netProfit, isLoading: isSummaryLoading } = useFinanceSummary(businessId);
-  const { transactions, isLoading: isTransactionsLoading, refresh } = useRecentTransactions(businessId);
   
+  // Inicializa o filtro para o Mês Atual
+  const today = new Date();
+  const initialRange: DateRange = useMemo(() => ({
+    from: startOfMonth(today),
+    to: endOfDay(today),
+  }), [today]);
+
+  const [periodRange, setPeriodRange] = useState<DateRange>(initialRange);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const { totalRevenue, totalExpense, netProfit, isLoading: isSummaryLoading } = usePeriodFinanceSummary(
+    businessId,
+    periodRange.from,
+    periodRange.to
+  );
+  
+  const { transactions, isLoading: isTransactionsLoading, refresh } = usePeriodTransactions(
+    businessId,
+    periodRange.from,
+    periodRange.to
+  );
+
   const isLoading = isBusinessLoading || isSummaryLoading || isTransactionsLoading;
-  const currentMonth = format(new Date(), 'MMMM yyyy', { locale: ptBR });
+  
+  const periodLabel = `${format(periodRange.from, 'dd/MM/yyyy', { locale: ptBR })} - ${format(periodRange.to, 'dd/MM/yyyy', { locale: ptBR })}`;
 
   const handleTransactionSuccess = () => {
     setIsModalOpen(false);
@@ -50,7 +75,7 @@ const FinancePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold flex items-center">
           <DollarSign className="h-7 w-7 mr-3" />
           Gestão Financeira
@@ -64,14 +89,18 @@ const FinancePage: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Registrar Transação</DialogTitle>
+              <DialogTitle>Registrar Transação Manual</DialogTitle>
             </DialogHeader>
             <TransactionForm businessId={businessId} onSuccess={handleTransactionSuccess} />
           </DialogContent>
         </Dialog>
       </div>
       
-      <h2 className="text-xl font-semibold text-gray-700">Resumo de {currentMonth}</h2>
+      {/* Filtro de Período */}
+      <div className="flex flex-col gap-4">
+        <PeriodFilter range={periodRange} setRange={setPeriodRange} />
+        <h2 className="text-xl font-semibold text-gray-700">Resumo do Período: {periodLabel}</h2>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
@@ -84,7 +113,7 @@ const FinancePage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total de entradas no mês.
+              Total de entradas no período.
             </p>
           </CardContent>
         </Card>
@@ -98,7 +127,7 @@ const FinancePage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpense)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total de saídas no mês.
+              Total de saídas no período.
             </p>
           </CardContent>
         </Card>
@@ -112,7 +141,7 @@ const FinancePage: React.FC = () => {
           <CardContent>
             <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfit)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Resultado do mês.
+              Resultado do período.
             </p>
           </CardContent>
         </Card>
@@ -121,7 +150,7 @@ const FinancePage: React.FC = () => {
       {/* Tabela de Transações */}
       <Card>
         <CardHeader>
-          <CardTitle>Transações Recentes</CardTitle>
+          <CardTitle>Transações Detalhadas</CardTitle>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
@@ -133,19 +162,25 @@ const FinancePage: React.FC = () => {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Descrição</TableHead>
+                    <TableHead>Fonte</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.map((t) => (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id + t.source}>
                       <TableCell>{format(t.date, 'dd/MM/yyyy')}</TableCell>
                       <TableCell>
                         <div className="font-medium">{t.description}</div>
                         {t.type === 'expense' && t.category && (
                           <div className="text-xs text-muted-foreground">Categoria: {t.category}</div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {t.source === 'appointment' ? 'Agendamento' : 'Manual'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge 
