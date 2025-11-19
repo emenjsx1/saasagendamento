@@ -13,7 +13,8 @@ interface PeriodSummary {
 export const usePeriodFinanceSummary = (
   businessId: string | null, 
   startDate: Date | null, 
-  endDate: Date | null
+  endDate: Date | null,
+  serviceId: string | null = null, // Novo parâmetro
 ): PeriodSummary => {
   const [summary, setSummary] = useState<PeriodSummary>({
     totalRevenue: 0,
@@ -34,28 +35,56 @@ export const usePeriodFinanceSummary = (
       const startString = format(startDate, 'yyyy-MM-dd HH:mm:ss');
       const endString = format(endDate, 'yyyy-MM-dd HH:mm:ss');
 
-      // 1. Buscar Receitas Manuais
-      const { data: manualRevenueData, error: manualRevenueError } = await supabase
-        .from('revenues')
-        .select('amount')
-        .eq('business_id', businessId)
-        .gte('revenue_date', startString)
-        .lte('revenue_date', endString);
+      let totalManualRevenue = 0;
+      let totalExpense = 0;
 
-      if (manualRevenueError) {
-        console.error("Error fetching manual revenues:", manualRevenueError);
-        toast.error("Erro ao carregar receitas manuais.");
+      // Se não houver filtro de serviço, buscamos receitas manuais e despesas.
+      if (!serviceId) {
+        // 1. Buscar Receitas Manuais
+        const { data: manualRevenueData, error: manualRevenueError } = await supabase
+          .from('revenues')
+          .select('amount')
+          .eq('business_id', businessId)
+          .gte('revenue_date', startString)
+          .lte('revenue_date', endString);
+
+        if (manualRevenueError) {
+          console.error("Error fetching manual revenues:", manualRevenueError);
+          toast.error("Erro ao carregar receitas manuais.");
+        }
+        totalManualRevenue = manualRevenueData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
+
+        // 3. Buscar Despesas
+        const { data: expenseData, error: expenseError } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('business_id', businessId)
+          .gte('expense_date', startString)
+          .lte('expense_date', endString);
+
+        if (expenseError) {
+          console.error("Error fetching expenses:", expenseError);
+          toast.error("Erro ao carregar despesas.");
+        }
+
+        totalExpense = expenseData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
       }
-      const totalManualRevenue = manualRevenueData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
+
 
       // 2. Buscar Receitas de Agendamentos CONCLUÍDOS
-      const { data: appointmentRevenueData, error: appointmentRevenueError } = await supabase
+      let appointmentQuery = supabase
         .from('appointments')
         .select(`services (price)`)
         .eq('business_id', businessId)
         .eq('status', 'completed')
         .gte('start_time', startString)
         .lte('start_time', endString);
+        
+      if (serviceId) {
+        appointmentQuery = appointmentQuery.eq('service_id', serviceId);
+      }
+
+      const { data: appointmentRevenueData, error: appointmentRevenueError } = await appointmentQuery;
 
       if (appointmentRevenueError) {
         console.error("Error fetching appointment revenues:", appointmentRevenueError);
@@ -71,21 +100,6 @@ export const usePeriodFinanceSummary = (
       });
 
       const totalRevenue = totalManualRevenue + totalAppointmentRevenue;
-
-      // 3. Buscar Despesas
-      const { data: expenseData, error: expenseError } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('business_id', businessId)
-        .gte('expense_date', startString)
-        .lte('expense_date', endString);
-
-      if (expenseError) {
-        console.error("Error fetching expenses:", expenseError);
-        toast.error("Erro ao carregar despesas.");
-      }
-
-      const totalExpense = expenseData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
       
       const netProfit = totalRevenue - totalExpense;
 
@@ -98,7 +112,7 @@ export const usePeriodFinanceSummary = (
     };
 
     fetchSummary();
-  }, [businessId, startDate, endDate]);
+  }, [businessId, startDate, endDate, serviceId]);
 
   return summary;
 };

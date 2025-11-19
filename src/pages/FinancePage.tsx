@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, ArrowUp, ArrowDown, Loader2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, Loader2, Plus, TrendingUp, TrendingDown, Filter } from 'lucide-react';
 import { useBusiness } from '@/hooks/use-business';
 import { usePeriodFinanceSummary } from '@/hooks/use-period-finance-summary';
 import { usePeriodTransactions, Transaction } from '@/hooks/use-period-transactions';
+import { useServices } from '@/hooks/use-services';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PeriodFilter } from '@/components/PeriodFilter';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DateRange {
   from: Date;
@@ -30,21 +32,26 @@ const FinancePage: React.FC = () => {
   }), [today]);
 
   const [periodRange, setPeriodRange] = useState<DateRange>(initialRange);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { services, isLoading: isServicesLoading } = useServices(businessId);
 
   const { totalRevenue, totalExpense, netProfit, isLoading: isSummaryLoading } = usePeriodFinanceSummary(
     businessId,
     periodRange.from,
-    periodRange.to
+    periodRange.to,
+    selectedServiceId
   );
   
   const { transactions, isLoading: isTransactionsLoading, refresh } = usePeriodTransactions(
     businessId,
     periodRange.from,
-    periodRange.to
+    periodRange.to,
+    selectedServiceId
   );
 
-  const isLoading = isBusinessLoading || isSummaryLoading || isTransactionsLoading;
+  const isLoading = isBusinessLoading || isSummaryLoading || isTransactionsLoading || isServicesLoading;
   
   const periodLabel = `${format(periodRange.from, 'dd/MM/yyyy', { locale: ptBR })} - ${format(periodRange.to, 'dd/MM/yyyy', { locale: ptBR })}`;
 
@@ -96,9 +103,29 @@ const FinancePage: React.FC = () => {
         </Dialog>
       </div>
       
-      {/* Filtro de Período */}
+      {/* Filtros */}
       <div className="flex flex-col gap-4">
         <PeriodFilter range={periodRange} setRange={setPeriodRange} />
+        
+        {/* Filtro por Serviço */}
+        <div className="flex items-center space-x-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select 
+            onValueChange={(value) => setSelectedServiceId(value === 'all' ? null : value)} 
+            value={selectedServiceId || 'all'}
+          >
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Filtrar por Serviço" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Serviços</SelectItem>
+              {services.map(service => (
+                <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <h2 className="text-xl font-semibold text-gray-700">Resumo do Período: {periodLabel}</h2>
       </div>
 
@@ -154,7 +181,7 @@ const FinancePage: React.FC = () => {
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nenhuma transação registrada neste período.</p>
+            <p className="text-center text-muted-foreground py-4">Nenhuma transação registrada neste período com os filtros selecionados.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>

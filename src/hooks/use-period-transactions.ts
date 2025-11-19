@@ -24,6 +24,7 @@ export const usePeriodTransactions = (
   businessId: string | null,
   startDate: Date | null,
   endDate: Date | null,
+  serviceId: string | null = null, // Novo parâmetro
 ): UsePeriodTransactionsResult => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,30 +45,61 @@ export const usePeriodTransactions = (
       const startString = format(startDate, 'yyyy-MM-dd HH:mm:ss');
       const endString = format(endDate, 'yyyy-MM-dd HH:mm:ss');
 
-      // 1. Buscar Receitas Manuais
-      const { data: manualRevenueData, error: manualRevenueError } = await supabase
-        .from('revenues')
-        .select('id, amount, description, revenue_date')
-        .eq('business_id', businessId)
-        .gte('revenue_date', startString)
-        .lte('revenue_date', endString);
+      // 1. Buscar Receitas Manuais (Não são afetadas pelo filtro de serviço)
+      let manualRevenues: Transaction[] = [];
+      let expenses: Transaction[] = [];
 
-      if (manualRevenueError) {
-        console.error("Error fetching manual revenues:", manualRevenueError);
-        toast.error("Erro ao carregar receitas manuais.");
+      // Se houver filtro de serviço, só queremos ver transações de agendamento.
+      // Se não houver filtro de serviço, buscamos todas as transações manuais e despesas.
+      if (!serviceId) {
+        const { data: manualRevenueData, error: manualRevenueError } = await supabase
+          .from('revenues')
+          .select('id, amount, description, revenue_date')
+          .eq('business_id', businessId)
+          .gte('revenue_date', startString)
+          .lte('revenue_date', endString);
+
+        if (manualRevenueError) {
+          console.error("Error fetching manual revenues:", manualRevenueError);
+          toast.error("Erro ao carregar receitas manuais.");
+        }
+
+        manualRevenues = (manualRevenueData || []).map(r => ({
+          id: r.id,
+          type: 'revenue',
+          amount: parseFloat(r.amount as any),
+          description: r.description || 'Receita Manual',
+          date: parseISO(r.revenue_date),
+          source: 'manual',
+        }));
+        
+        // 3. Buscar Despesas
+        const { data: expenseData, error: expenseError } = await supabase
+          .from('expenses')
+          .select('id, amount, description, category, expense_date')
+          .eq('business_id', businessId)
+          .gte('expense_date', startString)
+          .lte('expense_date', endString);
+
+        if (expenseError) {
+          console.error("Error fetching expenses:", expenseError);
+          toast.error("Erro ao carregar despesas.");
+        }
+
+        expenses = (expenseData || []).map(e => ({
+          id: e.id,
+          type: 'expense',
+          amount: parseFloat(e.amount as any),
+          description: e.description || 'Despesa',
+          date: parseISO(e.expense_date),
+          category: e.category,
+          source: 'manual',
+        }));
       }
 
-      const manualRevenues: Transaction[] = (manualRevenueData || []).map(r => ({
-        id: r.id,
-        type: 'revenue',
-        amount: parseFloat(r.amount as any),
-        description: r.description || 'Receita Manual',
-        date: parseISO(r.revenue_date),
-        source: 'manual',
-      }));
 
       // 2. Buscar Receitas de Agendamentos CONCLUÍDOS
-      const { data: appointmentRevenueData, error: appointmentRevenueError } = await supabase
+      let appointmentQuery = supabase
         .from('appointments')
         .select(`
           id, 
@@ -79,6 +111,12 @@ export const usePeriodTransactions = (
         .eq('status', 'completed')
         .gte('start_time', startString)
         .lte('start_time', endString);
+        
+      if (serviceId) {
+        appointmentQuery = appointmentQuery.eq('service_id', serviceId);
+      }
+
+      const { data: appointmentRevenueData, error: appointmentRevenueError } = await appointmentQuery;
 
       if (appointmentRevenueError) {
         console.error("Error fetching appointment revenues:", appointmentRevenueError);
@@ -100,29 +138,6 @@ export const usePeriodTransactions = (
         };
       });
 
-      // 3. Buscar Despesas
-      const { data: expenseData, error: expenseError } = await supabase
-        .from('expenses')
-        .select('id, amount, description, category, expense_date')
-        .eq('business_id', businessId)
-        .gte('expense_date', startString)
-        .lte('expense_date', endString);
-
-      if (expenseError) {
-        console.error("Error fetching expenses:", expenseError);
-        toast.error("Erro ao carregar despesas.");
-      }
-
-      const expenses: Transaction[] = (expenseData || []).map(e => ({
-        id: e.id,
-        type: 'expense',
-        amount: parseFloat(e.amount as any),
-        description: e.description || 'Despesa',
-        date: parseISO(e.expense_date),
-        category: e.category,
-        source: 'manual',
-      }));
-
       // 4. Combinar e Ordenar
       const combinedTransactions = [...manualRevenues, ...appointmentRevenues, ...expenses].sort((a, b) => 
         b.date.getTime() - a.date.getTime()
@@ -133,7 +148,7 @@ export const usePeriodTransactions = (
     };
 
     fetchTransactions();
-  }, [businessId, startDate, endDate, refreshKey]);
+  }, [businessId, startDate, endDate, serviceId, refreshKey]);
 
   return {
     transactions,
