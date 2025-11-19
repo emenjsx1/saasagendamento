@@ -184,23 +184,40 @@ const CheckoutPage: React.FC = () => {
 
   // --- Lógica de Pagamento (Step 2) ---
   const handlePaymentVerification = async () => {
-    if (!tempUserId) return;
+    if (!tempUserId || !selectedPaymentMethod || !plan) return;
     setIsSubmitting(true);
 
     // Simulação de verificação de pagamento (API Direta)
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     try {
-      // 1. Atualizar status da subscrição para 'active'
-      const { error } = await supabase
+      // 1. Registrar o pagamento na tabela 'payments'
+      const paymentRecord = {
+        user_id: tempUserId,
+        amount: plan.price,
+        status: 'confirmed',
+        payment_type: 'subscription',
+        method: selectedPaymentMethod.key,
+        transaction_id: `MOCK-${Date.now()}`, // ID de transação simulado
+        notes: `Pagamento da assinatura ${plan.name}`,
+      };
+      
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert(paymentRecord);
+        
+      if (paymentError) throw paymentError;
+
+      // 2. Atualizar status da subscrição para 'active'
+      const { error: subUpdateError } = await supabase
         .from('subscriptions')
         .update({ status: 'active' })
         .eq('user_id', tempUserId)
         .eq('status', 'pending_payment');
 
-      if (error) throw error;
+      if (subUpdateError) throw subUpdateError;
 
-      // 2. Redirecionar para o login (o usuário precisa fazer login após o pagamento)
+      // 3. Redirecionar para o sucesso
       
       toast.success("Pagamento verificado e conta ativada! Faça login para acessar o painel.");
       setStep('success');
