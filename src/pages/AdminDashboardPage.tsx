@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Users, Briefcase, CalendarCheck, DollarSign, ArrowRight, Loader2, BarChart3 } from 'lucide-react';
+import { Shield, Users, Briefcase, CalendarCheck, DollarSign, ArrowRight, Loader2, BarChart3, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -8,9 +8,20 @@ import { useAdminMetrics } from '@/hooks/use-admin-metrics';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 const AdminDashboardPage: React.FC = () => {
-  const { totalBusinesses, totalUsers, totalAppointmentsLast30Days, totalRevenueLast30Days, isLoading: isMetricsLoading } = useAdminMetrics();
+  const { 
+    totalBusinesses, 
+    totalUsers, 
+    totalAppointmentsLast30Days, 
+    totalRevenueLast30Days, 
+    appointmentsToday,
+    revenueToday,
+    subscriptionStatus,
+    isLoading: isMetricsLoading 
+  } = useAdminMetrics();
+  
   const [recentBusinesses, setRecentBusinesses] = useState<any[]>([]);
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
   const [isRecentLoading, setIsRecentLoading] = useState(true);
@@ -76,6 +87,11 @@ const AdminDashboardPage: React.FC = () => {
     { title: 'Agendamentos (30 dias)', value: totalAppointmentsLast30Days.toString(), icon: CalendarCheck, color: 'text-yellow-600' },
     { title: 'Receita Total (30 dias)', value: formatCurrency(totalRevenueLast30Days), icon: DollarSign, color: 'text-red-600' },
   ];
+  
+  const todayMetrics = [
+    { title: 'Agendamentos de Hoje', value: appointmentsToday.toString(), icon: Clock, color: 'text-primary', link: '/admin/appointments' },
+    { title: 'Receita de Hoje (Concluída)', value: formatCurrency(revenueToday), icon: DollarSign, color: 'text-green-600', link: '/admin/reports' },
+  ];
 
   return (
     <div className="space-y-8">
@@ -84,7 +100,7 @@ const AdminDashboardPage: React.FC = () => {
         Visão Geral da Plataforma
       </h1>
       
-      {/* Visão Geral - Métricas */}
+      {/* Visão Geral - Métricas (30 dias) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {metrics.map((metric) => (
           <Card key={metric.title}>
@@ -97,6 +113,54 @@ const AdminDashboardPage: React.FC = () => {
             </CardContent>
           </Card>
         ))}
+      </div>
+      
+      {/* Métricas de Hoje e Status de Assinatura */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Métricas de Hoje */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-xl">Desempenho de Hoje ({format(new Date(), 'dd/MM')})</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {todayMetrics.map((metric) => (
+              <Card key={metric.title} className="p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">{metric.title}</p>
+                  <metric.icon className={cn("h-4 w-4", metric.color)} />
+                </div>
+                <div className="text-xl font-bold mt-1">{metric.value}</div>
+                <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
+                  <Link to={metric.link}>Ver Detalhes</Link>
+                </Button>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+        
+        {/* Status das Assinaturas */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Status das Assinaturas</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="flex items-center text-sm font-medium text-green-600"><CheckCircle className="h-4 w-4 mr-2" /> Ativas (Pagas)</span>
+              <Badge variant="default" className="bg-green-600">{subscriptionStatus.active}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center text-sm font-medium text-yellow-600"><Clock className="h-4 w-4 mr-2" /> Teste Gratuito</span>
+              <Badge variant="secondary">{subscriptionStatus.trial}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center text-sm font-medium text-red-600"><AlertTriangle className="h-4 w-4 mr-2" /> Pagamento Pendente</span>
+              <Badge variant="destructive">{subscriptionStatus.pending_payment}</Badge>
+            </div>
+            <Button asChild variant="link" size="sm" className="p-0 pt-2">
+              <Link to="/admin/businesses">Gerir Assinaturas <ArrowRight className="h-4 w-4 ml-1" /></Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Botões de Ação Rápida */}
@@ -118,7 +182,7 @@ const AdminDashboardPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Atividade Recente */}
+      {/* Atividade Recente (Mantido) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
