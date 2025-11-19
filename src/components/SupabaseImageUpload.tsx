@@ -27,6 +27,7 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
 
+  // Atualiza o previewUrl quando o currentUrl (vindo do formulário) muda
   React.useEffect(() => {
     setPreviewUrl(currentUrl);
   }, [currentUrl]);
@@ -39,7 +40,7 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
     const filePath = `${pathPrefix}/${fileName}`;
 
     try {
-      // 1. Upload the file
+      // 1. Upload the file (upsert: true garante que ele sobrescreva)
       const { data, error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -59,9 +60,12 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
       if (!publicUrl) {
         throw new Error("Não foi possível obter a URL pública.");
       }
+      
+      // 3. Adicionar um timestamp para evitar cache do navegador/CDN
+      const cacheBustingUrl = `${publicUrl}?t=${Date.now()}`;
 
-      setPreviewUrl(publicUrl);
-      onUploadSuccess(publicUrl);
+      setPreviewUrl(cacheBustingUrl);
+      onUploadSuccess(cacheBustingUrl); // Passa a URL com timestamp para o formulário
       toast.success(`${label} carregado com sucesso!`);
 
     } catch (error: any) {
@@ -69,6 +73,8 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
       console.error(error);
     } finally {
       setIsUploading(false);
+      // Limpa o input file para permitir o re-upload do mesmo arquivo
+      event.target.value = ''; 
     }
   }, [bucket, pathPrefix, fileName, label, onUploadSuccess]);
 
