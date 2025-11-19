@@ -41,7 +41,7 @@ const AdminBusinessesPage: React.FC = () => {
         slug, 
         owner_id, 
         created_at,
-        owner:owner_id (email:auth.users(email)),
+        owner:owner_id (email),
         subscriptions:owner_id (status, plan_name, trial_ends_at)
       `);
 
@@ -57,8 +57,8 @@ const AdminBusinessesPage: React.FC = () => {
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
         // Handle nested data from joins
-        // owner:owner_id (email:auth.users(email)) -> b.owner.email[0].email
-        const ownerEmail = b.owner?.email?.[0]?.email || 'N/A';
+        // owner:owner_id (email) -> b.owner[0].email (assuming owner_id is a foreign key to auth.users)
+        const ownerEmail = b.owner?.[0]?.email || 'N/A';
         const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
         
         const subStatus = subscription?.status || 'N/A';
@@ -68,7 +68,6 @@ const AdminBusinessesPage: React.FC = () => {
         if (subStatus === 'trial' && subscription?.trial_ends_at) {
             renewalDate = format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR });
         }
-        // Note: For paid plans, renewal date logic would be more complex (e.g., based on payment cycle)
         
         return {
           id: b.id,
