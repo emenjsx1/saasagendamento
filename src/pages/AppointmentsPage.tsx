@@ -160,7 +160,8 @@ const AppointmentsPage: React.FC = () => {
       if (!appointmentsByHour.has(hourKey)) {
         appointmentsByHour.set(hourKey, []);
       }
-      groups.get(hourKey)?.push(app);
+      // CORREÇÃO: Usar appointmentsByHour em vez de groups
+      appointmentsByHour.get(hourKey)?.push(app);
     });
 
     // 2. Gerar todas as 24 horas do dia
