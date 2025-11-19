@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface UserProfile {
   id: string;
-  email: string; // Temporarily N/A or fetched separately
+  email: string; 
   first_name: string | null;
   last_name: string | null;
   created_at: string;
@@ -36,6 +36,7 @@ const AdminUsersPage: React.FC = () => {
       .from('profiles')
       .select(`
         id, 
+        email, 
         first_name, 
         last_name, 
         created_at, 
@@ -43,7 +44,7 @@ const AdminUsersPage: React.FC = () => {
       `);
 
     if (searchTerm) {
-      profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`);
+      profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
     const { data: profilesData, error: profilesError } = await profilesQuery;
@@ -62,11 +63,7 @@ const AdminUsersPage: React.FC = () => {
     const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
     const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
     
-    // 3. Buscar emails (requer uma busca separada ou RPC, mas vamos simular/simplificar por enquanto)
-    // Para obter o email, precisamos de uma RPC ou de uma busca separada na tabela auth.users (que não é acessível via RLS padrão).
-    // Vamos usar um placeholder e focar na estrutura.
-
-    // 4. Mapear e combinar
+    // 3. Mapear e combinar
     const mappedUsers: UserProfile[] = (profilesData || []).map((p: any) => {
       const isAdministrator = adminIds.has(p.id);
       const businessName = businessMap.get(p.id) || null;
@@ -83,12 +80,9 @@ const AdminUsersPage: React.FC = () => {
         role = 'Owner';
       }
       
-      // Email é N/A pois não podemos fazer join direto com auth.users
-      const emailPlaceholder = `${p.first_name?.toLowerCase() || 'user'}@example.com`; 
-
       return {
         id: p.id,
-        email: emailPlaceholder, // Placeholder
+        email: p.email || 'N/A', 
         first_name: p.first_name,
         last_name: p.last_name,
         created_at: p.created_at,
@@ -191,7 +185,7 @@ const AdminUsersPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Email (Placeholder)</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Status Pagamento</TableHead>
