@@ -2,7 +2,6 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ContactSection from '@/components/ContactSection';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 
 const ContactPage: React.FC = () => {
   return (
@@ -13,7 +12,6 @@ const ContactPage: React.FC = () => {
         <ContactSection />
       </main>
       <Footer />
-      <MadeWithDyad />
     </div>
   );
 };

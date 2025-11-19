@@ -2,7 +2,6 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SupportSection from '@/components/SupportSection';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 
 const SupportPage: React.FC = () => {
   return (
@@ -13,7 +12,6 @@ const SupportPage: React.FC = () => {
         <SupportSection />
       </main>
       <Footer />
-      <MadeWithDyad />
     </div>
   );
 };

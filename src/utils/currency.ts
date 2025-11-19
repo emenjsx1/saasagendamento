@@ -37,9 +37,9 @@ export const CURRENCIES: Currency[] = [
   {
     key: 'EUR',
     label: 'Euro (EU)',
-    locale: 'en-EU',
+    locale: 'pt-PT', // Alterado para locale PT-PT
     flag: '🇪🇺',
-    language: 'en',
+    language: 'pt', // Alterado para Português
     weeklyBasePrice: 2.75, // Base EUR price calculated by user
   },
 ];

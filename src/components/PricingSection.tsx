@@ -1,16 +1,16 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Zap, Loader2 } from 'lucide-react';
+import { Check, Zap, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/lib/utils';
 import { generatePricingPlans } from '@/utils/pricing-plans';
 import { usePublicSettings } from '@/hooks/use-public-settings';
-import { useCurrency } from '@/contexts/CurrencyContext'; // Import useCurrency
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const PricingSection: React.FC = () => {
   const { subscriptionConfig, isLoading } = usePublicSettings();
-  const { currentCurrency, T } = useCurrency(); // Use currency context
+  const { currentCurrency, T } = useCurrency();
   
   if (isLoading) {
     return (
@@ -26,13 +26,11 @@ const PricingSection: React.FC = () => {
 
   const pricingPlans = generatePricingPlans(subscriptionConfig, currentCurrency);
   
-  // Filtra apenas os planos pagos para exibição na seção de preços
   const displayPlans = pricingPlans.filter(p => !p.isTrial);
   const trialPlan = pricingPlans.find(p => p.isTrial);
   
-  // Mapeamento de tradução simples para features (baseado nos defaults de pricing-plans.ts)
   const translateFeature = (ptText: string) => {
-      if (!T('', '')) return ptText; // Fallback if T is not ready
+      if (!T('', '')) return ptText;
       
       const translations: Record<string, string> = {
         'Agendamentos Ilimitados': 'Unlimited Appointments',
@@ -68,14 +66,14 @@ const PricingSection: React.FC = () => {
             <Card 
               key={plan.name} 
               className={cn(
-                "flex flex-col transition-all duration-300 hover:shadow-xl",
-                plan.isPopular ? "border-2 border-primary shadow-2xl scale-[1.02]" : "border border-gray-200 shadow-lg"
+                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:scale-[1.03] rounded-3xl",
+                plan.isPopular ? "border-4 border-primary shadow-2xl scale-[1.05] bg-white" : "border border-gray-200 shadow-lg bg-white"
               )}
             >
               <CardHeader className="text-center pb-4">
                 {plan.isPopular && (
-                  <div className="mx-auto mb-2 inline-flex items-center rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                    <Zap className="h-3 w-3 mr-1" /> {T('Mais Popular', 'Most Popular')}
+                  <div className="mx-auto mb-2 inline-flex items-center rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-md">
+                    <Zap className="h-4 w-4 mr-1" /> {T('Mais Popular', 'Most Popular')}
                   </div>
                 )}
                 <CardTitle className="text-3xl font-bold text-gray-900">{plan.name}</CardTitle>
@@ -91,17 +89,17 @@ const PricingSection: React.FC = () => {
                       {formatCurrency(plan.originalPrice, currentCurrency.key, currentCurrency.locale)}
                     </p>
                   )}
-                  <p className="text-5xl font-extrabold text-primary">
+                  <p className="text-6xl font-extrabold text-primary">
                     {formatCurrency(plan.price, currentCurrency.key, currentCurrency.locale)}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">{plan.billingPeriod}</p>
+                  <p className="text-md text-gray-600 mt-1">{plan.billingPeriod}</p>
                 </div>
 
                 <ul className="space-y-3 text-left">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start text-gray-700">
                       <Check className="h-5 w-5 mr-3 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>{translateFeature(feature)}</span>
+                      <span className="text-sm">{translateFeature(feature)}</span>
                     </li>
                   ))}
                 </ul>
@@ -110,11 +108,15 @@ const PricingSection: React.FC = () => {
               <CardFooter className="p-6 pt-0">
                 <Button 
                   size="lg" 
-                  className="w-full transition-transform hover:scale-[1.01]"
-                  variant={plan.isPopular ? 'default' : 'secondary'}
+                  className={cn(
+                    "w-full transition-all duration-300 h-12 text-lg rounded-xl transform hover:scale-[1.02]",
+                    plan.isPopular ? 'bg-primary hover:bg-primary/90 shadow-lg' : 'bg-gray-800 hover:bg-gray-700 text-white'
+                  )}
                   asChild
                 >
-                  <Link to={`/checkout/${plan.planSlug}`}>{plan.ctaText}</Link>
+                  <Link to={`/checkout/${plan.planSlug}`}>
+                    {plan.ctaText} <ArrowRight className="h-5 w-5 ml-2" />
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -122,11 +124,11 @@ const PricingSection: React.FC = () => {
         </div>
         
         {trialPlan && (
-            <div className="mt-12">
+            <div className="mt-16">
               <p className="text-lg font-semibold text-gray-700 mb-4">
                 {T('Novo por aqui? Experimente grátis!', 'New here? Try it for free!')}
               </p>
-              <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
+              <Button size="lg" variant="outline" asChild className="border-2 border-primary text-primary hover:bg-primary/10 transition-all duration-300 transform hover:scale-[1.05] shadow-md">
                 <Link to="/checkout/trial">{trialPlan.ctaText} ({trialPlan.billingPeriod})</Link>
               </Button>
             </div>

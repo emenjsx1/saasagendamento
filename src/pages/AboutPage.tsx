@@ -2,7 +2,6 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AboutSection from '@/components/AboutSection';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 
 const AboutPage: React.FC = () => {
   return (
@@ -17,7 +16,6 @@ const AboutPage: React.FC = () => {
         </section>
       </main>
       <Footer />
-      <MadeWithDyad />
     </div>
   );
 };

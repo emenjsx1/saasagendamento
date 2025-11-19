@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import CurrencySelector from './CurrencySelector'; // Import CurrencySelector
-import { useCurrency } from '@/contexts/CurrencyContext'; // Import useCurrency
+import CurrencySelector from './CurrencySelector';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { cn } from '@/lib/utils';
 
 const navItems = [
   { name_pt: 'Home', name_en: 'Home', href: '/' },
@@ -21,11 +22,11 @@ const Header: React.FC = () => {
   const startText = T('Começar Agora', 'Start Now');
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md transition-shadow duration-300 shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-primary">
-          Agendamento SaaS
+        <Link to="/" className="text-2xl font-extrabold text-primary tracking-wider">
+          AGENCODES
         </Link>
 
         {/* Desktop Navigation */}
@@ -35,22 +36,24 @@ const Header: React.FC = () => {
               <a 
                 key={item.name_pt}
                 href={item.href}
-                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors relative group"
               >
                 {T(item.name_pt, item.name_en)}
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
               </a>
             ) : (
               <Link 
                 key={item.name_pt}
                 to={item.href}
-                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors relative group"
               >
                 {T(item.name_pt, item.name_en)}
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
               </Link>
             )
           ))}
-          <CurrencySelector /> {/* Adiciona o seletor de moeda */}
-          <Button asChild>
+          <CurrencySelector />
+          <Button asChild className="shadow-md hover:shadow-lg transition-all duration-300">
             <Link to="/login">{loginText}</Link>
           </Button>
         </nav>
@@ -64,7 +67,7 @@ const Header: React.FC = () => {
           </SheetTrigger>
           <SheetContent side="right">
             <div className="flex flex-col space-y-4 pt-6">
-              <CurrencySelector /> {/* Adiciona o seletor de moeda no mobile */}
+              <CurrencySelector />
               {navItems.map((item) => (
                 item.isAnchor ? (
                   <a 
