@@ -1,14 +1,33 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Zap } from 'lucide-react';
+import { Check, Zap, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/lib/utils';
-import { pricingPlans } from '@/utils/pricing-plans'; // Importar planos
+import { generatePricingPlans } from '@/utils/pricing-plans';
+import { usePublicSettings } from '@/hooks/use-public-settings'; // Importar hook
 
 const PricingSection: React.FC = () => {
+  const { subscriptionConfig, isLoading } = usePublicSettings();
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!subscriptionConfig) {
+      // Fallback ou erro, mas usePublicSettings garante defaults
+      return null; 
+  }
+
+  const pricingPlans = generatePricingPlans(subscriptionConfig);
+  
   // Filtra apenas os planos pagos para exibição na seção de preços
   const displayPlans = pricingPlans.filter(p => !p.isTrial);
+  const trialPlan = pricingPlans.find(p => p.isTrial);
 
   return (
     <section id="pricing" className="py-16 md:py-24 bg-gray-50">
@@ -76,14 +95,16 @@ const PricingSection: React.FC = () => {
           ))}
         </div>
         
-        <div className="mt-12">
-          <p className="text-lg font-semibold text-gray-700 mb-4">
-            Novo por aqui? Experimente grátis!
-          </p>
-          <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
-            <Link to="/checkout/trial">Criar Conta Teste (3 dias grátis)</Link>
-          </Button>
-        </div>
+        {trialPlan && (
+            <div className="mt-12">
+              <p className="text-lg font-semibold text-gray-700 mb-4">
+                Novo por aqui? Experimente grátis!
+              </p>
+              <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
+                <Link to="/checkout/trial">{trialPlan.ctaText} ({trialPlan.billingPeriod})</Link>
+              </Button>
+            </div>
+        )}
       </div>
     </section>
   );

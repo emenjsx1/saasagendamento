@@ -11,9 +11,10 @@ import { Loader2, Lock, Mail, User, Phone, MapPin, CheckCircle, ArrowLeft, Messa
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
-import { getPlanBySlug, calculateRenewalDate, PricingPlan } from '@/utils/pricing-plans';
+import { getPlanBySlug, calculateRenewalDate, PricingPlan, generatePricingPlans } from '@/utils/pricing-plans';
 import { formatCurrency } from '@/lib/utils';
 import { addDays } from 'date-fns';
+import { usePublicSettings } from '@/hooks/use-public-settings'; // Importar hook
 
 // --- Schemas ---
 const AccountSchema = z.object({
@@ -65,8 +66,7 @@ const CheckoutPage: React.FC = () => {
   const { planSlug } = useParams<{ planSlug: string }>();
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
-  
-  const plan = getPlanBySlug(planSlug || '');
+  const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
   
   const [step, setStep] = useState<'account' | 'payment' | 'success'>('account');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,19 +85,23 @@ const CheckoutPage: React.FC = () => {
       confirmPassword: "",
     },
   });
+  
+  // Gera os planos dinamicamente
+  const pricingPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig) : [];
+  const plan = getPlanBySlug(planSlug || '', pricingPlans);
 
   // Redirecionar se o plano for inválido ou se já estiver logado
   useEffect(() => {
-    if (!plan && !isSessionLoading) {
+    if (!isConfigLoading && !plan && !isSessionLoading) {
       toast.error("Plano não encontrado.");
       navigate('/#pricing', { replace: true });
     }
     if (user && !isSessionLoading) {
       navigate('/dashboard', { replace: true });
     }
-  }, [plan, user, isSessionLoading, navigate]);
+  }, [plan, user, isSessionLoading, navigate, isConfigLoading]);
 
-  if (!plan || isSessionLoading) {
+  if (!plan || isSessionLoading || isConfigLoading || !subscriptionConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -129,7 +133,7 @@ const CheckoutPage: React.FC = () => {
 
       // 2. Criar a subscrição com status 'pending_payment'
       const isTrial = plan.isTrial;
-      const trialEndsAt = isTrial ? addDays(new Date(), 3).toISOString() : null;
+      const trialEndsAt = isTrial ? addDays(new Date(), subscriptionConfig.trial_days).toISOString() : null;
       
       const subscriptionData = {
         user_id: userId,
@@ -386,7 +390,7 @@ const CheckoutPage: React.FC = () => {
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Próxima Renovação:</span>
-            <span>{calculateRenewalDate(plan)}</span>
+            <span>{calculateRenewalDate(plan, subscriptionConfig.trial_days)}</span>
           </div>
         </div>
         
