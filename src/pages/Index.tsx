@@ -30,7 +30,7 @@ const Index = () => {
               Organize sua agenda de forma simples e eficaz. Sem complicação, sem estresse.
             </p>
             <Button size="lg" asChild className="shadow-lg hover:shadow-xl transition-shadow">
-              <Link to="/signup/trial">Começar Agora</Link>
+              <Link to="/checkout/trial">Começar Agora</Link>
             </Button>
           </div>
         </section>
@@ -70,7 +70,7 @@ const Index = () => {
               Comece agora a organizar sua agenda!
             </h2>
             <Button size="lg" variant="secondary" asChild className="shadow-lg hover:shadow-xl transition-shadow">
-              <Link to="/signup/trial">Criar Minha Conta Grátis</Link>
+              <Link to="/checkout/trial">Criar Minha Conta Grátis</Link>
             </Button>
           </div>
         </section>

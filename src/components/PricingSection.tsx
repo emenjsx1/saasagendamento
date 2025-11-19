@@ -4,74 +4,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/lib/utils';
-
-interface PricingPlan {
-  name: string;
-  price: number;
-  billingPeriod: string;
-  originalPrice?: number;
-  discount?: number;
-  isPopular: boolean;
-  features: string[];
-  ctaText: string;
-  planSlug: string; // Adicionado slug
-}
-
-const WEEKLY_PRICE = 147;
-
-const pricingPlans: PricingPlan[] = [
-  {
-    name: 'Plano Semanal',
-    price: WEEKLY_PRICE,
-    billingPeriod: 'por semana',
-    isPopular: false,
-    features: [
-      'Agendamentos Ilimitados',
-      'Página de Agendamento Personalizada',
-      'Gestão de Serviços',
-      'Relatórios Básicos',
-      'Suporte Padrão',
-    ],
-    ctaText: 'Começar Agora',
-    planSlug: 'weekly',
-  },
-  {
-    name: 'Plano Mensal',
-    price: 529.20,
-    billingPeriod: 'por mês',
-    originalPrice: 588, // 147 * 4
-    discount: 10,
-    isPopular: true,
-    features: [
-      'Tudo do Plano Semanal',
-      'Desconto de 10%',
-      'Gestão Financeira Completa',
-      'Notificações por E-mail',
-      'Suporte Prioritário',
-    ],
-    ctaText: 'Escolher Mensal',
-    planSlug: 'monthly',
-  },
-  {
-    name: 'Plano Anual',
-    price: 4586.40,
-    billingPeriod: 'por ano',
-    originalPrice: 7644, // 147 * 52
-    discount: 40,
-    isPopular: false,
-    features: [
-      'Tudo do Plano Mensal',
-      'Desconto de 40% (Melhor Valor)',
-      'Relatórios Avançados',
-      'Integração WhatsApp (Futuro)',
-      'Consultoria de Setup',
-    ],
-    ctaText: 'Escolher Anual',
-    planSlug: 'annual',
-  },
-];
+import { pricingPlans } from '@/utils/pricing-plans'; // Importar planos
 
 const PricingSection: React.FC = () => {
+  // Filtra apenas os planos pagos para exibição na seção de preços
+  const displayPlans = pricingPlans.filter(p => !p.isTrial);
+
   return (
     <section id="pricing" className="py-16 md:py-24 bg-gray-50">
       <div className="container mx-auto px-4 text-center">
@@ -81,7 +19,7 @@ const PricingSection: React.FC = () => {
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {pricingPlans.map((plan) => (
+          {displayPlans.map((plan) => (
             <Card 
               key={plan.name} 
               className={cn(
@@ -131,7 +69,7 @@ const PricingSection: React.FC = () => {
                   variant={plan.isPopular ? 'default' : 'secondary'}
                   asChild
                 >
-                  <Link to={`/signup/${plan.planSlug}`}>{plan.ctaText}</Link>
+                  <Link to={`/checkout/${plan.planSlug}`}>{plan.ctaText}</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -143,7 +81,7 @@ const PricingSection: React.FC = () => {
             Novo por aqui? Experimente grátis!
           </p>
           <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
-            <Link to="/signup/trial">Criar Conta Teste (3 dias grátis)</Link>
+            <Link to="/checkout/trial">Criar Conta Teste (3 dias grátis)</Link>
           </Button>
         </div>
       </div>
