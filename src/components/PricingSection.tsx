@@ -14,6 +14,7 @@ interface PricingPlan {
   isPopular: boolean;
   features: string[];
   ctaText: string;
+  planSlug: string; // Adicionado slug
 }
 
 const WEEKLY_PRICE = 147;
@@ -32,6 +33,7 @@ const pricingPlans: PricingPlan[] = [
       'Suporte Padrão',
     ],
     ctaText: 'Começar Agora',
+    planSlug: 'weekly',
   },
   {
     name: 'Plano Mensal',
@@ -48,6 +50,7 @@ const pricingPlans: PricingPlan[] = [
       'Suporte Prioritário',
     ],
     ctaText: 'Escolher Mensal',
+    planSlug: 'monthly',
   },
   {
     name: 'Plano Anual',
@@ -64,6 +67,7 @@ const pricingPlans: PricingPlan[] = [
       'Consultoria de Setup',
     ],
     ctaText: 'Escolher Anual',
+    planSlug: 'annual',
   },
 ];
 
@@ -127,7 +131,7 @@ const PricingSection: React.FC = () => {
                   variant={plan.isPopular ? 'default' : 'secondary'}
                   asChild
                 >
-                  <Link to="/signuppromo">{plan.ctaText}</Link>
+                  <Link to={`/signup/${plan.planSlug}`}>{plan.ctaText}</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -139,7 +143,7 @@ const PricingSection: React.FC = () => {
             Novo por aqui? Experimente grátis!
           </p>
           <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
-            <Link to="/signuppromo">Criar Conta Teste (3 dias grátis)</Link>
+            <Link to="/signup/trial">Criar Conta Teste (3 dias grátis)</Link>
           </Button>
         </div>
       </div>

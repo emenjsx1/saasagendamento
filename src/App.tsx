@@ -41,7 +41,7 @@ const App = () => (
             <Route path="/support" element={<SupportPage />} /> 
             <Route path="/contact" element={<ContactPage />} /> 
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signuppromo" element={<SignupPage />} /> {/* Rota atualizada */}
+            <Route path="/signup/:planSlug" element={<SignupPage />} /> {/* Rota dinâmica */}
             <Route path="/book/:businessId" element={<BookingPage />} />
             <Route path="/confirmation/:appointmentId" element={<ConfirmationPage />} />
 

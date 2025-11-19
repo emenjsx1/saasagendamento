@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2, Zap } from 'lucide-react';
@@ -18,6 +18,7 @@ interface PricingPlan {
   isTrial: boolean;
   features: string[];
   planKey: string;
+  planSlug: string; // Novo campo para o slug
 }
 
 const pricingPlans: PricingPlan[] = [
@@ -35,6 +36,7 @@ const pricingPlans: PricingPlan[] = [
       'Notificações por E-mail',
     ],
     planKey: 'trial',
+    planSlug: 'trial',
   },
   {
     name: 'Plano Semanal',
@@ -47,14 +49,62 @@ const pricingPlans: PricingPlan[] = [
       'Sem expiração',
     ],
     planKey: 'weekly',
+    planSlug: 'weekly',
+  },
+  {
+    name: 'Plano Mensal',
+    price: 529.20,
+    billingPeriod: 'por mês',
+    isTrial: false,
+    features: [
+      'Tudo do Plano Semanal',
+      'Desconto de 10%',
+      'Gestão Financeira Completa',
+      'Notificações por E-mail',
+      'Suporte Prioritário',
+    ],
+    planKey: 'monthly',
+    planSlug: 'monthly',
+  },
+  {
+    name: 'Plano Anual',
+    price: 4586.40,
+    billingPeriod: 'por ano',
+    isTrial: false,
+    features: [
+      'Tudo do Plano Mensal',
+      'Desconto de 40% (Melhor Valor)',
+      'Relatórios Avançados',
+      'Integração WhatsApp (Futuro)',
+      'Consultoria de Setup',
+    ],
+    planKey: 'annual',
+    planSlug: 'annual',
   },
 ];
 
 const SignupPage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlan>(pricingPlans[0]);
-  const [step, setStep] = useState<'plan_selection' | 'auth' | 'payment'>('plan_selection');
+  const { planSlug } = useParams<{ planSlug: string }>();
+  
+  // Encontra o plano baseado no slug da URL, ou usa o Trial como fallback
+  const initialPlan = pricingPlans.find(p => p.planSlug === planSlug) || pricingPlans.find(p => p.planKey === 'trial')!;
+  
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan>(initialPlan);
+  const [step, setStep] = useState<'plan_selection' | 'auth' | 'payment'>('auth'); // Começa direto no Auth se o slug for válido
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Se o slug for inválido, forçamos a seleção de plano
+  useEffect(() => {
+    if (!planSlug || !pricingPlans.find(p => p.planSlug === planSlug)) {
+        setStep('plan_selection');
+    } else {
+        // Se o slug for válido, garantimos que o plano correto está selecionado
+        setSelectedPlan(initialPlan);
+        setStep('auth');
+    }
+  }, [planSlug]);
+
 
   // Redirecionar se já estiver logado
   if (user) {
@@ -74,13 +124,8 @@ const SignupPage: React.FC = () => {
       price: selectedPlan.price,
       is_trial: isTrial,
       trial_ends_at: trialEndsAt,
-      status: isTrial ? 'active' : 'pending_payment', // Se for pago, fica pendente
+      status: isTrial ? 'active' : 'pending_payment', 
     };
-
-    // Se for teste, ativamos imediatamente. Se for pago, o status é 'pending_payment'
-    if (isTrial) {
-        subscriptionData.status = 'active';
-    }
 
     const { error } = await supabase
       .from('subscriptions')
@@ -91,35 +136,9 @@ const SignupPage: React.FC = () => {
     if (error) {
       toast.error("Erro ao registrar o plano. Por favor, entre em contato com o suporte.");
       console.error("Subscription error:", error);
-      // Se falhar, o usuário pode ficar sem plano, mas a conta foi criada.
     } else {
       toast.success(isTrial ? "Teste gratuito ativado! Bem-vindo(a)!" : "Plano selecionado. Prossiga para o pagamento.");
     }
-  };
-
-  // Lógica de Pagamento (Simulação)
-  const handlePayment = async () => {
-    if (selectedPlan.isTrial) {
-        // Se for teste, o Auth UI já deve ter criado o usuário. Redirecionamos.
-        // Nota: A criação da subscrição deve ser feita após o SIGNUP.
-        // Como o Auth UI não nos dá um hook direto para o signup, vamos confiar no redirecionamento
-        // e no hook de sessão para pegar o usuário recém-criado.
-        setStep('auth');
-        return;
-    }
-
-    setIsProcessing(true);
-    // Simulação de processamento de pagamento
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Após o pagamento (simulado), atualizamos o status da subscrição para 'active'
-    // Nota: Esta lógica é complexa para ser feita aqui sem o ID do usuário.
-    // Para simplificar o fluxo de cadastro, vamos usar o Auth UI para criar a conta
-    // e depois lidar com a subscrição.
-
-    // Por enquanto, vamos apenas para a tela de Auth para criar a conta.
-    setStep('auth');
-    setIsProcessing(false);
   };
 
   // Monitorar o estado de autenticação para criar a subscrição
@@ -136,11 +155,11 @@ const SignupPage: React.FC = () => {
 
 
   const renderPlanSelection = () => (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-4xl mx-auto">
       <h2 className="text-3xl font-bold text-center">Escolha seu Plano</h2>
-      <p className="text-center text-gray-600">Comece com nosso teste gratuito de 3 dias!</p>
+      <p className="text-center text-gray-600">Selecione o plano que deseja iniciar.</p>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {pricingPlans.map((plan) => (
           <Card 
             key={plan.planKey} 
@@ -153,7 +172,7 @@ const SignupPage: React.FC = () => {
             <CardHeader className="text-center pb-4">
               {plan.isTrial && (
                 <div className="mx-auto mb-2 inline-flex items-center rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">
-                  <Zap className="h-3 w-3 mr-1" /> Recomendado
+                  <Zap className="h-3 w-3 mr-1" /> Teste Gratuito
                 </div>
               )}
               <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
@@ -168,7 +187,7 @@ const SignupPage: React.FC = () => {
               </div>
 
               <ul className="space-y-2 text-left text-sm">
-                {plan.features.map((feature, index) => (
+                {plan.features.slice(0, 3).map((feature, index) => (
                   <li key={index} className="flex items-start text-gray-700">
                     <Check className="h-4 w-4 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
                     <span>{feature}</span>
@@ -181,9 +200,12 @@ const SignupPage: React.FC = () => {
               <Button 
                 size="lg" 
                 className="w-full"
-                onClick={() => setStep('auth')}
+                onClick={() => {
+                    setSelectedPlan(plan);
+                    setStep('auth');
+                }}
               >
-                {selectedPlan.planKey === plan.planKey ? 'Selecionado' : 'Escolher Plano'}
+                {selectedPlan.planKey === plan.planKey ? 'Continuar com este Plano' : 'Escolher Plano'}
               </Button>
             </div>
           </Card>
@@ -199,8 +221,11 @@ const SignupPage: React.FC = () => {
   const renderAuth = () => (
     <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-6">
-        {selectedPlan.isTrial ? 'Crie sua Conta Gratuita' : `Cadastro para o Plano ${selectedPlan.name}`}
+        Cadastro: {selectedPlan.name}
       </h2>
+      <p className="text-center text-sm text-muted-foreground mb-4">
+        {selectedPlan.isTrial ? 'Inicie seu teste gratuito de 3 dias.' : 'Prossiga para criar sua conta e finalizar o pagamento.'}
+      </p>
       <Auth
         supabaseClient={supabase}
         providers={[]}
@@ -218,8 +243,6 @@ const SignupPage: React.FC = () => {
         theme="light"
         view="sign_up"
         redirectTo={window.location.origin + '/dashboard'}
-        // Adicionamos campos de metadados para o perfil (opcional, mas bom para UX)
-        // extraData={{ first_name: '', last_name: '' }} 
       />
       <div className="mt-4 text-center">
         <Button variant="link" onClick={() => setStep('plan_selection')}>
@@ -241,7 +264,6 @@ const SignupPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       {step === 'plan_selection' && renderPlanSelection()}
       {step === 'auth' && renderAuth()}
-      {/* Não precisamos de uma etapa de pagamento real por enquanto, o Auth UI redireciona */}
     </div>
   );
 };
