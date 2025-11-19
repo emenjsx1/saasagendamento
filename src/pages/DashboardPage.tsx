@@ -15,12 +15,16 @@ const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
   const { todayCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(businessId);
 
-  // Definir o período para HOJE
-  const today = new Date();
-  const dailyRange = useMemo(() => ({
-    from: startOfDay(today),
-    to: endOfDay(today),
-  }), [today]);
+  // Definir o período para HOJE de forma estável para evitar loop de renderização.
+  // O useMemo com array vazio garante que dailyRange.from e .to sejam o mesmo objeto
+  // em todas as renderizações, resolvendo o loop.
+  const dailyRange = useMemo(() => {
+    const today = new Date();
+    return {
+      from: startOfDay(today),
+      to: endOfDay(today),
+    };
+  }, []);
 
   const { 
     totalRevenue: dailyRevenue, 
@@ -54,7 +58,7 @@ const DashboardPage = () => {
   // Display Dashboard content
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Painel do Dia ({format(today, 'dd/MM/yyyy')})</h1>
+      <h1 className="text-3xl font-bold">Painel do Dia ({format(dailyRange.from, 'dd/MM/yyyy')})</h1>
       <p className="text-gray-600">{business?.description || "Visão geral e estatísticas do seu negócio."}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
