@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, Upload } from 'lucide-react';
-import WorkingHoursForm from '@/components/WorkingHoursForm'; // Import the new component
+import { Loader2 } from 'lucide-react';
+import WorkingHoursForm from '@/components/WorkingHoursForm';
+import SupabaseImageUpload from '@/components/SupabaseImageUpload'; // Import the new component
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -26,7 +27,10 @@ const BusinessSchema = z.object({
   name: z.string().min(3, "O nome do negócio é obrigatório."),
   description: z.string().optional(),
   address: z.string().optional(),
-  working_hours: z.array(DayScheduleSchema).optional(), // New field
+  phone: z.string().optional(), // Novo campo
+  logo_url: z.string().optional(), // Novo campo
+  cover_photo_url: z.string().optional(), // Novo campo
+  working_hours: z.array(DayScheduleSchema).optional(),
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -54,7 +58,10 @@ const RegisterBusinessPage = () => {
       name: "",
       description: "",
       address: "",
-      working_hours: initialSchedule, // Set initial default
+      phone: "", // Default for new field
+      logo_url: "", // Default for new field
+      cover_photo_url: "", // Default for new field
+      working_hours: initialSchedule,
     },
   });
 
@@ -65,7 +72,7 @@ const RegisterBusinessPage = () => {
 
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, working_hours')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours')
         .eq('owner_id', user.id)
         .single();
 
@@ -81,7 +88,9 @@ const RegisterBusinessPage = () => {
           name: data.name || "",
           description: data.description || "",
           address: data.address || "",
-          // Use existing working_hours or fall back to initial schedule if null/empty
+          phone: data.phone || "", // Load phone
+          logo_url: data.logo_url || "", // Load logo URL
+          cover_photo_url: data.cover_photo_url || "", // Load cover URL
           working_hours: data.working_hours || initialSchedule, 
         });
       }
@@ -99,7 +108,10 @@ const RegisterBusinessPage = () => {
       name: values.name,
       description: values.description,
       address: values.address,
-      working_hours: values.working_hours, // Now saving the JSONB structure
+      phone: values.phone, // Save phone
+      logo_url: values.logo_url, // Save logo URL
+      cover_photo_url: values.cover_photo_url, // Save cover URL
+      working_hours: values.working_hours,
     };
 
     let result;
@@ -131,6 +143,10 @@ const RegisterBusinessPage = () => {
     }
   };
 
+  const ownerId = user?.id;
+  const currentLogoUrl = form.watch('logo_url');
+  const currentCoverUrl = form.watch('cover_photo_url');
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Configuração do Meu Negócio</h1>
@@ -142,7 +158,7 @@ const RegisterBusinessPage = () => {
           {/* Dados do Negócio */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
+              <CardTitle>Informações Básicas e Contato</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -176,7 +192,7 @@ const RegisterBusinessPage = () => {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Endereço</FormLabel>
+                    <FormLabel>Endereço Físico (Para exibição no mapa)</FormLabel>
                     <FormControl>
                       <Input placeholder="Rua Exemplo, 123" {...field} />
                     </FormControl>
@@ -184,6 +200,68 @@ const RegisterBusinessPage = () => {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone / WhatsApp do Negócio</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(99) 99999-9999" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Mídia Uploads */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Mídia (Logo e Capa)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {ownerId ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="logo_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SupabaseImageUpload
+                          bucket="business_media"
+                          pathPrefix={ownerId}
+                          fileName="logo.png"
+                          label="Logo do Negócio"
+                          currentUrl={currentLogoUrl}
+                          onUploadSuccess={(url) => field.onChange(url)}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="cover_photo_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SupabaseImageUpload
+                          bucket="business_media"
+                          pathPrefix={ownerId}
+                          fileName="banner.jpg"
+                          label="Foto de Capa (Banner)"
+                          currentUrl={currentCoverUrl}
+                          onUploadSuccess={(url) => field.onChange(url)}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Carregando informações do usuário...</p>
+              )}
             </CardContent>
           </Card>
 
@@ -198,25 +276,6 @@ const RegisterBusinessPage = () => {
               </FormItem>
             )}
           />
-
-          {/* Uploads (Placeholder) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Mídia (Logo e Capa)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <Button variant="outline" type="button" disabled>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Logo (Futuro)
-                </Button>
-                <Button variant="outline" type="button" disabled>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Foto de Capa (Futuro)
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, Whatsapp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -27,7 +27,10 @@ interface Business {
   id: string;
   name: string;
   description: string;
-  address: string;
+  address: string | null;
+  phone: string | null; // Novo campo
+  logo_url: string | null; // Novo campo
+  cover_photo_url: string | null; // Novo campo
   working_hours: DaySchedule[] | null;
 }
 
@@ -36,11 +39,6 @@ interface Service {
   name: string;
   duration_minutes: number;
   price: number;
-}
-
-interface Appointment {
-  start_time: string;
-  end_time: string;
 }
 
 interface ClientDetails {
@@ -75,7 +73,7 @@ const ServiceSelector: React.FC<{ services: Service[], selectedService: Service 
   </div>
 );
 
-// Componente de Agendamento
+// Componente de Agendamento (Mantido)
 const AppointmentScheduler: React.FC<{ 
   business: Business;
   selectedService: Service; 
@@ -325,10 +323,10 @@ const BookingPage = () => {
     }
 
     const fetchData = async () => {
-      // Buscar dados do negócio (incluindo working_hours)
+      // Buscar dados do negócio (incluindo working_hours, logo, banner e phone)
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, description, address, working_hours')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours')
         .eq('id', businessId)
         .single();
 
@@ -361,7 +359,21 @@ const BookingPage = () => {
     fetchData();
   }, [businessId]);
 
-  // 2. Função de Agendamento
+  // Função para gerar link do Google Maps
+  const getMapLink = (address: string) => {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  };
+
+  // Função para gerar link do WhatsApp
+  const getWhatsappLink = (phone: string) => {
+    // Remove caracteres não numéricos
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Formato internacional (assumindo Brasil +55)
+    const whatsappNumber = cleanPhone.length === 11 ? `55${cleanPhone}` : cleanPhone;
+    return `https://wa.me/${whatsappNumber}`;
+  };
+
+  // 2. Função de Agendamento (Mantida)
   const handleBooking = async () => {
     if (!selectedService || !selectedDate || !selectedTime) {
       toast.error("Por favor, selecione o serviço, data e hora.");
@@ -443,16 +455,53 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Business Header */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Banner Section */}
+      {business.cover_photo_url && (
+        <div 
+          className="h-48 w-full bg-cover bg-center relative"
+          style={{ backgroundImage: `url(${business.cover_photo_url})` }}
+        >
+          <div className="absolute inset-0 bg-black/30"></div>
+        </div>
+      )}
+
+      <div className="max-w-4xl mx-auto p-4 md:p-8 -mt-16 relative z-10">
+        {/* Business Header Card */}
         <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-3xl text-primary">{business.name}</CardTitle>
-            <p className="text-gray-600">{business.description || "Agende seu horário de forma rápida e fácil."}</p>
+          <CardHeader className="flex flex-row items-center space-x-4">
+            {business.logo_url && (
+              <img 
+                src={business.logo_url} 
+                alt={`${business.name} Logo`} 
+                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+              />
+            )}
+            <div>
+              <CardTitle className="text-3xl text-primary">{business.name}</CardTitle>
+              <p className="text-gray-600">{business.description || "Agende seu horário de forma rápida e fácil."}</p>
+            </div>
           </CardHeader>
-          <CardContent>
-            {business.address && <p className="text-sm text-muted-foreground flex items-center"><MapPin className="h-4 w-4 mr-2"/> {business.address}</p>}
+          <CardContent className="space-y-3">
+            {business.address && (
+              <a 
+                href={getMapLink(business.address)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors"
+              >
+                <MapPin className="h-4 w-4 mr-2"/> 
+                {business.address} (Ver no Mapa)
+              </a>
+            )}
+            {business.phone && (
+              <Button asChild className="w-full md:w-auto" variant="secondary">
+                <a href={getWhatsappLink(business.phone)} target="_blank" rel="noopener noreferrer">
+                  <Whatsapp className="h-4 w-4 mr-2" />
+                  Falar no WhatsApp
+                </a>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
