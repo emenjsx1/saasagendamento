@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute, isSameHour } from 'date-fns';
+import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,29 +47,31 @@ interface ClientDetails {
   client_email: string;
 }
 
-// Componente de Seleção de Serviço
+// Componente de Seleção de Serviço (Melhorado)
 const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service) => void }> = ({ services, selectedService, onSelectService }) => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold text-gray-800">1. Escolha o Serviço</h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-6">
+    <h2 className="text-3xl font-extrabold text-gray-900">1. Escolha o Serviço</h2>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {services.map((service) => (
         <Card
           key={service.id}
           className={cn(
-            "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
-            selectedService?.id === service.id ? "border-primary ring-2 ring-primary/50 shadow-lg" : "border-gray-200"
+            "cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-primary/80 bg-white/90 rounded-xl",
+            selectedService?.id === service.id 
+              ? "border-primary ring-4 ring-primary/20 shadow-xl scale-[1.02]" 
+              : "border-gray-200 hover:scale-[1.01]"
           )}
           onClick={() => onSelectService(service)}
         >
-          <CardContent className="p-5 flex flex-col justify-between h-full">
-            <div>
-              <h3 className="text-lg font-bold text-primary">{service.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+          <CardContent className="p-6 flex flex-col justify-between h-full">
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-gray-900">{service.name}</h3>
+              <p className="text-sm text-muted-foreground italic">
                 Duração: {service.duration_minutes} min
               </p>
             </div>
-            <div className="mt-3 text-right">
-              <span className="text-xl font-extrabold text-green-600">
+            <div className="mt-4 text-right">
+              <span className="text-3xl font-extrabold text-green-600">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
               </span>
             </div>
@@ -196,8 +198,8 @@ const AppointmentScheduler: React.FC<{
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800">2. Escolha Data e Hora</h2>
+    <div className="space-y-6">
+      <h2 className="text-3xl font-extrabold text-gray-900">2. Escolha Data e Hora</h2>
       
       {/* Seleção de Data */}
       <Popover>
@@ -205,7 +207,7 @@ const AppointmentScheduler: React.FC<{
           <Button
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal h-12 text-base",
+              "w-full justify-start text-left font-normal h-12 text-base rounded-xl",
               !selectedDate && "text-muted-foreground"
             )}
           >
@@ -213,7 +215,7 @@ const AppointmentScheduler: React.FC<{
             {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
+        <PopoverContent className="w-auto p-0 rounded-xl">
           <ShadcnCalendar
             mode="single"
             selected={selectedDate}
@@ -238,7 +240,7 @@ const AppointmentScheduler: React.FC<{
 
       {/* Seleção de Hora */}
       {selectedDate && (
-        <Card>
+        <Card className="rounded-xl">
           <CardContent className="p-4">
             <h3 className="font-medium mb-3 text-gray-700">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
             {isTimesLoading ? (
@@ -252,7 +254,7 @@ const AppointmentScheduler: React.FC<{
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
                     size="sm"
-                    className="text-base h-10"
+                    className="text-base h-10 rounded-lg"
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -271,8 +273,8 @@ const AppointmentScheduler: React.FC<{
 
 // Componente de Detalhes do Cliente
 const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void }> = ({ clientDetails, setClientDetails }) => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold text-gray-800">3. Seus Dados</h2>
+  <div className="space-y-6">
+    <h2 className="text-3xl font-extrabold text-gray-900">3. Seus Dados</h2>
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="client_name">Nome Completo *</Label>
@@ -283,7 +285,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
             value={clientDetails.client_name} 
             onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
             required 
-            className="pl-10 h-10"
+            className="pl-10 h-12 rounded-xl"
           />
         </div>
       </div>
@@ -298,7 +300,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
             onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
             placeholder="(99) 99999-9999"
             required 
-            className="pl-10 h-10"
+            className="pl-10 h-12 rounded-xl"
           />
         </div>
       </div>
@@ -312,7 +314,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
             type="email"
             value={clientDetails.client_email} 
             onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
-            className="pl-10 h-10"
+            className="pl-10 h-12 rounded-xl"
           />
         </div>
       </div>
@@ -466,13 +468,13 @@ const BookingPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <Card className="mb-8">
+          <Card className="mb-8 rounded-xl">
             <CardHeader>
               <CardTitle className="text-3xl text-primary">{business.name}</CardTitle>
-              <p className="text-gray-600">{business.description || "Agende seu horário de forma rápida e fácil."}</p>
+              <p className="text-gray-600">Agende seu horário de forma rápida e fácil.</p>
             </CardHeader>
           </Card>
-          <Card className="p-6 text-center">
+          <Card className="p-6 text-center rounded-xl">
             <p className="text-muted-foreground">Desculpe, este negócio não possui serviços ativos para agendamento no momento.</p>
           </Card>
         </div>
@@ -493,37 +495,43 @@ const BookingPage = () => {
       )}
 
       <div className="max-w-4xl mx-auto p-4 md:p-8 -mt-16 relative z-10">
-        {/* Business Header Card */}
-        <Card className="mb-8">
-          <CardHeader className="flex flex-row items-center space-x-4">
+        {/* Business Header Card (Melhorado) */}
+        <Card className="mb-10 p-6 rounded-xl shadow-lg">
+          <CardHeader className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6 p-0">
             {business.logo_url && (
               <img 
                 src={business.logo_url} 
                 alt={`${business.name} Logo`} 
-                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
               />
             )}
-            <div>
-              <CardTitle className="text-3xl text-primary">{business.name}</CardTitle>
-              <p className="text-gray-600">{business.description || "Agende seu horário de forma rápida e fácil."}</p>
+            <div className="text-center md:text-left">
+              <CardTitle className="text-4xl font-extrabold text-gray-900">{business.name}</CardTitle>
+              <p className="text-lg text-gray-600 mt-1 max-w-xl">
+                {business.description || "Agende seu horário de forma rápida e fácil."}
+              </p>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4 pt-6 flex flex-col md:flex-row items-center md:justify-start">
             {business.address && (
               <a 
                 href={getMapLink(business.address)} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors"
+                className="text-base text-muted-foreground flex items-center hover:text-primary transition-colors font-medium md:mr-6"
               >
-                <MapPin className="h-4 w-4 mr-2"/> 
+                <MapPin className="h-5 w-5 mr-2 text-red-500"/> 
                 {business.address} (Ver no Mapa)
               </a>
             )}
             {business.phone && (
-              <Button asChild className="w-full md:w-auto" variant="secondary">
+              <Button 
+                asChild 
+                className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white transition-colors shadow-md h-10"
+                size="default"
+              >
                 <a href={getWhatsappLink(business.phone)} target="_blank" rel="noopener noreferrer">
-                  <MessageSquare className="h-4 w-4 mr-2" />
+                  <MessageSquare className="h-5 w-5 mr-2" />
                   Falar no WhatsApp
                 </a>
               </Button>
@@ -531,9 +539,9 @@ const BookingPage = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Coluna de Seleção */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-10">
             
             <ServiceSelector 
               services={services} 
@@ -565,22 +573,22 @@ const BookingPage = () => {
 
           {/* Coluna de Resumo */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-8">
+            <Card className="sticky top-8 rounded-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-xl">Resumo do Agendamento</CardTitle>
+                <CardTitle className="text-2xl font-bold">Resumo do Agendamento</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedService ? (
                   <>
                     <div className="flex items-center justify-between">
                       <span className="font-medium">Serviço:</span>
-                      <span className="text-primary">{selectedService.name}</span>
+                      <span className="text-primary font-semibold">{selectedService.name}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>Duração:</span>
                       <span>{selectedService.duration_minutes} minutos</span>
                     </div>
-                    <div className="flex items-center justify-between text-lg font-bold">
+                    <div className="flex items-center justify-between text-xl font-extrabold pt-2">
                       <span>Preço Total:</span>
                       <span className="text-green-600">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedService.price)}
@@ -589,17 +597,17 @@ const BookingPage = () => {
                     <Separator />
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Selecione um serviço para continuar.</p>
+                  <p className="text-sm text-muted-foreground py-2">Selecione um serviço para continuar.</p>
                 )}
 
                 {selectedDate && selectedTime && (
                   <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <Calendar className="h-4 w-4 mr-2 text-primary" />
+                    <div className="flex items-center text-base">
+                      <Calendar className="h-5 w-5 mr-2 text-primary" />
                       <span className="font-medium">Data:</span> {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
                     </div>
-                    <div className="flex items-center text-sm">
-                      <Clock className="h-4 w-4 mr-2 text-primary" />
+                    <div className="flex items-center text-base">
+                      <Clock className="h-5 w-5 mr-2 text-primary" />
                       <span className="font-medium">Hora:</span> {selectedTime}
                     </div>
                     <Separator />
@@ -608,23 +616,24 @@ const BookingPage = () => {
 
                 {clientDetails.client_name && (
                   <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <User className="h-4 w-4 mr-2 text-primary" />
+                    <div className="flex items-center text-base">
+                      <User className="h-5 w-5 mr-2 text-primary" />
                       <span className="font-medium">Cliente:</span> {clientDetails.client_name}
                     </div>
                   </div>
                 )}
 
                 <Button 
-                  className="w-full" 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl" 
+                  size="lg" 
                   onClick={handleBooking} 
                   disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <CheckCircle className="h-5 w-5 mr-2" />
                       Confirmar Agendamento
                     </>
                   )}
