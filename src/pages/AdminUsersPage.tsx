@@ -39,7 +39,7 @@ const AdminUsersPage: React.FC = () => {
         first_name, 
         last_name, 
         created_at, 
-        auth_users:auth.users(email, created_at),
+        auth_user:id (email:auth.users(email, created_at)),
         subscriptions:id (status, plan_name)
       `);
 
@@ -80,13 +80,16 @@ const AdminUsersPage: React.FC = () => {
       } else if (isOwner) {
         role = 'Owner';
       }
+      
+      // Acessando o email e created_at do auth.users
+      const authUser = p.auth_user?.email?.[0];
 
       return {
         id: p.id,
-        email: p.auth_users?.email || 'N/A',
+        email: authUser?.email || 'N/A',
         first_name: p.first_name,
         last_name: p.last_name,
-        created_at: p.auth_users?.created_at || p.created_at,
+        created_at: authUser?.created_at || p.created_at,
         role: role,
         is_active: true, // Simulado
         business_name: businessName,

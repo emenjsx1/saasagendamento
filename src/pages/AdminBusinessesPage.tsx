@@ -41,7 +41,7 @@ const AdminBusinessesPage: React.FC = () => {
         slug, 
         owner_id, 
         created_at,
-        auth_users:owner_id (email),
+        owner:owner_id (email:auth.users(email)),
         subscriptions:owner_id (status, plan_name, trial_ends_at)
       `);
 
@@ -57,7 +57,8 @@ const AdminBusinessesPage: React.FC = () => {
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
         // Handle nested data from joins
-        const ownerEmail = Array.isArray(b.auth_users) ? b.auth_users[0]?.email : b.auth_users?.email || 'N/A';
+        // owner:owner_id (email:auth.users(email)) -> b.owner.email[0].email
+        const ownerEmail = b.owner?.email?.[0]?.email || 'N/A';
         const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
         
         const subStatus = subscription?.status || 'N/A';
