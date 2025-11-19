@@ -12,7 +12,7 @@ import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import WorkingHoursForm from '@/components/WorkingHoursForm';
-import SupabaseImageUpload from '@/components/SupabaseImageUpload';
+import SupabaseImageUpload from '@/components/SupabaseImageUpload'; // Import the new component
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -27,9 +27,9 @@ const BusinessSchema = z.object({
   name: z.string().min(3, "O nome do negócio é obrigatório."),
   description: z.string().optional(),
   address: z.string().optional(),
-  phone: z.string().optional(),
-  logo_url: z.string().optional(),
-  cover_photo_url: z.string().optional(),
+  phone: z.string().optional(), // Novo campo
+  logo_url: z.string().optional(), // Novo campo
+  cover_photo_url: z.string().optional(), // Novo campo
   working_hours: z.array(DayScheduleSchema).optional(),
 });
 
@@ -58,9 +58,9 @@ const RegisterBusinessPage = () => {
       name: "",
       description: "",
       address: "",
-      phone: "",
-      logo_url: "",
-      cover_photo_url: "",
+      phone: "", // Default for new field
+      logo_url: "", // Default for new field
+      cover_photo_url: "", // Default for new field
       working_hours: initialSchedule,
     },
   });
@@ -88,9 +88,9 @@ const RegisterBusinessPage = () => {
           name: data.name || "",
           description: data.description || "",
           address: data.address || "",
-          phone: data.phone || "",
-          logo_url: data.logo_url || "",
-          cover_photo_url: data.cover_photo_url || "",
+          phone: data.phone || "", // Load phone
+          logo_url: data.logo_url || "", // Load logo URL
+          cover_photo_url: data.cover_photo_url || "", // Load cover URL
           working_hours: data.working_hours || initialSchedule, 
         });
       }
@@ -108,9 +108,9 @@ const RegisterBusinessPage = () => {
       name: values.name,
       description: values.description,
       address: values.address,
-      phone: values.phone,
-      logo_url: values.logo_url,
-      cover_photo_url: values.cover_photo_url,
+      phone: values.phone, // Save phone
+      logo_url: values.logo_url, // Save logo URL
+      cover_photo_url: values.cover_photo_url, // Save cover URL
       working_hours: values.working_hours,
     };
 
@@ -155,123 +155,117 @@ const RegisterBusinessPage = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Coluna 1: Informações Básicas e Contato */}
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informações Básicas e Contato</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Negócio *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Barbearia do João" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição Curta</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Uma breve descrição para seus clientes." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Endereço Físico (Para exibição no mapa)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Rua Exemplo, 123" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefone / WhatsApp do Negócio</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(99) 99999-9999" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+          {/* Dados do Negócio */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações Básicas e Contato</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Negócio *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Barbearia do João" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição Curta</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Uma breve descrição para seus clientes." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endereço Físico (Para exibição no mapa)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Rua Exemplo, 123" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone / WhatsApp do Negócio</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(99) 99999-9999" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-            {/* Coluna 2: Mídia Uploads */}
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mídia (Logo e Capa)</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {ownerId ? (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="logo_url"
-                        render={({ field }) => (
-                          <FormItem>
-                            <SupabaseImageUpload
-                              bucket="business_media"
-                              pathPrefix={ownerId}
-                              fileName="logo.png"
-                              label="Logo do Negócio"
-                              currentUrl={currentLogoUrl}
-                              onUploadSuccess={(url) => field.onChange(url)}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="cover_photo_url"
-                        render={({ field }) => (
-                          <FormItem>
-                            <SupabaseImageUpload
-                              bucket="business_media"
-                              pathPrefix={ownerId}
-                              fileName="banner.jpg"
-                              label="Foto de Capa (Banner)"
-                              currentUrl={currentCoverUrl}
-                              onUploadSuccess={(url) => field.onChange(url)}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Carregando informações do usuário...</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {/* Mídia Uploads */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Mídia (Logo e Capa)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {ownerId ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="logo_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SupabaseImageUpload
+                          bucket="business_media"
+                          pathPrefix={ownerId}
+                          fileName="logo.png"
+                          label="Logo do Negócio"
+                          currentUrl={currentLogoUrl}
+                          onUploadSuccess={(url) => field.onChange(url)}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="cover_photo_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SupabaseImageUpload
+                          bucket="business_media"
+                          pathPrefix={ownerId}
+                          fileName="banner.jpg"
+                          label="Foto de Capa (Banner)"
+                          currentUrl={currentCoverUrl}
+                          onUploadSuccess={(url) => field.onChange(url)}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Carregando informações do usuário...</p>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Horários de Funcionamento (Full Width) */}
+          {/* Horários de Funcionamento */}
           <FormField
             control={form.control}
             name="working_hours"
