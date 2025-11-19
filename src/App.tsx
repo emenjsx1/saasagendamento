@@ -8,8 +8,9 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./components/DashboardLayout"; 
+import AdminLayout from "./components/AdminLayout"; // Importar AdminLayout
 import { SessionContextProvider } from "./integrations/supabase/session-context";
-import AdminRoute from "./components/AdminRoute"; // Importar AdminRoute
+import AdminRoute from "./components/AdminRoute"; 
 
 // Importar páginas
 import DashboardPage from "./pages/DashboardPage";
@@ -25,7 +26,12 @@ import SupportPage from "./pages/SupportPage";
 import ContactPage from "./pages/ContactPage"; 
 import ProfilePage from "./pages/ProfilePage"; 
 import CheckoutPage from "./pages/CheckoutPage"; 
-import AdminDashboardPage from "./pages/AdminDashboardPage"; // Importar AdminDashboardPage
+import AdminDashboardPage from "./pages/AdminDashboardPage"; 
+import AdminBusinessesPage from "./pages/AdminBusinessesPage"; // Nova
+import AdminUsersPage from "./pages/AdminUsersPage"; // Nova
+import AdminAppointmentsPage from "./pages/AdminAppointmentsPage"; // Nova
+import AdminReportsPage from "./pages/AdminReportsPage"; // Nova
+import AdminSettingsPage from "./pages/AdminSettingsPage"; // Nova
 
 
 const queryClient = new QueryClient();
@@ -62,7 +68,14 @@ const App = () => (
             
             {/* Rotas Protegidas para Administradores */}
             <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="businesses" element={<AdminBusinessesPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="appointments" element={<AdminAppointmentsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

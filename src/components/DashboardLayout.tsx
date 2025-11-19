@@ -1,14 +1,16 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User } from 'lucide-react';
+import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAdminCheck } from '@/hooks/use-admin-check'; // Importar useAdminCheck
 
 const Sidebar: React.FC = () => {
   const { user } = useSession();
+  const { isAdmin } = useAdminCheck(); // Verificar se é admin
   const location = useLocation();
 
   const handleLogout = async () => {
@@ -27,8 +29,10 @@ const Sidebar: React.FC = () => {
     { name: 'Financeiro', href: '/dashboard/finance', icon: DollarSign },
     { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3 },
     { name: 'Configurações do Negócio', href: '/register-business', icon: Briefcase },
-    { name: 'Meu Perfil', href: '/dashboard/profile', icon: User }, // Novo
+    { name: 'Meu Perfil', href: '/dashboard/profile', icon: User },
   ];
+  
+  const adminItem = { name: 'Área Admin', href: '/admin', icon: Shield };
 
   return (
     <div className="flex flex-col h-full border-r bg-sidebar text-sidebar-foreground p-4">
@@ -55,6 +59,23 @@ const Sidebar: React.FC = () => {
             </Link>
           );
         })}
+        
+        {/* Link da Área de Admin (Apenas para Admins) */}
+        {isAdmin && (
+          <Link
+            key={adminItem.name}
+            to={adminItem.href}
+            className={cn(
+              "flex items-center p-3 rounded-lg text-sm font-medium transition-colors mt-4 border-t border-sidebar-border",
+              location.pathname.startsWith(adminItem.href)
+                ? 'bg-red-600 text-white hover:bg-red-700' 
+                : 'text-red-400 hover:bg-red-900/20'
+            )}
+          >
+            <adminItem.icon className="h-5 w-5 mr-3" />
+            {adminItem.name}
+          </Link>
+        )}
       </nav>
       <div className="mt-auto pt-4 border-t border-sidebar-border">
         <p className="text-xs text-gray-400 mb-2 truncate">Logado como: {user?.email}</p>
