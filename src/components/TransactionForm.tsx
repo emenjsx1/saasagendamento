@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Esquema de validação
 const TransactionSchema = z.object({
@@ -36,6 +37,7 @@ const expenseCategories = [
 const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategorySelected, setIsOtherCategorySelected] = useState(false);
+  const { currentCurrency } = useCurrency();
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(TransactionSchema),
@@ -136,7 +138,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ businessId, onSuccess
           name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Valor (R$)</FormLabel>
+              <FormLabel>Valor ({currentCurrency.key})</FormLabel>
               <FormControl>
                 <Input 
                   type="number" 

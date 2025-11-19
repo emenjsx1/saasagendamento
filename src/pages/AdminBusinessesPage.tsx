@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import AdminBusinessDetailsDialog from '@/components/admin/AdminBusinessDetailsDialog'; // Importar o novo componente
+import AdminBusinessDetailsDialog from '@/components/admin/AdminBusinessDetailsDialog';
 
 interface Business {
   id: string;

@@ -10,13 +10,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
-import { useSubscription } from '@/hooks/use-subscription'; // Importar novo hook
+import { useSubscription } from '@/hooks/use-subscription';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import SubscriptionManagementSection from '@/components/SubscriptionManagementSection'; // Importar novo componente
+import SubscriptionManagementSection from '@/components/SubscriptionManagementSection';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Esquema de validação para o perfil
 const ProfileSchema = z.object({
@@ -30,6 +31,7 @@ type ProfileFormValues = z.infer<typeof ProfileSchema>;
 const ProfilePage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const { subscription, daysLeft, isLoading: isSubscriptionLoading } = useSubscription();
+  const { T } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPlanManagement, setShowPlanManagement] = useState(false); // Novo estado para o toggle
 
@@ -106,11 +108,11 @@ const ProfilePage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Ativo</Badge>;
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">{T('Ativo', 'Active')}</Badge>;
       case 'trial':
-        return <Badge variant="secondary">Teste Gratuito</Badge>;
+        return <Badge variant="secondary">{T('Teste Gratuito', 'Free Trial')}</Badge>;
       case 'pending_payment':
-        return <Badge variant="destructive">Pagamento Pendente</Badge>;
+        return <Badge variant="destructive">{T('Pagamento Pendente', 'Payment Pending')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -118,11 +120,11 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold flex items-center"><User className="h-7 w-7 mr-3" /> Meu Perfil e Conta</h1>
+      <h1 className="text-3xl font-bold flex items-center"><User className="h-7 w-7 mr-3" /> {T('Meu Perfil e Conta', 'My Profile and Account')}</h1>
       
       <Card>
         <CardHeader>
-          <CardTitle>Informações Pessoais</CardTitle>
+          <CardTitle>{T('Informações Pessoais', 'Personal Information')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -133,7 +135,7 @@ const ProfilePage: React.FC = () => {
                   name="first_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Primeiro Nome *</FormLabel>
+                      <FormLabel>{T('Primeiro Nome', 'First Name')} *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -146,7 +148,7 @@ const ProfilePage: React.FC = () => {
                   name="last_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sobrenome *</FormLabel>
+                      <FormLabel>{T('Sobrenome', 'Last Name')} *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -157,7 +159,7 @@ const ProfilePage: React.FC = () => {
               </div>
               
               <FormItem>
-                <FormLabel>E-mail</FormLabel>
+                <FormLabel>{T('E-mail', 'Email')}</FormLabel>
                 <FormControl>
                   <Input value={user?.email} disabled className="bg-gray-100" />
                 </FormControl>
@@ -168,7 +170,7 @@ const ProfilePage: React.FC = () => {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone / WhatsApp</FormLabel>
+                    <FormLabel>{T('Telefone / WhatsApp', 'Phone / WhatsApp')}</FormLabel>
                     <FormControl>
                       <Input placeholder="(99) 99999-9999" {...field} />
                     </FormControl>
@@ -178,7 +180,7 @@ const ProfilePage: React.FC = () => {
               />
 
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Perfil'}
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : T('Salvar Perfil', 'Save Profile')}
               </Button>
             </form>
           </Form>
@@ -188,18 +190,18 @@ const ProfilePage: React.FC = () => {
       {/* Seção de Status do Plano */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="h-5 w-5 mr-2" /> Status do Plano</CardTitle>
+          <CardTitle className="flex items-center"><Briefcase className="h-5 w-5 mr-2" /> {T('Status do Plano', 'Plan Status')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {subscription ? (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="font-medium">Plano Atual:</span>
+                <span className="font-medium">{T('Plano Atual:', 'Current Plan:')}</span>
                 <span className="font-bold">{subscription.plan_name}</span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="font-medium">Status:</span>
+                <span className="font-medium">{T('Status:', 'Status:')}</span>
                 {getStatusBadge(subscription.status)}
               </div>
               
@@ -209,7 +211,7 @@ const ProfilePage: React.FC = () => {
                     daysLeft !== null && daysLeft <= 1 ? "bg-red-50 border-red-300" : "bg-yellow-50 border-yellow-300"
                 )}>
                     <div className="flex justify-between items-center text-sm font-semibold">
-                        <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Expiração do Teste:</span>
+                        <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> {T('Expiração do Teste:', 'Trial Expiration:')}</span>
                         <span>{format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
                     </div>
                     {daysLeft !== null && (
@@ -217,7 +219,7 @@ const ProfilePage: React.FC = () => {
                             "text-xs mt-1",
                             daysLeft <= 1 ? "text-red-600 font-bold" : "text-yellow-700"
                         )}>
-                            {daysLeft === 0 ? 'Seu teste expira hoje!' : `Faltam ${daysLeft} dia(s) para o fim do teste.`}
+                            {daysLeft === 0 ? T('Seu teste expira hoje!', 'Your trial expires today!') : T(`Faltam ${daysLeft} dia(s) para o fim do teste.`, `${daysLeft} day(s) left in trial.`)}
                         </p>
                     )}
                 </div>
@@ -230,17 +232,17 @@ const ProfilePage: React.FC = () => {
               >
                 {showPlanManagement ? (
                     <>
-                        <ChevronUp className="h-4 w-4 mr-2" /> Esconder Planos
+                        <ChevronUp className="h-4 w-4 mr-2" /> {T('Esconder Planos', 'Hide Plans')}
                     </>
                 ) : (
                     <>
-                        <ChevronDown className="h-4 w-4 mr-2" /> Mudar de Plano / Renovar
+                        <ChevronDown className="h-4 w-4 mr-2" /> {T('Mudar de Plano / Renovar', 'Change Plan / Renew')}
                     </>
                 )}
               </Button>
             </div>
           ) : (
-            <p className="text-muted-foreground">Nenhuma assinatura encontrada. <Button variant="link" onClick={() => setShowPlanManagement(true)} className="p-0 h-auto">Escolha um plano.</Button></p>
+            <p className="text-muted-foreground">{T('Nenhuma assinatura encontrada.', 'No subscription found.')} <Button variant="link" onClick={() => setShowPlanManagement(true)} className="p-0 h-auto">{T('Escolha um plano.', 'Choose a plan.')}</Button></p>
           )}
         </CardContent>
       </Card>

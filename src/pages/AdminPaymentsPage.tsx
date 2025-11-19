@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 type PaymentStatus = 'pending' | 'confirmed' | 'failed';
 type PaymentType = 'subscription' | 'service' | 'manual';
@@ -50,6 +51,7 @@ const AdminPaymentsPage: React.FC = () => {
   const [filterType, setFilterType] = useState<PaymentType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const { currentCurrency } = useCurrency();
 
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
@@ -230,7 +232,7 @@ const AdminPaymentsPage: React.FC = () => {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="text-sm">{format(paymentDate, 'dd/MM/yyyy HH:mm')}</TableCell>
-                        <TableCell className="font-bold text-green-600">{formatCurrency(p.amount)}</TableCell>
+                        <TableCell className="font-bold text-green-600">{formatCurrency(p.amount, currentCurrency.key, currentCurrency.locale)}</TableCell>
                         <TableCell>
                             <Badge variant="outline" className="text-xs">{typeMap[p.payment_type] || p.payment_type}</Badge>
                         </TableCell>

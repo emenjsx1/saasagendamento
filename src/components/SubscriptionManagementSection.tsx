@@ -8,10 +8,12 @@ import { generatePricingPlans } from '@/utils/pricing-plans';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useSubscription } from '@/hooks/use-subscription';
 import { Badge } from '@/components/ui/badge';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const SubscriptionManagementSection: React.FC = () => {
   const { subscription, isLoading: isSubLoading } = useSubscription();
   const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
+  const { currentCurrency } = useCurrency();
   
   if (isConfigLoading || isSubLoading) {
     return (
@@ -23,7 +25,7 @@ const SubscriptionManagementSection: React.FC = () => {
   
   if (!subscriptionConfig) return null;
 
-  const pricingPlans = generatePricingPlans(subscriptionConfig);
+  const pricingPlans = generatePricingPlans(subscriptionConfig, currentCurrency);
   const displayPlans = pricingPlans.filter(p => !p.isTrial);
   const currentPlanSlug = subscription?.plan_name.toLowerCase().replace(/\s/g, '-') || 'none';
 
@@ -58,11 +60,11 @@ const SubscriptionManagementSection: React.FC = () => {
                 <div className="text-center">
                   {plan.originalPrice && (
                     <p className="text-sm text-gray-500 line-through">
-                      {formatCurrency(plan.originalPrice)}
+                      {formatCurrency(plan.originalPrice, currentCurrency.key, currentCurrency.locale)}
                     </p>
                   )}
                   <p className="text-4xl font-extrabold text-primary">
-                    {formatCurrency(plan.price)}
+                    {formatCurrency(plan.price, currentCurrency.key, currentCurrency.locale)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">{plan.billingPeriod}</p>
                 </div>

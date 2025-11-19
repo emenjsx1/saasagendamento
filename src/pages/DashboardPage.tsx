@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PeriodFilter } from '@/components/PeriodFilter';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface DateRange {
   from: Date;
@@ -19,6 +20,7 @@ interface DateRange {
 
 const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId, businessSlug } = useBusiness();
+  const { currentCurrency } = useCurrency();
   
   // Inicializa o filtro para a Semana Atual
   const initialRange: DateRange = useMemo(() => {
@@ -105,7 +107,7 @@ const DashboardPage = () => {
             <ArrowUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(periodRevenue)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(periodRevenue, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground">
               Total de entradas no período ({periodLabel}).
             </p>
@@ -122,7 +124,7 @@ const DashboardPage = () => {
             <ArrowDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(periodExpense)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(periodExpense, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground">
               Total de saídas no período ({periodLabel}).
             </p>
@@ -139,7 +141,7 @@ const DashboardPage = () => {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${periodProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(periodProfit)}</div>
+            <div className={`text-2xl font-bold ${periodProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(periodProfit, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground">
               Resultado financeiro do período ({periodLabel}).
             </p>

@@ -6,11 +6,13 @@ import { useAdminMetrics } from '@/hooks/use-admin-metrics';
 import AdminMonthlyBarChart from '@/components/AdminMonthlyBarChart';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { usePlatformMonthlyRevenue } from '@/hooks/use-platform-monthly-revenue'; // Importar novo hook
+import { usePlatformMonthlyRevenue } from '@/hooks/use-platform-monthly-revenue';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const AdminReportsPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const { currentCurrency } = useCurrency();
   
   // Usar o novo hook para receita da plataforma (assinaturas)
   const { data: monthlyRevenueData, isLoading: isChartLoading } = usePlatformMonthlyRevenue(selectedYear);
@@ -33,7 +35,7 @@ const AdminReportsPage: React.FC = () => {
   }
 
   const metrics = [
-    { title: 'Receita Total da Plataforma', value: formatCurrency(totalRevenueYear), icon: DollarSign, color: 'text-green-600' },
+    { title: 'Receita Total da Plataforma', value: formatCurrency(totalRevenueYear, currentCurrency.key, currentCurrency.locale), icon: DollarSign, color: 'text-green-600' },
     { title: 'Total de Negócios', value: totalBusinesses.toString(), icon: Briefcase, color: 'text-blue-600' },
     { title: 'Total de Usuários', value: totalUsers.toString(), icon: Users, color: 'text-yellow-600' },
   ];

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const AdminDashboardPage: React.FC = () => {
   const { 
@@ -21,6 +22,8 @@ const AdminDashboardPage: React.FC = () => {
     subscriptionStatus,
     isLoading: isMetricsLoading 
   } = useAdminMetrics();
+  
+  const { currentCurrency } = useCurrency();
   
   const [recentBusinesses, setRecentBusinesses] = useState<any[]>([]);
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
@@ -85,12 +88,12 @@ const AdminDashboardPage: React.FC = () => {
     { title: 'Total de Negócios', value: totalBusinesses.toString(), icon: Briefcase, color: 'text-blue-600' },
     { title: 'Total de Usuários', value: totalUsers.toString(), icon: Users, color: 'text-green-600' },
     { title: 'Agendamentos (30 dias)', value: totalAppointmentsLast30Days.toString(), icon: CalendarCheck, color: 'text-yellow-600' },
-    { title: 'Receita Total (30 dias)', value: formatCurrency(totalRevenueLast30Days), icon: DollarSign, color: 'text-red-600' },
+    { title: 'Receita Total (30 dias)', value: formatCurrency(totalRevenueLast30Days, currentCurrency.key, currentCurrency.locale), icon: DollarSign, color: 'text-red-600' },
   ];
   
   const todayMetrics = [
     { title: 'Agendamentos de Hoje', value: appointmentsToday.toString(), icon: Clock, color: 'text-primary', link: '/admin/appointments' },
-    { title: 'Receita de Hoje (Concluída)', value: formatCurrency(revenueToday), icon: DollarSign, color: 'text-green-600', link: '/admin/reports' },
+    { title: 'Receita de Hoje (Concluída)', value: formatCurrency(revenueToday, currentCurrency.key, currentCurrency.locale), icon: DollarSign, color: 'text-green-600', link: '/admin/reports' },
   ];
 
   return (

@@ -17,7 +17,9 @@ import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/compon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateClientCode } from '@/utils/client-code-generator';
 import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
-import { useEmailTemplates } from '@/hooks/use-email-templates'; // Importar hook de templates
+import { useEmailTemplates } from '@/hooks/use-email-templates';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { Currency } from '@/utils/currency';
 
 // Tipos de dados
 interface DaySchedule {
@@ -60,7 +62,8 @@ const ServiceSelector: React.FC<{
   selectedService: Service | null, 
   onSelectService: (service: Service | null) => void,
   themeColor: string,
-}> = ({ services, selectedService, onSelectService, themeColor }) => {
+  currentCurrency: Currency,
+}> = ({ services, selectedService, onSelectService, themeColor, currentCurrency }) => {
   
   const handleSelectChange = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId) || null;
@@ -80,7 +83,7 @@ const ServiceSelector: React.FC<{
               <div className="flex justify-between items-center w-full">
                 <span className="font-medium">{service.name}</span>
                 <span className="text-sm text-muted-foreground ml-4">({service.duration_minutes} min)</span>
-                <span className="font-bold ml-auto" style={{ color: themeColor }}>{formatCurrency(service.price)}</span>
+                <span className="font-bold ml-auto" style={{ color: themeColor }}>{formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}</span>
               </div>
             </SelectItem>
           ))}
@@ -340,7 +343,8 @@ const BookingPage = () => {
   const { businessId: businessSlug } = useParams<{ businessId: string }>(); // Renomeado para businessSlug
   const navigate = useNavigate();
   const { sendEmail } = useEmailNotifications(); 
-  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates(); // Usar templates
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
+  const { currentCurrency } = useCurrency();
   
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -627,6 +631,7 @@ const BookingPage = () => {
                 setSelectedTime(null); 
               }} 
               themeColor={themeColor}
+              currentCurrency={currentCurrency}
             />
 
             {selectedService && business.working_hours && (
@@ -674,7 +679,7 @@ const BookingPage = () => {
                     <div className="flex items-center justify-between text-xl font-extrabold pt-2">
                       <span>Preço Total:</span>
                       <span className="text-xl font-extrabold text-green-600">
-                        {formatCurrency(selectedService.price)}
+                        {formatCurrency(selectedService.price, currentCurrency.key, currentCurrency.locale)}
                       </span>
                     </div>
                     <Separator />

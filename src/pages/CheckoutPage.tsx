@@ -7,14 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Lock, Mail, User, Phone, MapPin, CheckCircle, ArrowLeft, MessageSquare, CreditCard } from 'lucide-react';
+import { Loader2, Lock, Mail, User, Phone, MessageSquare, CreditCard, ArrowLeft, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { getPlanBySlug, calculateRenewalDate, PricingPlan, generatePricingPlans } from '@/utils/pricing-plans';
 import { formatCurrency } from '@/lib/utils';
 import { addDays } from 'date-fns';
-import { usePublicSettings } from '@/hooks/use-public-settings'; // Importar hook
+import { usePublicSettings } from '@/hooks/use-public-settings';
+import { useCurrency } from '@/contexts/CurrencyContext'; // Import useCurrency
 
 // --- Schemas ---
 const AccountSchema = z.object({
@@ -36,29 +37,37 @@ type AccountFormValues = z.infer<typeof AccountSchema>;
 
 interface PaymentMethod {
   key: 'mpesa' | 'emola' | 'card';
-  name: string;
+  name_pt: string;
+  name_en: string;
   icon: React.ReactNode;
-  instructions: string;
+  instructions_pt: string;
+  instructions_en: string;
 }
 
 const paymentMethods: PaymentMethod[] = [
   {
     key: 'mpesa',
-    name: 'M-Pesa',
+    name_pt: 'M-Pesa',
+    name_en: 'M-Pesa',
     icon: <Phone className="h-5 w-5 text-red-600" />,
-    instructions: "Instruções: Pague para o número XXXXXXXX via M-Pesa. Após o pagamento, clique em 'Verificar Pagamento'.",
+    instructions_pt: "Instruções: Pague para o número XXXXXXXX via M-Pesa. Após o pagamento, clique em 'Verificar Pagamento'.",
+    instructions_en: "Instructions: Pay to number XXXXXXXX via M-Pesa. After payment, click 'Verify Payment'.",
   },
   {
     key: 'emola',
-    name: 'e-Mola',
+    name_pt: 'e-Mola',
+    name_en: 'e-Mola',
     icon: <MessageSquare className="h-5 w-5 text-green-600" />,
-    instructions: "Instruções: Pague para o número YYYYYYYY via e-Mola. Após o pagamento, clique em 'Verificar Pagamento'.",
+    instructions_pt: "Instruções: Pague para o número YYYYYYYY via e-Mola. Após o pagamento, clique em 'Verificar Pagamento'.",
+    instructions_en: "Instructions: Pay to number YYYYYYYY via e-Mola. After payment, click 'Verify Payment'.",
   },
   { 
     key: 'card', 
-    name: 'Cartão Virtual', 
+    name_pt: 'Cartão Virtual', 
+    name_en: 'Virtual Card', 
     icon: <CreditCard className="h-5 w-5 text-blue-600" />, 
-    instructions: "Em breve: Pagamento via cartão virtual.",
+    instructions_pt: "Em breve: Pagamento via cartão virtual.",
+    instructions_en: "Coming soon: Virtual card payment.",
   },
 ];
 
@@ -67,6 +76,7 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
   const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
+  const { currentCurrency, T } = useCurrency(); // Use currency context
   
   const [step, setStep] = useState<'account' | 'payment' | 'success'>('account');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,19 +97,19 @@ const CheckoutPage: React.FC = () => {
   });
   
   // Gera os planos dinamicamente
-  const pricingPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig) : [];
+  const pricingPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig, currentCurrency) : [];
   const plan = getPlanBySlug(planSlug || '', pricingPlans);
 
   // Redirecionar se o plano for inválido ou se já estiver logado
   useEffect(() => {
     if (!isConfigLoading && !plan && !isSessionLoading) {
-      toast.error("Plano não encontrado.");
+      toast.error(T("Plano não encontrado.", "Plan not found."));
       navigate('/#pricing', { replace: true });
     }
     if (user && !isSessionLoading) {
       navigate('/dashboard', { replace: true });
     }
-  }, [plan, user, isSessionLoading, navigate, isConfigLoading]);
+  }, [plan, user, isSessionLoading, navigate, isConfigLoading, T]);
 
   if (!plan || isSessionLoading || isConfigLoading || !subscriptionConfig) {
     return (
@@ -122,7 +132,6 @@ const CheckoutPage: React.FC = () => {
           data: {
             first_name: values.first_name,
             last_name: values.last_name,
-            // Passando o telefone nos metadados para o trigger capturar
             phone: values.phone, 
           },
         },
@@ -153,8 +162,6 @@ const CheckoutPage: React.FC = () => {
       if (subError) throw subError;
 
       // 3. Atualizar o perfil com dados adicionais (address)
-      // O trigger já deve ter criado o perfil com nome, email e telefone.
-      // Aqui, garantimos que o address seja salvo e que o perfil exista.
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -169,7 +176,7 @@ const CheckoutPage: React.FC = () => {
 
       if (isTrial) {
         // Se for trial, a subscrição está ativa. Redirecionar para o dashboard.
-        toast.success("Teste gratuito ativado! Bem-vindo(a)!");
+        toast.success(T("Teste gratuito ativado! Bem-vindo(a)!", "Free trial activated! Welcome!"));
         navigate('/dashboard', { replace: true });
       } else {
         // Se for pago, avança para o pagamento
@@ -177,7 +184,7 @@ const CheckoutPage: React.FC = () => {
       }
 
     } catch (error: any) {
-      toast.error("Erro ao criar conta: " + error.message);
+      toast.error(T("Erro ao criar conta: ", "Error creating account: ") + error.message);
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -201,7 +208,7 @@ const CheckoutPage: React.FC = () => {
         payment_type: 'subscription',
         method: selectedPaymentMethod.key,
         transaction_id: `MOCK-${Date.now()}`, // ID de transação simulado
-        notes: `Pagamento da assinatura ${plan.name}`,
+        notes: T(`Pagamento da assinatura ${plan.name}`, `Subscription payment for ${plan.name}`),
       };
       
       const { error: paymentError } = await supabase
@@ -221,11 +228,11 @@ const CheckoutPage: React.FC = () => {
 
       // 3. Redirecionar para o sucesso
       
-      toast.success("Pagamento verificado e conta ativada! Faça login para acessar o painel.");
+      toast.success(T("Pagamento verificado e conta ativada! Faça login para acessar o painel.", "Payment verified and account activated! Log in to access the dashboard."));
       setStep('success');
 
     } catch (error: any) {
-      toast.error("Erro ao verificar pagamento. Tente novamente ou entre em contato com o suporte.");
+      toast.error(T("Erro ao verificar pagamento. Tente novamente ou entre em contato com o suporte.", "Error verifying payment. Please try again or contact support."));
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -237,7 +244,7 @@ const CheckoutPage: React.FC = () => {
   const renderAccountForm = () => (
     <Card className="shadow-xl h-full">
       <CardHeader>
-        <CardTitle className="text-2xl flex items-center"><User className="h-5 w-5 mr-2" /> 1. Crie sua Conta</CardTitle>
+        <CardTitle className="text-2xl flex items-center"><User className="h-5 w-5 mr-2" /> {T('1. Crie sua Conta', '1. Create Your Account')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -248,7 +255,7 @@ const CheckoutPage: React.FC = () => {
                 name="first_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Primeiro Nome</FormLabel>
+                    <FormLabel>{T('Primeiro Nome', 'First Name')} *</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -259,7 +266,7 @@ const CheckoutPage: React.FC = () => {
                 name="last_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sobrenome</FormLabel>
+                    <FormLabel>{T('Sobrenome', 'Last Name')} *</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -272,7 +279,7 @@ const CheckoutPage: React.FC = () => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>E-mail</FormLabel>
+                  <FormLabel>{T('E-mail', 'Email')} *</FormLabel>
                   <FormControl><Input type="email" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -284,7 +291,7 @@ const CheckoutPage: React.FC = () => {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefone (WhatsApp/M-Pesa)</FormLabel>
+                  <FormLabel>{T('Telefone (WhatsApp/M-Pesa)', 'Phone (WhatsApp/M-Pesa)')} *</FormLabel>
                   <FormControl><Input placeholder="(99) 99999-9999" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -296,7 +303,7 @@ const CheckoutPage: React.FC = () => {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endereço (Opcional)</FormLabel>
+                  <FormLabel>{T('Endereço (Opcional)', 'Address (Optional)')}</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -309,7 +316,7 @@ const CheckoutPage: React.FC = () => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Criar Senha</FormLabel>
+                    <FormLabel>{T('Criar Senha', 'Create Password')} *</FormLabel>
                     <FormControl><Input type="password" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -320,7 +327,7 @@ const CheckoutPage: React.FC = () => {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirmar Senha</FormLabel>
+                    <FormLabel>{T('Confirmar Senha', 'Confirm Password')} *</FormLabel>
                     <FormControl><Input type="password" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -330,7 +337,7 @@ const CheckoutPage: React.FC = () => {
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
-              (plan.isTrial ? 'Iniciar Teste Gratuito' : 'Continuar para o Pagamento')}
+              (plan.isTrial ? T('Iniciar Teste Gratuito', 'Start Free Trial') : T('Continuar para o Pagamento', 'Continue to Payment'))}
             </Button>
           </form>
         </Form>
@@ -341,7 +348,7 @@ const CheckoutPage: React.FC = () => {
   const renderPaymentStep = () => (
     <Card className="shadow-xl h-full">
       <CardHeader>
-        <CardTitle className="text-2xl flex items-center"><Phone className="h-5 w-5 mr-2" /> 2. Escolha o Método de Pagamento</CardTitle>
+        <CardTitle className="text-2xl flex items-center"><Phone className="h-5 w-5 mr-2" /> {T('2. Escolha o Método de Pagamento', '2. Choose Payment Method')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
@@ -354,28 +361,28 @@ const CheckoutPage: React.FC = () => {
               disabled={method.key === 'card'} // Simulação de desativação
             >
               {method.icon}
-              <span className="ml-3">{method.name}</span>
+              <span className="ml-3">{T(method.name_pt, method.name_en)}</span>
             </Button>
           ))}
         </div>
 
         {selectedPaymentMethod && (
           <div className="border p-4 rounded-lg bg-gray-50 space-y-3">
-            <h4 className="font-semibold text-lg">Instruções para {selectedPaymentMethod.name}</h4>
-            <p className="text-sm text-gray-700">{selectedPaymentMethod.instructions}</p>
+            <h4 className="font-semibold text-lg">{T('Instruções para', 'Instructions for')} {T(selectedPaymentMethod.name_pt, selectedPaymentMethod.name_en)}</h4>
+            <p className="text-sm text-gray-700">{T(selectedPaymentMethod.instructions_pt, selectedPaymentMethod.instructions_en)}</p>
             
             <Button 
               className="w-full bg-green-600 hover:bg-green-700"
               onClick={handlePaymentVerification}
               disabled={isSubmitting || selectedPaymentMethod.key === 'card'}
             >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Verificar Pagamento (Simulado)'}
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : T('Verificar Pagamento (Simulado)', 'Verify Payment (Simulated)')}
             </Button>
           </div>
         )}
         
         <Button variant="link" onClick={() => setStep('account')} className="p-0">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar e Editar Dados
+          <ArrowLeft className="h-4 w-4 mr-2" /> {T('Voltar e Editar Dados', 'Go Back and Edit Details')}
         </Button>
       </CardContent>
     </Card>
@@ -384,10 +391,10 @@ const CheckoutPage: React.FC = () => {
   const renderSuccessStep = () => (
     <Card className="shadow-xl h-full text-center p-10">
       <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-      <CardTitle className="text-3xl mb-2">Conta Ativada!</CardTitle>
-      <p className="text-lg text-gray-600 mb-6">Seu pagamento foi confirmado e sua conta está ativa. Faça login para começar.</p>
+      <CardTitle className="text-3xl mb-2">{T('Conta Ativada!', 'Account Activated!')}</CardTitle>
+      <p className="text-lg text-gray-600 mb-6">{T('Seu pagamento foi confirmado e sua conta está ativa. Faça login para começar.', 'Your payment has been confirmed and your account is active. Log in to access the dashboard.')}</p>
       <Button asChild size="lg">
-        <a href="/login">Acessar Painel de Gestão</a>
+        <a href="/login">{T('Acessar Painel de Gestão', 'Access Management Dashboard')}</a>
       </Button>
     </Card>
   );
@@ -395,54 +402,54 @@ const CheckoutPage: React.FC = () => {
   const renderCheckoutSummary = () => (
     <Card className="sticky top-8 shadow-xl border-t-4 border-primary/50">
       <CardHeader>
-        <CardTitle className="text-xl">Resumo da Compra</CardTitle>
+        <CardTitle className="text-xl">{T('Resumo da Compra', 'Order Summary')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 border-b pb-4">
           <div className="flex justify-between text-lg font-bold">
-            <span>Plano:</span>
+            <span>{T('Plano:', 'Plan:')}</span>
             <span className="text-primary">{plan.name}</span>
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Recorrência:</span>
+            <span>{T('Recorrência:', 'Recurrence:')}</span>
             <span>{plan.billingPeriod}</span>
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Próxima Renovação:</span>
+            <span>{T('Próxima Renovação:', 'Next Renewal:')}</span>
             <span>{calculateRenewalDate(plan, subscriptionConfig.trial_days)}</span>
           </div>
         </div>
         
         {plan.originalPrice && (
             <div className="flex justify-between text-sm text-gray-500 line-through">
-                <span>Preço Original:</span>
-                <span>{formatCurrency(plan.originalPrice)}</span>
+                <span>{T('Preço Original:', 'Original Price:')}</span>
+                <span>{formatCurrency(plan.originalPrice, currentCurrency.key, currentCurrency.locale)}</span>
             </div>
         )}
         {plan.discount && (
             <div className="flex justify-between text-sm text-green-600 font-semibold">
-                <span>Desconto ({plan.discount}%):</span>
-                <span>-{formatCurrency(plan.originalPrice! - plan.price)}</span>
+                <span>{T(`Desconto (${plan.discount}%):`, `Discount (${plan.discount}%):`)}</span>
+                <span>-{formatCurrency(plan.originalPrice! - plan.price, currentCurrency.key, currentCurrency.locale)}</span>
             </div>
         )}
 
         <div className="flex justify-between text-2xl font-extrabold pt-2 border-t border-dashed">
-          <span>Total a Pagar:</span>
-          <span className="text-green-600">{formatCurrency(plan.price)}</span>
+          <span>{T('Total a Pagar:', 'Total Due:')}</span>
+          <span className="text-green-600">{formatCurrency(plan.price, currentCurrency.key, currentCurrency.locale)}</span>
         </div>
         
         <div className="pt-4 space-y-3">
             <div className="flex items-center text-sm text-gray-600">
                 <CheckCircle className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" />
-                <span>Garantia de 7 dias.</span>
+                <span>{T('Garantia de 7 dias.', '7-day guarantee.')}</span>
             </div>
             <div className="flex items-center text-sm text-gray-600">
                 <Lock className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-                <span>Pagamento Seguro SSL.</span>
+                <span>{T('Pagamento Seguro SSL.', 'Secure SSL Payment.')}</span>
             </div>
             <Button variant="outline" className="w-full text-sm" asChild>
                 <a href="https://wa.me/258123456789" target="_blank" rel="noopener noreferrer">
-                    <MessageSquare className="h-4 w-4 mr-2" /> Suporte via WhatsApp
+                    <MessageSquare className="h-4 w-4 mr-2" /> {T('Suporte via WhatsApp', 'Support via WhatsApp')}
                 </a>
             </Button>
         </div>
@@ -460,7 +467,7 @@ const CheckoutPage: React.FC = () => {
         </div>
         
         <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center">
-          Finalizar Compra
+          {T('Finalizar Compra', 'Complete Purchase')}
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

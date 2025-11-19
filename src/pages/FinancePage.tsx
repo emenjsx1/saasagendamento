@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PeriodFilter } from '@/components/PeriodFilter';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface DateRange {
   from: Date;
@@ -23,6 +24,7 @@ interface DateRange {
 
 const FinancePage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
+  const { currentCurrency } = useCurrency();
   
   // Inicializa o filtro para o Mês Atual
   const today = new Date();
@@ -138,7 +140,7 @@ const FinancePage: React.FC = () => {
             <ArrowUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Total de entradas no período.
             </p>
@@ -152,7 +154,7 @@ const FinancePage: React.FC = () => {
             <ArrowDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpense)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Total de saídas no período.
             </p>
@@ -166,7 +168,7 @@ const FinancePage: React.FC = () => {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfit)}</div>
+            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfit, currentCurrency.key, currentCurrency.locale)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Resultado do período.
             </p>
@@ -222,7 +224,7 @@ const FinancePage: React.FC = () => {
                         "text-right font-semibold",
                         t.type === 'revenue' ? 'text-green-600' : 'text-red-600'
                       )}>
-                        {t.type === 'revenue' ? '+' : '-'} {formatCurrency(t.amount)}
+                        {t.type === 'revenue' ? '+' : '-'} {formatCurrency(t.amount, currentCurrency.key, currentCurrency.locale)}
                       </TableCell>
                     </TableRow>
                   ))}

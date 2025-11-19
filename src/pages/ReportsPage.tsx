@@ -7,9 +7,11 @@ import { useMonthlyFinanceData } from '@/hooks/use-monthly-finance-data';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const ReportsPage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
+  const { currentCurrency } = useCurrency();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
@@ -79,7 +81,7 @@ const ReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-medium">Receita Anual</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenueYear)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenueYear, currentCurrency.key, currentCurrency.locale)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -87,7 +89,7 @@ const ReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-medium">Despesa Anual</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenseYear)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenseYear, currentCurrency.key, currentCurrency.locale)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -95,7 +97,7 @@ const ReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-medium">Lucro Líquido Anual</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netProfitYear >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfitYear)}</div>
+            <div className={`text-2xl font-bold ${netProfitYear >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfitYear, currentCurrency.key, currentCurrency.locale)}</div>
           </CardContent>
         </Card>
       </div>

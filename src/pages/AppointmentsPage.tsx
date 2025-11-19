@@ -15,7 +15,8 @@ import { cn, formatCurrency } from '@/lib/utils';
 import RescheduleDialog from '@/components/RescheduleDialog';
 import { useBusinessSchedule } from '@/hooks/use-business-schedule';
 import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
-import { useEmailTemplates } from '@/hooks/use-email-templates'; // Importar hook de templates
+import { useEmailTemplates } from '@/hooks/use-email-templates';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
 
@@ -50,7 +51,8 @@ const AppointmentsPage: React.FC = () => {
   const { user } = useSession();
   const { businessSchedule, businessId, isLoading: isScheduleLoading } = useBusinessSchedule();
   const { sendEmail } = useEmailNotifications(); 
-  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates(); // Usar templates
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
+  const { currentCurrency } = useCurrency();
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
@@ -356,7 +358,7 @@ const AppointmentsPage: React.FC = () => {
                                 {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
                               </p>
                               <p className="text-md font-bold text-green-600 pt-1">
-                                {formatCurrency(app.services.price)}
+                                {formatCurrency(app.services.price, currentCurrency.key, currentCurrency.locale)}
                               </p>
                             </div>
                             

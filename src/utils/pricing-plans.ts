@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { addDays } from 'date-fns';
 import { PublicSubscriptionConfig } from '@/hooks/use-public-settings';
+import { Currency } from './currency'; // Import Currency type
 
 export interface PricingPlan {
   name: string;
@@ -16,15 +17,15 @@ export interface PricingPlan {
   ctaText: string;
 }
 
-// Função para gerar os planos com base na configuração dinâmica
-export const generatePricingPlans = (config: PublicSubscriptionConfig): PricingPlan[] => {
-  const { trial_days, base_prices } = config;
+// Função para gerar os planos com base na configuração dinâmica e na moeda
+export const generatePricingPlans = (config: PublicSubscriptionConfig, currency: Currency): PricingPlan[] => {
+  const { trial_days } = config;
   
-  const WEEKLY_PRICE = base_prices.weekly;
+  const WEEKLY_PRICE = currency.weeklyBasePrice;
   const MONTHLY_PRICE_BASE = WEEKLY_PRICE * 4; // Base mensal (4 semanas)
   const ANNUAL_PRICE_BASE = WEEKLY_PRICE * 52; // Base anual (52 semanas)
 
-  // Descontos fixos (mantidos por enquanto, mas podem ser dinâmicos no futuro)
+  // Descontos fixos (mantidos por enquanto)
   const MONTHLY_DISCOUNT_PERCENT = 10;
   const ANNUAL_DISCOUNT_PERCENT = 40;
   
@@ -32,13 +33,23 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig): PricingP
       return parseFloat((base * (1 - discount / 100)).toFixed(2));
   };
 
-  return [
-    {
-      name: 'Teste Gratuito',
-      price: 0,
-      billingPeriod: `por ${trial_days} dias`,
-      isTrial: true,
-      isPopular: false,
+  // Textos em Português (serão traduzidos via contexto/componente se language === 'en')
+  const texts = {
+      trialName: 'Teste Gratuito',
+      trialPeriod: `por ${trial_days} dias`,
+      trialCta: 'Começar Teste Gratuito',
+      weeklyName: 'Plano Semanal',
+      weeklyPeriod: 'por semana',
+      weeklyCta: 'Escolher Semanal',
+      monthlyName: 'Plano Mensal',
+      monthlyPeriod: 'por mês',
+      monthlyCta: 'Escolher Mensal',
+      annualName: 'Plano Anual',
+      annualPeriod: 'por ano',
+      annualCta: 'Escolher Anual',
+      monthlyDiscount: 'Desconto de 10%',
+      annualDiscount: 'Desconto de 40% (Melhor Valor)',
+      // Features (simplificadas para não precisar de i18n complexo aqui)
       features: [
         'Agendamentos Ilimitados',
         'Página de Agendamento Personalizada',
@@ -46,63 +57,73 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig): PricingP
         'Gestão Financeira Completa',
         'Relatórios Básicos',
         'Notificações por E-mail',
-      ],
-      planKey: 'trial',
-      planSlug: 'trial',
-      ctaText: 'Começar Teste Gratuito',
-    },
-    {
-      name: 'Plano Semanal',
-      price: WEEKLY_PRICE,
-      billingPeriod: 'por semana',
-      isTrial: false,
-      isPopular: false,
-      features: [
-        'Tudo do Teste Gratuito',
         'Suporte Padrão',
         'Sem expiração',
-      ],
-      planKey: 'weekly',
-      planSlug: 'weekly',
-      ctaText: 'Escolher Semanal',
+        'Suporte Prioritário',
+        'Relatórios Avançados',
+        'Integração WhatsApp (Futuro)',
+        'Consultoria de Setup',
+      ]
+  };
+
+  return [
+    {
+      name: texts.trialName,
+      price: 0,
+      billingPeriod: texts.trialPeriod,
+      isTrial: true,
+      isPopular: false,
+      features: [texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5]],
+      planKey: 'trial',
+      planSlug: 'trial',
+      ctaText: texts.trialCta,
     },
     {
-      name: 'Plano Mensal',
+      name: texts.weeklyName,
+      price: WEEKLY_PRICE,
+      billingPeriod: texts.weeklyPeriod,
+      isTrial: false,
+      isPopular: false,
+      features: [texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5], texts.features[6], texts.features[7]],
+      planKey: 'weekly',
+      planSlug: 'weekly',
+      ctaText: texts.weeklyCta,
+    },
+    {
+      name: texts.monthlyName,
       price: calculateDiscountedPrice(MONTHLY_PRICE_BASE, MONTHLY_DISCOUNT_PERCENT),
-      billingPeriod: 'por mês',
+      billingPeriod: texts.monthlyPeriod,
       originalPrice: MONTHLY_PRICE_BASE,
       discount: MONTHLY_DISCOUNT_PERCENT,
       isPopular: true,
       isTrial: false,
       features: [
-        'Tudo do Plano Semanal',
-        'Desconto de 10%',
-        'Gestão Financeira Completa',
-        'Notificações por E-mail',
-        'Suporte Prioritário',
+        texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5],
+        texts.monthlyDiscount, 
+        texts.features[8]
       ],
       planKey: 'monthly',
       planSlug: 'monthly',
-      ctaText: 'Escolher Mensal',
+      ctaText: texts.monthlyCta,
     },
     {
-      name: 'Plano Anual',
+      name: texts.annualName,
       price: calculateDiscountedPrice(ANNUAL_PRICE_BASE, ANNUAL_DISCOUNT_PERCENT),
-      billingPeriod: 'por ano',
+      billingPeriod: texts.annualPeriod,
       originalPrice: ANNUAL_PRICE_BASE,
       discount: ANNUAL_DISCOUNT_PERCENT,
       isPopular: false,
       isTrial: false,
       features: [
-        'Tudo do Plano Mensal',
-        'Desconto de 40% (Melhor Valor)',
-        'Relatórios Avançados',
-        'Integração WhatsApp (Futuro)',
-        'Consultoria de Setup',
+        texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5],
+        texts.annualDiscount, 
+        texts.features[9], 
+        texts.features[10], 
+        texts.features[11]
       ],
       planKey: 'annual',
       planSlug: 'annual',
-      ctaText: 'Escolher Anual',
+      ctaText: texts.annualCta,
     },
   ];
 };

@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Tipagem para os dados do serviço
 interface Service {
@@ -34,6 +35,7 @@ type ServiceFormValues = z.infer<typeof ServiceSchema>;
 
 const ServicesPage: React.FC = () => {
   const { user } = useSession();
+  const { currentCurrency } = useCurrency();
   const [services, setServices] = useState<Service[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -257,7 +259,7 @@ const ServicesPage: React.FC = () => {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço (MZN)</FormLabel>
+                      <FormLabel>Preço ({currentCurrency.key})</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)} />
                       </FormControl>
@@ -293,7 +295,7 @@ const ServicesPage: React.FC = () => {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead className="text-right">Duração (min)</TableHead>
-                    <TableHead className="text-right">Preço (MZN)</TableHead>
+                    <TableHead className="text-right">Preço ({currentCurrency.key})</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -303,7 +305,7 @@ const ServicesPage: React.FC = () => {
                       <TableCell className="font-medium">{service.name}</TableCell>
                       <TableCell className="text-right">{service.duration_minutes}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(service.price)}
+                        {formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="icon" onClick={() => openModal(service)}>

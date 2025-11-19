@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface AppointmentDetails {
   id: string;
@@ -31,6 +32,7 @@ const ConfirmationPage = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { currentCurrency } = useCurrency();
 
   useEffect(() => {
     if (!appointmentId) {
@@ -120,7 +122,7 @@ const ConfirmationPage = () => {
             
             <div className="flex items-center text-sm">
               <DollarSign className="h-4 w-4 mr-3 text-primary" />
-              <span className="font-medium">Serviço:</span> {appointment.services.name} ({formatCurrency(appointment.services.price)})
+              <span className="font-medium">Serviço:</span> {appointment.services.name} ({formatCurrency(appointment.services.price, currentCurrency.key, currentCurrency.locale)})
             </div>
             
             <div className="flex items-center text-sm">

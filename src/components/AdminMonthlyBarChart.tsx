@@ -2,6 +2,7 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface ChartData {
   name: string; // Mês
@@ -13,23 +14,25 @@ interface AdminMonthlyBarChartProps {
   title: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="p-3 bg-white border border-gray-200 shadow-lg rounded-md text-sm">
-        <p className="font-bold mb-1">{label}</p>
-        {payload.map((p: any, index: number) => (
-          <p key={index} style={{ color: p.color }}>
-            {`${p.name}: ${formatCurrency(p.value)}`}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
 const AdminMonthlyBarChart: React.FC<AdminMonthlyBarChartProps> = ({ data, title }) => {
+  const { currentCurrency } = useCurrency();
+  
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="p-3 bg-white border border-gray-200 shadow-lg rounded-md text-sm">
+          <p className="font-bold mb-1">{label}</p>
+          {payload.map((p: any, index: number) => (
+            <p key={index} style={{ color: p.color }}>
+              {`${p.name}: ${formatCurrency(p.value, currentCurrency.key, currentCurrency.locale)}`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -50,7 +53,7 @@ const AdminMonthlyBarChart: React.FC<AdminMonthlyBarChartProps> = ({ data, title
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
               <YAxis 
-                tickFormatter={(value) => formatCurrency(value)} 
+                tickFormatter={(value) => formatCurrency(value, currentCurrency.key, currentCurrency.locale)} 
                 stroke="hsl(var(--muted-foreground))"
               />
               <Tooltip content={<CustomTooltip />} />
