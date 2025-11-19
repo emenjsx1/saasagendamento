@@ -122,6 +122,8 @@ const CheckoutPage: React.FC = () => {
           data: {
             first_name: values.first_name,
             last_name: values.last_name,
+            // Passando o telefone nos metadados para o trigger capturar
+            phone: values.phone, 
           },
         },
       });
@@ -150,12 +152,12 @@ const CheckoutPage: React.FC = () => {
 
       if (subError) throw subError;
 
-      // 3. Atualizar o perfil com dados adicionais (phone, address)
-      // Nota: O trigger handle_new_user já criou o perfil, só precisamos atualizar.
+      // 3. Atualizar o perfil com dados adicionais (address)
+      // O trigger já deve ter criado o perfil com nome, email e telefone.
+      // Aqui, garantimos que o address seja salvo e que o perfil exista.
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          phone: values.phone,
           address: values.address,
           updated_at: new Date().toISOString(),
         })
