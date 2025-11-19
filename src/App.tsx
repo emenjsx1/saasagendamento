@@ -23,7 +23,7 @@ import ReportsPage from "./pages/ReportsPage";
 import AboutPage from "./pages/AboutPage"; 
 import SupportPage from "./pages/SupportPage"; 
 import ContactPage from "./pages/ContactPage"; 
-import ProfilePage from "./pages/ProfilePage"; // Novo
+import ProfilePage from "./pages/ProfilePage"; 
 
 
 const queryClient = new QueryClient();
@@ -41,7 +41,7 @@ const App = () => (
             <Route path="/support" element={<SupportPage />} /> 
             <Route path="/contact" element={<ContactPage />} /> 
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} /> 
+            <Route path="/signuppromo" element={<SignupPage />} /> {/* Rota atualizada */}
             <Route path="/book/:businessId" element={<BookingPage />} />
             <Route path="/confirmation/:appointmentId" element={<ConfirmationPage />} />
 
@@ -54,7 +54,7 @@ const App = () => (
                 <Route path="/dashboard/agenda" element={<AppointmentsPage />} />
                 <Route path="/dashboard/finance" element={<FinancePage />} /> 
                 <Route path="/dashboard/reports" element={<ReportsPage />} /> 
-                <Route path="/dashboard/profile" element={<ProfilePage />} /> {/* Nova Rota */}
+                <Route path="/dashboard/profile" element={<ProfilePage />} /> 
               </Route>
             </Route>
 

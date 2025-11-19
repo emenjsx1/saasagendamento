@@ -46,7 +46,7 @@ const LoginPage = () => {
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
             Não tem uma conta?{' '}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
+            <Link to="/signuppromo" className="text-primary hover:underline font-medium">
               Crie sua conta gratuita
             </Link>
           </p>

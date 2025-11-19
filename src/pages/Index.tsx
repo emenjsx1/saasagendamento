@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button";
 import { CalendarCheck, Bell, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import PricingSection from "@/components/PricingSection";
-import AboutSection from "@/components/AboutSection";
-import SupportSection from "@/components/SupportSection";
-import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 
 const BenefitCard: React.FC<{ icon: React.ReactNode; title: string; description: string }> = ({ icon, title, description }) => (
@@ -33,7 +30,7 @@ const Index = () => {
               Organize sua agenda de forma simples e eficaz. Sem complicação, sem estresse.
             </p>
             <Button size="lg" asChild className="shadow-lg hover:shadow-xl transition-shadow">
-              <Link to="/signup">Começar Agora</Link>
+              <Link to="/signuppromo">Começar Agora</Link>
             </Button>
           </div>
         </section>
@@ -73,7 +70,7 @@ const Index = () => {
               Comece agora a organizar sua agenda!
             </h2>
             <Button size="lg" variant="secondary" asChild className="shadow-lg hover:shadow-xl transition-shadow">
-              <Link to="/signup">Criar Minha Conta Grátis</Link>
+              <Link to="/signuppromo">Criar Minha Conta Grátis</Link>
             </Button>
           </div>
         </section>
