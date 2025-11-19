@@ -44,13 +44,14 @@ export const usePeriodFinanceSummary = (
         const { data: manualRevenueData, error: manualRevenueError } = await supabase
           .from('revenues')
           .select('amount')
-          .eq('business_id', businessId)
+          .eq('business_id', businessId) // Garantindo que o businessId é usado
           .gte('revenue_date', startString)
           .lte('revenue_date', endString);
 
         if (manualRevenueError) {
           console.error("Error fetching manual revenues:", manualRevenueError);
-          toast.error("Erro ao carregar receitas manuais.");
+          // Alterando a mensagem de erro para ser menos intrusiva, pois pode ser RLS
+          toast.error("Falha ao carregar receitas manuais.");
         }
         totalManualRevenue = manualRevenueData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
 
@@ -64,7 +65,7 @@ export const usePeriodFinanceSummary = (
 
         if (expenseError) {
           console.error("Error fetching expenses:", expenseError);
-          toast.error("Erro ao carregar despesas.");
+          toast.error("Falha ao carregar despesas.");
         }
 
         totalExpense = expenseData?.reduce((sum, item) => sum + parseFloat(item.amount as any), 0) || 0;
@@ -88,7 +89,7 @@ export const usePeriodFinanceSummary = (
 
       if (appointmentRevenueError) {
         console.error("Error fetching appointment revenues:", appointmentRevenueError);
-        toast.error("Erro ao carregar receitas de agendamentos.");
+        toast.error("Falha ao carregar receitas de agendamentos.");
       }
       
       let totalAppointmentRevenue = 0;

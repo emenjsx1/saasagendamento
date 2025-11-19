@@ -55,13 +55,13 @@ export const usePeriodTransactions = (
         const { data: manualRevenueData, error: manualRevenueError } = await supabase
           .from('revenues')
           .select('id, amount, description, revenue_date')
-          .eq('business_id', businessId)
+          .eq('business_id', businessId) // Garantindo que o businessId é usado
           .gte('revenue_date', startString)
           .lte('revenue_date', endString);
 
         if (manualRevenueError) {
           console.error("Error fetching manual revenues:", manualRevenueError);
-          toast.error("Erro ao carregar receitas manuais.");
+          toast.error("Falha ao carregar receitas manuais.");
         }
 
         manualRevenues = (manualRevenueData || []).map(r => ({
@@ -83,7 +83,7 @@ export const usePeriodTransactions = (
 
         if (expenseError) {
           console.error("Error fetching expenses:", expenseError);
-          toast.error("Erro ao carregar despesas.");
+          toast.error("Falha ao carregar despesas.");
         }
 
         expenses = (expenseData || []).map(e => ({
@@ -120,7 +120,7 @@ export const usePeriodTransactions = (
 
       if (appointmentRevenueError) {
         console.error("Error fetching appointment revenues:", appointmentRevenueError);
-        toast.error("Erro ao carregar receitas de agendamentos.");
+        toast.error("Falha ao carregar receitas de agendamentos.");
       }
 
       const appointmentRevenues: Transaction[] = (appointmentRevenueData || []).map(app => {
