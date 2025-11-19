@@ -708,7 +708,7 @@ const BookingPage = () => {
                 )}
 
                 <Button 
-                  className="w-full text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl hover:shadow-xl" 
+                  className="w-full text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl hover:shadow-xl md:h-10 md:text-base" 
                   size="lg" 
                   onClick={handleBooking} 
                   disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
