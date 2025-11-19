@@ -7,16 +7,18 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import DashboardLayout from "./components/DashboardLayout"; // Importar o novo layout
+import DashboardLayout from "./components/DashboardLayout"; 
 import { SessionContextProvider } from "./integrations/supabase/session-context";
 
-// Importar placeholders para as novas páginas
+// Importar páginas
 import DashboardPage from "./pages/DashboardPage";
 import RegisterBusinessPage from "./pages/RegisterBusinessPage";
 import BookingPage from "./pages/BookingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
-import ServicesPage from "./pages/ServicesPage"; // Importar ServicesPage
-import AppointmentsPage from "./pages/AppointmentsPage"; // Importar AppointmentsPage
+import ServicesPage from "./pages/ServicesPage"; 
+import AppointmentsPage from "./pages/AppointmentsPage"; 
+import FinancePage from "./pages/FinancePage"; // Novo
+import ReportsPage from "./pages/ReportsPage"; // Novo
 
 
 const queryClient = new QueryClient();
@@ -40,7 +42,9 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/register-business" element={<RegisterBusinessPage />} />
                 <Route path="/dashboard/services" element={<ServicesPage />} />
-                <Route path="/dashboard/agenda" element={<AppointmentsPage />} /> {/* Nova Rota */}
+                <Route path="/dashboard/agenda" element={<AppointmentsPage />} />
+                <Route path="/dashboard/finance" element={<FinancePage />} /> {/* Nova Rota */}
+                <Route path="/dashboard/reports" element={<ReportsPage />} /> {/* Nova Rota */}
               </Route>
             </Route>
 
