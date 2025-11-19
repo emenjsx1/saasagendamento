@@ -82,7 +82,7 @@ const AdminUsersPage: React.FC = () => {
       }
       
       // Acessando o email e created_at do auth.users
-      // A sintaxe 'auth_user:id (email, created_at)' retorna um array de objetos, 
+      // O join 'auth_user:id (email, created_at)' retorna um array de objetos, 
       // onde cada objeto tem as chaves 'email' e 'created_at'.
       const authUser = p.auth_user?.[0];
 
