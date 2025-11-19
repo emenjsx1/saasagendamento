@@ -17,8 +17,11 @@ import BookingPage from "./pages/BookingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
 import ServicesPage from "./pages/ServicesPage"; 
 import AppointmentsPage from "./pages/AppointmentsPage"; 
-import FinancePage from "./pages/FinancePage"; // Novo
-import ReportsPage from "./pages/ReportsPage"; // Novo
+import FinancePage from "./pages/FinancePage"; 
+import ReportsPage from "./pages/ReportsPage"; 
+import AboutPage from "./pages/AboutPage"; // Novo
+import SupportPage from "./pages/SupportPage"; // Novo
+import ContactPage from "./pages/ContactPage"; // Novo
 
 
 const queryClient = new QueryClient();
@@ -32,6 +35,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/about" element={<AboutPage />} /> {/* Nova Rota */}
+            <Route path="/support" element={<SupportPage />} /> {/* Nova Rota */}
+            <Route path="/contact" element={<ContactPage />} /> {/* Nova Rota */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/book/:businessId" element={<BookingPage />} />
             <Route path="/confirmation/:appointmentId" element={<ConfirmationPage />} />
@@ -43,8 +49,8 @@ const App = () => (
                 <Route path="/register-business" element={<RegisterBusinessPage />} />
                 <Route path="/dashboard/services" element={<ServicesPage />} />
                 <Route path="/dashboard/agenda" element={<AppointmentsPage />} />
-                <Route path="/dashboard/finance" element={<FinancePage />} /> {/* Nova Rota */}
-                <Route path="/dashboard/reports" element={<ReportsPage />} /> {/* Nova Rota */}
+                <Route path="/dashboard/finance" element={<FinancePage />} /> 
+                <Route path="/dashboard/reports" element={<ReportsPage />} /> 
               </Route>
             </Route>
 

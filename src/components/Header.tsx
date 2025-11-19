@@ -6,10 +6,10 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const navItems = [
   { name: 'Home', href: '/' },
-  { name: 'Sobre', href: '#about' },
-  { name: 'Preços', href: '#pricing' },
-  { name: 'Suporte', href: '#support' },
-  { name: 'Contato', href: '#contact' },
+  { name: 'Sobre', href: '/about', isAnchor: false },
+  { name: 'Preços', href: '/#pricing', isAnchor: true }, // Mantido como âncora na Index
+  { name: 'Suporte', href: '/support', isAnchor: false },
+  { name: 'Contato', href: '/contact', isAnchor: false },
 ];
 
 const Header: React.FC = () => {
@@ -24,13 +24,23 @@ const Header: React.FC = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
           {navItems.map((item) => (
-            <a // Usando <a> para navegação por âncora na landing page
-              key={item.name}
-              href={item.href}
-              className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
-            >
-              {item.name}
-            </a>
+            item.isAnchor ? (
+              <a // Usando <a> para âncora (Preços)
+                key={item.name}
+                href={item.href}
+                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+              >
+                {item.name}
+              </a>
+            ) : (
+              <Link // Usando Link para rotas (Home, Sobre, Suporte, Contato)
+                key={item.name}
+                to={item.href}
+                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+              >
+                {item.name}
+              </Link>
+            )
           ))}
           <Button asChild>
             <Link to="/login">Login / Painel</Link>
@@ -47,13 +57,23 @@ const Header: React.FC = () => {
           <SheetContent side="right">
             <div className="flex flex-col space-y-4 pt-6">
               {navItems.map((item) => (
-                <a // Usando <a> para navegação por âncora na landing page
-                  key={item.name}
-                  href={item.href}
-                  className="text-lg font-medium text-gray-700 hover:text-primary"
-                >
-                  {item.name}
-                </a>
+                item.isAnchor ? (
+                  <a // Usando <a> para âncora (Preços)
+                    key={item.name}
+                    href={item.href}
+                    className="text-lg font-medium text-gray-700 hover:text-primary"
+                  >
+                    {item.name}
+                  </a>
+                ) : (
+                  <Link // Usando Link para rotas (Home, Sobre, Suporte, Contato)
+                    key={item.name}
+                    to={item.href}
+                    className="text-lg font-medium text-gray-700 hover:text-primary"
+                  >
+                    {item.name}
+                  </Link>
+                )
               ))}
               <Button asChild className="mt-4">
                 <Link to="/login">Começar Agora</Link>

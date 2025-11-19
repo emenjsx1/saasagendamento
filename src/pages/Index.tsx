@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button";
 import { CalendarCheck, Bell, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import PricingSection from "@/components/PricingSection";
-import AboutSection from "@/components/AboutSection";
-import SupportSection from "@/components/SupportSection";
-import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 
 const BenefitCard: React.FC<{ icon: React.ReactNode; title: string; description: string }> = ({ icon, title, description }) => (
@@ -63,17 +60,8 @@ const Index = () => {
           </div>
         </section>
         
-        {/* About Us Section */}
-        <AboutSection />
-
-        {/* Pricing Section */}
+        {/* Pricing Section (Mantido na Index, mas com ID de âncora) */}
         <PricingSection />
-
-        {/* Support Section */}
-        <SupportSection />
-
-        {/* Contact Section */}
-        <ContactSection />
 
         {/* Final CTA Section (Comece Agora) */}
         <section className="py-16 bg-primary text-white">
