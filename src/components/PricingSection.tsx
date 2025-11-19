@@ -61,13 +61,14 @@ const PricingSection: React.FC = () => {
           {T('Escolha a frequência de pagamento que melhor se adapta ao seu fluxo de caixa.', 'Choose the payment frequency that best suits your cash flow.')}
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* Ajuste: Usando max-w-7xl e removendo a escala excessiva no hover */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {displayPlans.map((plan) => (
             <Card 
               key={plan.name} 
               className={cn(
-                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:scale-[1.03] rounded-3xl",
-                plan.isPopular ? "border-4 border-primary shadow-2xl scale-[1.05] bg-white" : "border border-gray-200 shadow-lg bg-white"
+                "flex flex-col transition-all duration-300 hover:shadow-2xl hover:translate-y-[-4px] rounded-3xl", // Efeito de elevação sutil
+                plan.isPopular ? "border-4 border-primary shadow-2xl bg-white" : "border border-gray-200 shadow-lg bg-white"
               )}
             >
               <CardHeader className="text-center pb-4">
@@ -109,7 +110,7 @@ const PricingSection: React.FC = () => {
                 <Button 
                   size="lg" 
                   className={cn(
-                    "w-full transition-all duration-300 h-12 text-lg rounded-xl transform hover:scale-[1.02]",
+                    "w-full transition-all duration-300 h-12 text-lg rounded-xl transform hover:scale-[1.01]",
                     plan.isPopular ? 'bg-primary hover:bg-primary/90 shadow-lg' : 'bg-gray-800 hover:bg-gray-700 text-white'
                   )}
                   asChild
