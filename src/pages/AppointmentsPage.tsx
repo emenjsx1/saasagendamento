@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw, Clock, User, Briefcase, Tag } from 'lucide-react';
+import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw, Clock, User, Briefcase, Tag, Repeat } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,17 @@ import { ptBR } from 'date-fns/locale';
 import { DateFilter } from '@/components/DateFilter';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, formatCurrency } from '@/lib/utils';
+import RescheduleDialog from '@/components/RescheduleDialog';
+import { useBusinessSchedule } from '@/hooks/use-business-schedule';
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
+
+interface Service {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price: number;
+}
 
 interface Appointment {
   id: string;
@@ -23,11 +32,7 @@ interface Appointment {
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
-  services: {
-    name: string;
-    duration_minutes: number;
-    price: number;
-  };
+  services: Service;
 }
 
 const statusMap: Record<AppointmentStatus, { label: string, variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' }> = {
@@ -40,40 +45,21 @@ const statusMap: Record<AppointmentStatus, { label: string, variant: 'default' |
 
 const AppointmentsPage: React.FC = () => {
   const { user } = useSession();
+  const { businessSchedule, businessId, isLoading: isScheduleLoading } = useBusinessSchedule();
+  
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('pending');
   const [filterDate, setFilterDate] = useState<Date | undefined>(startOfDay(new Date()));
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const fetchAppointments = useCallback(async () => {
-    if (!user || !filterDate) return;
+    if (!user || !filterDate || !businessId) return;
 
-    setIsLoading(true);
-
-    // 1. Buscar Business ID
-    const { data: businessData, error: businessError } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (businessError && businessError.code !== 'PGRST116') {
-      toast.error("Erro ao carregar o negócio.");
-      console.error(businessError);
-      setIsLoading(false);
-      return;
-    }
-
-    if (!businessData) {
-      setBusinessId(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const currentBusinessId = businessData.id;
-    setBusinessId(currentBusinessId);
+    setIsLoadingAppointments(true);
 
     // 2. Construir Query de Agendamentos
     const startOfDayString = format(filterDate, 'yyyy-MM-dd 00:00:00');
@@ -89,9 +75,9 @@ const AppointmentsPage: React.FC = () => {
         start_time,
         end_time,
         status,
-        services (name, duration_minutes, price)
+        services (id, name, duration_minutes, price)
       `)
-      .eq('business_id', currentBusinessId)
+      .eq('business_id', businessId)
       .gte('start_time', startOfDayString)
       .lte('start_time', endOfDayString);
 
@@ -117,12 +103,24 @@ const AppointmentsPage: React.FC = () => {
       
       setAppointments(mappedAppointments);
     }
-    setIsLoading(false);
-  }, [user, filterStatus, filterDate, refreshKey]);
+    setIsLoadingAppointments(false);
+  }, [user, filterStatus, filterDate, businessId, refreshKey]);
 
   useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]);
+    if (businessId) {
+      fetchAppointments();
+    }
+  }, [fetchAppointments, businessId]);
+
+  const handleRescheduleClick = (app: Appointment) => {
+    setSelectedAppointment(app);
+    setIsRescheduleModalOpen(true);
+  };
+
+  const handleRescheduleSuccess = () => {
+    // Força a atualização da lista
+    setRefreshKey(prev => prev + 1); 
+  };
 
   const updateAppointmentStatus = async (id: string, newStatus: AppointmentStatus) => {
     const loadingToastId = toast.loading(`Atualizando status para ${statusMap[newStatus].label}...`);
@@ -162,7 +160,7 @@ const AppointmentsPage: React.FC = () => {
       if (!appointmentsByHour.has(hourKey)) {
         appointmentsByHour.set(hourKey, []);
       }
-      appointmentsByHour.get(hourKey)?.push(app);
+      groups.get(hourKey)?.push(app);
     });
 
     // 2. Gerar todas as 24 horas do dia
@@ -179,7 +177,7 @@ const AppointmentsPage: React.FC = () => {
     return schedule;
   }, [appointments]);
 
-  if (isLoading) {
+  if (isScheduleLoading || isLoadingAppointments) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -328,9 +326,8 @@ const AppointmentsPage: React.FC = () => {
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                {/* Ação de Remarcar (Placeholder) */}
-                                <DropdownMenuItem disabled>
-                                  Remarcar (Em breve)
+                                <DropdownMenuItem onClick={() => handleRescheduleClick(app)}>
+                                  <Repeat className="h-4 w-4 mr-2" /> Remarcar
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {app.status !== 'rejected' && (
@@ -358,6 +355,18 @@ const AppointmentsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Modal de Remarcação */}
+      {selectedAppointment && businessSchedule && (
+        <RescheduleDialog
+          open={isRescheduleModalOpen}
+          onOpenChange={setIsRescheduleModalOpen}
+          appointment={selectedAppointment}
+          businessId={businessId!}
+          businessWorkingHours={businessSchedule.working_hours}
+          onSuccess={handleRescheduleSuccess}
+        />
+      )}
     </div>
   );
 };
