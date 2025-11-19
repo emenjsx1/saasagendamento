@@ -5,6 +5,7 @@ import MonthlyBarChart from '@/components/MonthlyBarChart';
 import { useBusiness } from '@/hooks/use-business';
 import { useMonthlyFinanceData } from '@/hooks/use-monthly-finance-data';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
 
 const ReportsPage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
@@ -37,9 +38,6 @@ const ReportsPage: React.FC = () => {
   const totalRevenueYear = monthlyData.reduce((sum, item) => sum + item.Receita, 0);
   const totalExpenseYear = monthlyData.reduce((sum, item) => sum + item.Despesa, 0);
   const netProfitYear = totalRevenueYear - totalExpenseYear;
-
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   return (
     <div className="space-y-8">

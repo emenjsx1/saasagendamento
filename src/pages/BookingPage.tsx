@@ -8,12 +8,12 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
 
 // Tipos de dados
 interface DaySchedule {
@@ -72,7 +72,7 @@ const ServiceSelector: React.FC<{ services: Service[], selectedService: Service 
             </div>
             <div className="mt-3 text-right">
               <span className="text-2xl font-extrabold text-green-600">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+                {formatCurrency(service.price)}
               </span>
             </div>
           </CardContent>
@@ -396,8 +396,8 @@ const BookingPage = () => {
   const getWhatsappLink = (phone: string) => {
     // Remove caracteres não numéricos
     const cleanPhone = phone.replace(/\D/g, '');
-    // Formato internacional (assumindo Brasil +55)
-    const whatsappNumber = cleanPhone.length === 11 ? `55${cleanPhone}` : cleanPhone;
+    // Formato internacional (assumindo Moçambique +258 ou Brasil +55, mas o link wa.me funciona com o número limpo)
+    const whatsappNumber = cleanPhone;
     return `https://wa.me/${whatsappNumber}`;
   };
 
@@ -591,7 +591,7 @@ const BookingPage = () => {
                     <div className="flex items-center justify-between text-lg font-extrabold pt-2">
                       <span>Preço Total:</span>
                       <span className="text-green-600">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedService.price)}
+                        {formatCurrency(selectedService.price)}
                       </span>
                     </div>
                     <Separator />

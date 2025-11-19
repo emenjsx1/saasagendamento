@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface AppointmentDetails {
   id: string;
@@ -110,7 +111,7 @@ const ConfirmationPage = () => {
             
             <div className="flex items-center text-sm">
               <DollarSign className="h-4 w-4 mr-3 text-primary" />
-              <span className="font-medium">Serviço:</span> {appointment.services.name} ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(appointment.services.price)})
+              <span className="font-medium">Serviço:</span> {appointment.services.name} ({formatCurrency(appointment.services.price)})
             </div>
             
             <div className="flex items-center text-sm">

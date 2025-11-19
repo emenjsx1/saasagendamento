@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 
 interface ChartData {
   name: string; // Mês
@@ -12,9 +13,6 @@ interface MonthlyBarChartProps {
   data: ChartData[];
   title: string;
 }
-
-const formatCurrency = (value: number) => 
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {

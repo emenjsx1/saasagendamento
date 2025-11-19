@@ -1,17 +1,23 @@
 import React from 'react';
 import { useBusiness } from '@/hooks/use-business';
 import { useAppointmentsSummary } from '@/hooks/use-appointments-summary';
-import { Loader2, Link as LinkIcon, CalendarCheck, Clock } from 'lucide-react';
+import { useAppointmentRevenue } from '@/hooks/use-appointment-revenue';
+import { Loader2, Link as LinkIcon, CalendarCheck, Clock, DollarSign } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
   const { todayCount, weekCount, isLoading: isSummaryLoading } = useAppointmentsSummary(businessId);
+  const { totalRevenue: appointmentRevenue, isLoading: isRevenueLoading } = useAppointmentRevenue(businessId);
 
-  const isLoading = isBusinessLoading || isSummaryLoading;
+  const isLoading = isBusinessLoading || isSummaryLoading || isRevenueLoading;
+  const currentMonth = format(new Date(), 'MMMM', { locale: ptBR });
 
   if (isLoading) {
     return (
@@ -38,7 +44,7 @@ const DashboardPage = () => {
       <h1 className="text-3xl font-bold">Bem-vindo, {business?.name}!</h1>
       <p className="text-gray-600">{business?.description || "Visão geral e estatísticas do seu negócio."}</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
         {/* Card 1: Link de Agendamento */}
         <Card>
@@ -47,8 +53,8 @@ const DashboardPage = () => {
             <LinkIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold mb-2">Seu Link Público</p>
-            <p className="text-sm text-muted-foreground truncate">
+            <p className="text-xl font-bold mb-2">Seu Link Público</p>
+            <p className="text-xs text-muted-foreground truncate">
               {window.location.origin}/book/{businessId}
             </p>
             <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleCopyLink}>
@@ -66,7 +72,7 @@ const DashboardPage = () => {
           <CardContent>
             <div className="text-2xl font-bold">{todayCount}</div>
             <p className="text-xs text-muted-foreground">
-              {todayCount === 0 ? "Nenhum agendamento pendente/confirmado." : `${todayCount} agendamento(s) para hoje.`}
+              {todayCount} agendamento(s) pendente(s)/confirmado(s).
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/agenda">Ver Agenda</Link>
@@ -87,6 +93,23 @@ const DashboardPage = () => {
             </p>
             <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
               <Link to="/dashboard/agenda">Ver Agenda</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        
+        {/* Card 4: Receita de Agendamentos (Mês) */}
+        <Card className="border-l-4 border-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receita de {currentMonth}</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(appointmentRevenue)}</div>
+            <p className="text-xs text-muted-foreground">
+              Valor total de serviços CONCLUÍDOS no mês.
+            </p>
+            <Button asChild variant="link" size="sm" className="p-0 h-auto mt-2">
+              <Link to="/dashboard/finance">Ver Financeiro</Link>
             </Button>
           </CardContent>
         </Card>

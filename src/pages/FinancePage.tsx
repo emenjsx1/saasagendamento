@@ -11,10 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import TransactionForm from '@/components/TransactionForm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-
-const formatCurrency = (value: number) => 
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+import { cn, formatCurrency } from '@/lib/utils';
 
 const FinancePage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();

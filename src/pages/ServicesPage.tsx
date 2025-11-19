@@ -12,6 +12,7 @@ import { Loader2, Plus, Edit, Trash2, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 // Tipagem para os dados do serviço
 interface Service {
@@ -256,7 +257,7 @@ const ServicesPage: React.FC = () => {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço (R$)</FormLabel>
+                      <FormLabel>Preço (MZN)</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)} />
                       </FormControl>
@@ -292,7 +293,7 @@ const ServicesPage: React.FC = () => {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead className="text-right">Duração (min)</TableHead>
-                    <TableHead className="text-right">Preço (R$)</TableHead>
+                    <TableHead className="text-right">Preço (MZN)</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -302,7 +303,7 @@ const ServicesPage: React.FC = () => {
                       <TableCell className="font-medium">{service.name}</TableCell>
                       <TableCell className="text-right">{service.duration_minutes}</TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+                        {formatCurrency(service.price)}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="icon" onClick={() => openModal(service)}>
