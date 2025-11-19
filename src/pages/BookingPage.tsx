@@ -27,7 +27,7 @@ interface DaySchedule {
 }
 
 interface Business {
-  id: string;
+  id: string; // Still need the UUID for foreign keys
   name: string;
   description: string;
   address: string | null;
@@ -336,7 +336,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
 
 
 const BookingPage = () => {
-  const { businessId } = useParams<{ businessId: string }>();
+  const { businessId: businessSlug } = useParams<{ businessId: string }>(); // Renomeado para businessSlug
   const navigate = useNavigate();
   const { sendEmail } = useEmailNotifications(); 
   
@@ -357,18 +357,18 @@ const BookingPage = () => {
 
   // 1. Carregar dados do negócio e serviços
   useEffect(() => {
-    if (!businessId) {
+    if (!businessSlug) {
       setIsLoading(false);
       toast.error("ID do negócio inválido.");
       return;
     }
 
     const fetchData = async () => {
-      // Buscar dados do negócio (incluindo working_hours, logo, banner, phone, theme_color, social links)
+      // Buscar dados do negócio USANDO O SLUG
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
         .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
-        .eq('id', businessId)
+        .eq('slug', businessSlug) // Busca pelo slug
         .single();
 
       if (businessError || !businessData) {
@@ -378,12 +378,13 @@ const BookingPage = () => {
         return;
       }
       setBusiness(businessData as Business);
+      const actualBusinessId = businessData.id; // Usamos o ID real para buscar serviços e agendar
 
       // Buscar serviços
       const { data: servicesData, error: servicesError } = await supabase
         .from('services')
         .select('id, name, duration_minutes, price')
-        .eq('business_id', businessId)
+        .eq('business_id', actualBusinessId)
         .eq('is_active', true)
         .order('name', { ascending: true });
 
@@ -402,7 +403,7 @@ const BookingPage = () => {
     };
 
     fetchData();
-  }, [businessId, selectedService]);
+  }, [businessSlug, selectedService]);
 
   // Função para gerar link do Google Maps
   const getMapLink = (address: string) => {
@@ -446,7 +447,7 @@ const BookingPage = () => {
     const clientCode = generateClientCode();
 
     const appointmentData = {
-      business_id: businessId,
+      business_id: business.id, // Usa o ID real do negócio
       service_id: selectedService.id,
       client_name: clientDetails.client_name,
       client_whatsapp: clientDetails.client_whatsapp,
@@ -610,7 +611,7 @@ const BookingPage = () => {
                     )}
                     {business.facebook_url && (
                         <a href={business.facebook_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 a0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                         </a>
                     )}
                 </div>

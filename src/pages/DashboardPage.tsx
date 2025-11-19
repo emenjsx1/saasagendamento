@@ -18,7 +18,7 @@ interface DateRange {
 }
 
 const DashboardPage = () => {
-  const { business, isLoading: isBusinessLoading, isRegistered, businessId } = useBusiness();
+  const { business, isLoading: isBusinessLoading, isRegistered, businessId, businessSlug } = useBusiness();
   
   // Inicializa o filtro para a Semana Atual
   const initialRange: DateRange = useMemo(() => {
@@ -58,12 +58,12 @@ const DashboardPage = () => {
   }
 
   // If not registered, redirect to registration page
-  if (!isRegistered) {
+  if (!isRegistered || !businessSlug) {
     return <Navigate to="/register-business" replace />;
   }
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/book/${businessId}`;
+    const link = `${window.location.origin}/book/${businessSlug}`;
     navigator.clipboard.writeText(link);
     toast.success("Link de agendamento copiado!");
   };
@@ -175,7 +175,7 @@ const DashboardPage = () => {
           <CardContent>
             <p className="text-lg font-bold mb-2">Compartilhe este link com seus clientes:</p>
             <p className="text-sm text-muted-foreground truncate">
-              {window.location.origin}/book/{businessId}
+              {window.location.origin}/book/{businessSlug}
             </p>
             <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleCopyLink}>
               Copiar Link

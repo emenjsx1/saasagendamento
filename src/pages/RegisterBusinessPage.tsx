@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Loader2, Store, MapPin, Phone, FileText, Palette, Instagram, Facebook } from 'lucide-react';
 import WorkingHoursForm from '@/components/WorkingHoursForm';
 import SupabaseImageUpload from '@/components/SupabaseImageUpload';
+import { generateBusinessSlug } from '@/utils/slug-generator'; // Importar utilitário de slug
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -31,10 +32,10 @@ const BusinessSchema = z.object({
   logo_url: z.string().optional(),
   cover_photo_url: z.string().optional(),
   working_hours: z.array(DayScheduleSchema).optional(),
-  // NOVOS CAMPOS
   theme_color: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Cor inválida. Use formato HEX."),
   instagram_url: z.string().url("URL do Instagram inválida.").optional().or(z.literal('')),
   facebook_url: z.string().url("URL do Facebook inválida.").optional().or(z.literal('')),
+  slug: z.string().optional(), // Adicionar slug ao esquema
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -69,6 +70,7 @@ const RegisterBusinessPage = () => {
       theme_color: "#2563eb", // Default blue
       instagram_url: "",
       facebook_url: "",
+      slug: "", // Inicializa o slug
     },
   });
 
@@ -79,7 +81,7 @@ const RegisterBusinessPage = () => {
 
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url, slug')
         .eq('owner_id', user.id)
         .single();
 
@@ -102,6 +104,7 @@ const RegisterBusinessPage = () => {
           theme_color: data.theme_color || "#2563eb",
           instagram_url: data.instagram_url || "",
           facebook_url: data.facebook_url || "",
+          slug: data.slug || "", // Carrega o slug existente
         });
       }
     };
@@ -112,6 +115,35 @@ const RegisterBusinessPage = () => {
   const onSubmit = async (values: BusinessFormValues) => {
     if (!user) return;
     setIsSubmitting(true);
+
+    let finalSlug = values.slug;
+
+    // Se for uma nova criação OU se o slug estiver vazio, geramos um novo
+    if (!businessId || !finalSlug) {
+        let attempts = 0;
+        let unique = false;
+        
+        while (!unique && attempts < 5) {
+            finalSlug = generateBusinessSlug(values.name);
+            
+            // Verifica se o slug já existe
+            const { count } = await supabase
+                .from('businesses')
+                .select('id', { count: 'exact', head: true })
+                .eq('slug', finalSlug);
+
+            if (count === 0) {
+                unique = true;
+            }
+            attempts++;
+        }
+
+        if (!unique) {
+            toast.error("Não foi possível gerar um slug único. Tente novamente.");
+            setIsSubmitting(false);
+            return;
+        }
+    }
 
     const businessData = {
       owner_id: user.id,
@@ -125,6 +157,7 @@ const RegisterBusinessPage = () => {
       theme_color: values.theme_color,
       instagram_url: values.instagram_url || null,
       facebook_url: values.facebook_url || null,
+      slug: finalSlug, // Salva o slug
     };
 
     let result;
@@ -134,14 +167,14 @@ const RegisterBusinessPage = () => {
         .from('businesses')
         .update(businessData)
         .eq('id', businessId)
-        .select('id')
+        .select('id, slug')
         .single();
     } else {
       // Inserir
       result = await supabase
         .from('businesses')
         .insert(businessData)
-        .select('id')
+        .select('id, slug')
         .single();
     }
 
@@ -152,6 +185,7 @@ const RegisterBusinessPage = () => {
       console.error(result.error);
     } else {
       setBusinessId(result.data.id);
+      form.setValue('slug', result.data.slug); // Atualiza o slug no formulário
       toast.success("Dados do negócio salvos com sucesso!");
     }
   };
@@ -159,6 +193,7 @@ const RegisterBusinessPage = () => {
   const ownerId = user?.id;
   const currentLogoUrl = form.watch('logo_url');
   const currentCoverUrl = form.watch('cover_photo_url');
+  const currentSlug = form.watch('slug');
 
   return (
     <div className="space-y-8">
@@ -190,6 +225,16 @@ const RegisterBusinessPage = () => {
                   </FormItem>
                 )}
               />
+              
+              {currentSlug && (
+                <FormItem>
+                    <FormLabel>Link Público</FormLabel>
+                    <p className="text-sm text-muted-foreground break-all">
+                        {window.location.origin}/book/<span className="font-bold text-primary">{currentSlug}</span>
+                    </p>
+                </FormItem>
+              )}
+
               <FormField
                 control={form.control}
                 name="description"

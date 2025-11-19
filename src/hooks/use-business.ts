@@ -15,11 +15,13 @@ interface Business {
   theme_color: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
+  slug: string | null; // Adicionado slug
 }
 
 interface UseBusinessResult {
   business: Business | null;
   businessId: string | null;
+  businessSlug: string | null; // Adicionado businessSlug
   isLoading: boolean;
   isRegistered: boolean;
 }
@@ -39,7 +41,7 @@ export const useBusiness = (): UseBusinessResult => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, working_hours, phone, logo_url, cover_photo_url, theme_color, instagram_url, facebook_url')
+        .select('id, name, description, address, working_hours, phone, logo_url, cover_photo_url, theme_color, instagram_url, facebook_url, slug')
         .eq('owner_id', user.id)
         .single();
 
@@ -61,6 +63,7 @@ export const useBusiness = (): UseBusinessResult => {
   return {
     business,
     businessId: business?.id || null,
+    businessSlug: business?.slug || null, // Retorna o slug
     isLoading,
     isRegistered: !!business,
   };
