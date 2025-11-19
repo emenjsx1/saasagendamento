@@ -9,6 +9,12 @@ interface Business {
   description: string | null;
   address: string | null;
   working_hours: any; // Assuming JSONB structure
+  phone: string | null;
+  logo_url: string | null;
+  cover_photo_url: string | null;
+  theme_color: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
 }
 
 interface UseBusinessResult {
@@ -33,7 +39,7 @@ export const useBusiness = (): UseBusinessResult => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, working_hours')
+        .select('id, name, description, address, working_hours, phone, logo_url, cover_photo_url, theme_color, instagram_url, facebook_url')
         .eq('owner_id', user.id)
         .single();
 

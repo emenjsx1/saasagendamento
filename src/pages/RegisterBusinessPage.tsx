@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, Store, MapPin, Phone, FileText } from 'lucide-react';
+import { Loader2, Store, MapPin, Phone, FileText, Palette, Instagram, Facebook } from 'lucide-react';
 import WorkingHoursForm from '@/components/WorkingHoursForm';
 import SupabaseImageUpload from '@/components/SupabaseImageUpload';
 
@@ -27,10 +27,14 @@ const BusinessSchema = z.object({
   name: z.string().min(3, "O nome do negócio é obrigatório."),
   description: z.string().optional(),
   address: z.string().optional(),
-  phone: z.string().optional(), // Novo campo
-  logo_url: z.string().optional(), // Novo campo
-  cover_photo_url: z.string().optional(), // Novo campo
+  phone: z.string().optional(),
+  logo_url: z.string().optional(),
+  cover_photo_url: z.string().optional(),
   working_hours: z.array(DayScheduleSchema).optional(),
+  // NOVOS CAMPOS
+  theme_color: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Cor inválida. Use formato HEX."),
+  instagram_url: z.string().url("URL do Instagram inválida.").optional().or(z.literal('')),
+  facebook_url: z.string().url("URL do Facebook inválida.").optional().or(z.literal('')),
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -58,10 +62,13 @@ const RegisterBusinessPage = () => {
       name: "",
       description: "",
       address: "",
-      phone: "", // Default for new field
-      logo_url: "", // Default for new field
-      cover_photo_url: "", // Default for new field
+      phone: "",
+      logo_url: "",
+      cover_photo_url: "",
       working_hours: initialSchedule,
+      theme_color: "#2563eb", // Default blue
+      instagram_url: "",
+      facebook_url: "",
     },
   });
 
@@ -72,7 +79,7 @@ const RegisterBusinessPage = () => {
 
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
         .eq('owner_id', user.id)
         .single();
 
@@ -88,10 +95,13 @@ const RegisterBusinessPage = () => {
           name: data.name || "",
           description: data.description || "",
           address: data.address || "",
-          phone: data.phone || "", // Load phone
-          logo_url: data.logo_url || "", // Load logo URL
-          cover_photo_url: data.cover_photo_url || "", // Load cover URL
+          phone: data.phone || "",
+          logo_url: data.logo_url || "",
+          cover_photo_url: data.cover_photo_url || "",
           working_hours: data.working_hours || initialSchedule, 
+          theme_color: data.theme_color || "#2563eb",
+          instagram_url: data.instagram_url || "",
+          facebook_url: data.facebook_url || "",
         });
       }
     };
@@ -108,10 +118,13 @@ const RegisterBusinessPage = () => {
       name: values.name,
       description: values.description,
       address: values.address,
-      phone: values.phone, // Save phone
-      logo_url: values.logo_url, // Save logo URL
-      cover_photo_url: values.cover_photo_url, // Save cover URL
+      phone: values.phone,
+      logo_url: values.logo_url,
+      cover_photo_url: values.cover_photo_url,
       working_hours: values.working_hours,
+      theme_color: values.theme_color,
+      instagram_url: values.instagram_url || null,
+      facebook_url: values.facebook_url || null,
     };
 
     let result;
@@ -182,7 +195,7 @@ const RegisterBusinessPage = () => {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descrição Curta</FormLabel>
+                    <FormLabel>Descrição Curta (Aparece na página de agendamento)</FormLabel>
                     <FormControl>
                       <Textarea placeholder="Uma breve descrição para seus clientes." {...field} />
                     </FormControl>
@@ -225,12 +238,40 @@ const RegisterBusinessPage = () => {
             </CardContent>
           </Card>
 
-          {/* Mídia Uploads */}
+          {/* Personalização Visual e Mídia */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center"><FileText className="h-5 w-5 mr-2" /> Mídia (Logo e Capa)</CardTitle>
+              <CardTitle className="flex items-center"><Palette className="h-5 w-5 mr-2" /> Personalização e Mídia</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              
+              {/* Theme Color */}
+              <FormField
+                control={form.control}
+                name="theme_color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cor Principal da Página de Agendamento</FormLabel>
+                    <p className="text-xs text-muted-foreground">Esta cor será usada nos botões e destaques da sua página pública.</p>
+                    <FormControl>
+                      <div className="flex items-center space-x-4">
+                        <Input 
+                          type="color" 
+                          className="w-16 h-10 p-1 cursor-pointer" 
+                          {...field} 
+                        />
+                        <Input 
+                          placeholder="#2563eb" 
+                          className="flex-grow" 
+                          {...field} 
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {ownerId ? (
                 <>
                   <FormField
@@ -246,6 +287,7 @@ const RegisterBusinessPage = () => {
                           currentUrl={currentLogoUrl}
                           onUploadSuccess={(url) => field.onChange(url)}
                         />
+                        <p className="text-xs text-muted-foreground mt-1">Recomendado: Imagem quadrada (ex: 200x200 px).</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -263,6 +305,7 @@ const RegisterBusinessPage = () => {
                           currentUrl={currentCoverUrl}
                           onUploadSuccess={(url) => field.onChange(url)}
                         />
+                        <p className="text-xs text-muted-foreground mt-1">Recomendado: Proporção 3:1 ou 4:1 (ex: 1200x300 px).</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -271,6 +314,41 @@ const RegisterBusinessPage = () => {
               ) : (
                 <p className="text-sm text-muted-foreground">Carregando informações do usuário...</p>
               )}
+            </CardContent>
+          </Card>
+          
+          {/* Redes Sociais */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><Instagram className="h-5 w-5 mr-2" /> Redes Sociais (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="instagram_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link do Instagram</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://instagram.com/seu_negocio" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="facebook_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link do Facebook</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://facebook.com/seu_negocio" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 

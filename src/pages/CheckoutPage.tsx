@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -413,6 +413,10 @@ const CheckoutPage: React.FC = () => {
                 <CheckCircle className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" />
                 <span>Garantia de 7 dias.</span>
             </div>
+            <div className="flex items-center text-sm text-gray-600">
+                <Lock className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+                <span>Pagamento Seguro SSL.</span>
+            </div>
             <Button variant="outline" className="w-full text-sm" asChild>
                 <a href="https://wa.me/258123456789" target="_blank" rel="noopener noreferrer">
                     <MessageSquare className="h-4 w-4 mr-2" /> Suporte via WhatsApp
@@ -426,6 +430,12 @@ const CheckoutPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+            <Link to="/" className="text-3xl font-bold text-primary">
+                Agendamento SaaS
+            </Link>
+        </div>
+        
         <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center">
           Finalizar Compra
         </h1>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateClientCode } from '@/utils/client-code-generator';
-import { useEmailNotifications } from '@/hooks/use-email-notifications'; // Importar hook
+import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
 
 // Tipos de dados
 interface DaySchedule {
@@ -35,6 +35,9 @@ interface Business {
   logo_url: string | null;
   cover_photo_url: string | null;
   working_hours: DaySchedule[] | null;
+  theme_color: string | null; // NEW
+  instagram_url: string | null; // NEW
+  facebook_url: string | null; // NEW
 }
 
 interface Service {
@@ -51,7 +54,12 @@ interface ClientDetails {
 }
 
 // Componente de Seleção de Serviço (Usando Select para melhor escalabilidade)
-const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service | null) => void }> = ({ services, selectedService, onSelectService }) => {
+const ServiceSelector: React.FC<{ 
+  services: Service[], 
+  selectedService: Service | null, 
+  onSelectService: (service: Service | null) => void,
+  themeColor: string,
+}> = ({ services, selectedService, onSelectService, themeColor }) => {
   
   const handleSelectChange = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId) || null;
@@ -71,7 +79,7 @@ const ServiceSelector: React.FC<{ services: Service[], selectedService: Service 
               <div className="flex justify-between items-center w-full">
                 <span className="font-medium">{service.name}</span>
                 <span className="text-sm text-muted-foreground ml-4">({service.duration_minutes} min)</span>
-                <span className="text-green-600 font-bold ml-auto">{formatCurrency(service.price)}</span>
+                <span className="font-bold ml-auto" style={{ color: themeColor }}>{formatCurrency(service.price)}</span>
               </div>
             </SelectItem>
           ))}
@@ -89,7 +97,8 @@ const AppointmentScheduler: React.FC<{
   setSelectedDate: (date: Date | undefined) => void;
   selectedTime: string | null;
   setSelectedTime: (time: string | null) => void;
-}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime }) => {
+  themeColor: string;
+}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, themeColor }) => {
   
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isTimesLoading, setIsTimesLoading] = useState(false);
@@ -210,7 +219,7 @@ const AppointmentScheduler: React.FC<{
               !selectedDate && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-5 w-5" />
+            <CalendarIcon className="mr-2 h-5 w-5" style={{ color: themeColor }} />
             {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
           </Button>
         </PopoverTrigger>
@@ -244,7 +253,7 @@ const AppointmentScheduler: React.FC<{
             <h3 className="font-semibold mb-3 text-gray-700">Horários disponíveis:</h3>
             {isTimesLoading ? (
               <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <Loader2 className="h-6 w-6 animate-spin" style={{ color: themeColor }} />
               </div>
             ) : availableTimes.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
@@ -255,8 +264,9 @@ const AppointmentScheduler: React.FC<{
                     size="lg" // Botões maiores para mobile
                     className={cn(
                       "text-base h-10 rounded-lg transition-all",
-                      selectedTime === time ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-100"
+                      selectedTime === time ? "text-white" : "hover:bg-gray-100"
                     )}
+                    style={selectedTime === time ? { backgroundColor: themeColor, borderColor: themeColor, color: 'white' } : {}}
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -328,7 +338,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
 const BookingPage = () => {
   const { businessId } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
-  const { sendEmail } = useEmailNotifications(); // Usar hook de notificação
+  const { sendEmail } = useEmailNotifications(); 
   
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -354,10 +364,10 @@ const BookingPage = () => {
     }
 
     const fetchData = async () => {
-      // Buscar dados do negócio (incluindo working_hours, logo, banner e phone)
+      // Buscar dados do negócio (incluindo working_hours, logo, banner, phone, theme_color, social links)
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
         .eq('id', businessId)
         .single();
 
@@ -530,6 +540,10 @@ const BookingPage = () => {
       </div>
     );
   }
+  
+  // Determine theme color, defaulting to primary blue if null
+  const themeColor = business.theme_color || '#2563eb';
+  const whatsappLink = business.phone ? getWhatsappLink(business.phone) : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -545,7 +559,7 @@ const BookingPage = () => {
 
       <div className="max-w-5xl mx-auto p-4 md:p-8 -mt-12 relative z-10">
         {/* Business Header Card (Melhorado) */}
-        <Card className="mb-8 p-4 rounded-xl shadow-xl border-t-4 border-primary">
+        <Card className="mb-8 p-4 rounded-xl shadow-xl border-t-4" style={{ borderTopColor: themeColor }}>
           <CardHeader className="flex flex-col md:flex-row items-center md:items-start space-y-3 md:space-y-0 md:space-x-4 p-0">
             {business.logo_url && (
               <img 
@@ -573,17 +587,33 @@ const BookingPage = () => {
                 {business.address} (Ver no Mapa)
               </a>
             )}
-            {business.phone && (
+            {whatsappLink && (
               <Button 
                 asChild 
                 className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white transition-colors shadow-md h-9 text-sm rounded-lg"
                 size="default"
               >
-                <a href={getWhatsappLink(business.phone)} target="_blank" rel="noopener noreferrer">
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Falar no WhatsApp
                 </a>
               </Button>
+            )}
+            
+            {/* Social Links */}
+            {(business.instagram_url || business.facebook_url) && (
+                <div className="flex space-x-3 ml-0 md:ml-4 pt-2 md:pt-0">
+                    {business.instagram_url && (
+                        <a href={business.instagram_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-pink-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                        </a>
+                    )}
+                    {business.facebook_url && (
+                        <a href={business.facebook_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    )}
+                </div>
             )}
           </CardContent>
         </Card>
@@ -600,6 +630,7 @@ const BookingPage = () => {
                 setSelectedDate(undefined); // Reset date/time when service changes
                 setSelectedTime(null); 
               }} 
+              themeColor={themeColor}
             />
 
             {selectedService && business.working_hours && (
@@ -610,6 +641,7 @@ const BookingPage = () => {
                 setSelectedDate={setSelectedDate}
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
+                themeColor={themeColor}
               />
             )}
 
@@ -625,15 +657,15 @@ const BookingPage = () => {
           <div className="lg:col-span-1">
             <Card className="sticky top-8 rounded-xl shadow-xl border-2 border-gray-100">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-primary">Resumo do Agendamento</CardTitle>
+                <CardTitle className="text-xl font-bold" style={{ color: themeColor }}>Resumo do Agendamento</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedService ? (
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-base">
-                        <span className="font-bold text-gray-700 flex items-center"><Briefcase className="h-4 w-4 mr-2 text-primary" /> Serviço:</span>
-                        <span className="text-primary font-extrabold">{selectedService.name}</span>
+                        <span className="font-bold text-gray-700 flex items-center"><Briefcase className="h-4 w-4 mr-2" style={{ color: themeColor }} /> Serviço:</span>
+                        <span className="font-extrabold" style={{ color: themeColor }}>{selectedService.name}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Duração:</span>
@@ -658,11 +690,11 @@ const BookingPage = () => {
                 {selectedDate && selectedTime && (
                   <div className="space-y-2">
                     <div className="flex items-center text-base">
-                      <Calendar className="h-4 w-4 mr-2 text-primary" />
+                      <Calendar className="h-4 w-4 mr-2" style={{ color: themeColor }} />
                       <span className="font-medium">Data:</span> {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
                     </div>
                     <div className="flex items-center text-base">
-                      <Clock className="h-4 w-4 mr-2 text-primary" />
+                      <Clock className="h-4 w-4 mr-2" style={{ color: themeColor }} />
                       <span className="font-medium">Hora:</span> {selectedTime}
                     </div>
                     <Separator />
@@ -672,7 +704,7 @@ const BookingPage = () => {
                 {clientDetails.client_name && (
                   <div className="space-y-2">
                     <div className="flex items-center text-base">
-                      <User className="h-4 w-4 mr-2 text-primary" />
+                      <User className="h-4 w-4 mr-2" style={{ color: themeColor }} />
                       <span className="font-medium">Cliente:</span> {clientDetails.client_name}
                     </div>
                     <Separator />
@@ -680,10 +712,11 @@ const BookingPage = () => {
                 )}
 
                 <Button 
-                  className="w-full bg-green-600 hover:bg-green-700 text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl hover:shadow-xl" 
+                  className="w-full text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl hover:shadow-xl" 
                   size="lg" 
                   onClick={handleBooking} 
                   disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
+                  style={{ backgroundColor: themeColor, borderColor: themeColor, color: 'white' }}
                 >
                   {isSubmitting ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
