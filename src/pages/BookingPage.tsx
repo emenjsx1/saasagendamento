@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, Whatsapp } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -497,7 +497,7 @@ const BookingPage = () => {
             {business.phone && (
               <Button asChild className="w-full md:w-auto" variant="secondary">
                 <a href={getWhatsappLink(business.phone)} target="_blank" rel="noopener noreferrer">
-                  <Whatsapp className="h-4 w-4 mr-2" />
+                  <MessageSquare className="h-4 w-4 mr-2" />
                   Falar no WhatsApp
                 </a>
               </Button>
