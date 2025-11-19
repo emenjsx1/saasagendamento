@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Loader2, Search, Filter, Edit, Trash2, UserCheck, UserX, Briefcase } from 'lucide-react';
+import { Users, Loader2, Search, Filter, Edit, Trash2, UserCheck, UserX, Briefcase, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -19,6 +19,8 @@ interface UserProfile {
   role: 'Admin' | 'Owner' | 'Client';
   is_active: boolean; // Simulado
   business_name: string | null; // Nome do negócio associado
+  subscription_status: string; // NEW
+  plan_name: string; // NEW
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -37,7 +39,8 @@ const AdminUsersPage: React.FC = () => {
         first_name, 
         last_name, 
         created_at, 
-        auth_users:auth.users(email, created_at)
+        auth_users:auth.users(email, created_at),
+        subscriptions:id (status, plan_name)
       `);
 
     if (searchTerm) {
@@ -67,6 +70,10 @@ const AdminUsersPage: React.FC = () => {
       const businessName = businessMap.get(p.id) || null;
       const isOwner = !!businessName;
       
+      const subscription = Array.isArray(p.subscriptions) ? p.subscriptions[0] : p.subscriptions;
+      const subStatus = subscription?.status || 'N/A';
+      const planName = subscription?.plan_name || 'N/A';
+      
       let role: UserProfile['role'] = 'Client';
       if (isAdministrator) {
         role = 'Admin';
@@ -83,6 +90,8 @@ const AdminUsersPage: React.FC = () => {
         role: role,
         is_active: true, // Simulado
         business_name: businessName,
+        subscription_status: subStatus,
+        plan_name: planName,
       };
     });
 
@@ -105,6 +114,15 @@ const AdminUsersPage: React.FC = () => {
       toast.info(`Funcionalidade de Excluir Usuário para ${user.email} em desenvolvimento.`);
     }
   };
+  
+  const handleSendPaymentReminder = (user: UserProfile) => {
+    if (user.subscription_status === 'pending_payment') {
+        toast.info(`Lembrete de pagamento enviado para ${user.email}. (Simulado)`);
+        // Futuramente: Implementar chamada para Edge Function de envio de email
+    } else {
+        toast.warning(`O usuário ${user.email} não está com pagamento pendente.`);
+    }
+  };
 
   const getRoleBadge = (role: UserProfile['role']) => {
     switch (role) {
@@ -116,6 +134,19 @@ const AdminUsersPage: React.FC = () => {
         return <Badge variant="secondary">Cliente</Badge>;
       default:
         return <Badge variant="outline">Outro</Badge>;
+    }
+  };
+  
+  const getSubscriptionBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100/80">Pago</Badge>;
+      case 'pending_payment':
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100/80">Pendente</Badge>;
+      case 'trial':
+        return <Badge variant="secondary">Teste</Badge>;
+      default:
+        return <Badge variant="outline">N/A</Badge>;
     }
   };
 
@@ -160,8 +191,8 @@ const AdminUsersPage: React.FC = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Negócio</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Plano</TableHead>
+                    <TableHead>Status Pagamento</TableHead>
                     <TableHead>Cadastro</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -169,29 +200,27 @@ const AdminUsersPage: React.FC = () => {
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.first_name} {user.last_name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>
-                        {user.business_name ? (
-                            <div className="flex items-center text-xs text-gray-600">
+                      <TableCell className="font-medium">
+                        {user.first_name} {user.last_name}
+                        {user.business_name && (
+                            <div className="flex items-center text-xs text-gray-600 mt-1">
                                 <Briefcase className="h-3 w-3 mr-1" /> {user.business_name}
                             </div>
-                        ) : (
-                            <span className="text-xs text-muted-foreground">N/A</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{user.plan_name}</TableCell>
                       <TableCell>
-                        <Badge 
-                          className={cn(
-                            user.is_active ? 'bg-green-100 text-green-700 hover:bg-green-100/80' : 'bg-red-100 text-red-700 hover:bg-red-100/80'
-                          )}
-                        >
-                          {user.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
+                        {getSubscriptionBadge(user.subscription_status)}
                       </TableCell>
                       <TableCell>{format(new Date(user.created_at), 'dd/MM/yyyy')}</TableCell>
                       <TableCell className="text-right space-x-2">
+                        {user.subscription_status === 'pending_payment' && (
+                            <Button variant="default" size="sm" onClick={() => handleSendPaymentReminder(user)} title="Enviar Lembrete">
+                                Lembrete
+                            </Button>
+                        )}
                         <Button variant="outline" size="icon" title="Editar">
                           <Edit className="h-4 w-4" />
                         </Button>

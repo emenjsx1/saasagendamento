@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Mail } from 'lucide-react';
+import { Briefcase, Loader2, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Mail, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,9 @@ interface Business {
   created_at: string;
   owner_email: string;
   subscription_status: string;
+  plan_name: string; // NEW
+  renewal_date: string | null; // NEW
+  appointment_count: number; // Placeholder/Future count
   is_active: boolean; // Simulado
 }
 
@@ -38,7 +42,7 @@ const AdminBusinessesPage: React.FC = () => {
         owner_id, 
         created_at,
         auth_users:owner_id (email),
-        subscriptions:owner_id (status)
+        subscriptions:owner_id (status, plan_name, trial_ends_at)
       `);
 
     if (searchTerm) {
@@ -52,10 +56,18 @@ const AdminBusinessesPage: React.FC = () => {
       console.error(error);
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
-        // Supabase returns related data as arrays if multiple rows match, 
-        // but for owner_id (unique user ID), it should be a single object or array of one.
+        // Handle nested data from joins
         const ownerEmail = Array.isArray(b.auth_users) ? b.auth_users[0]?.email : b.auth_users?.email || 'N/A';
-        const subStatus = Array.isArray(b.subscriptions) ? b.subscriptions[0]?.status : b.subscriptions?.status || 'N/A';
+        const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
+        
+        const subStatus = subscription?.status || 'N/A';
+        const planName = subscription?.plan_name || 'N/A';
+        
+        let renewalDate: string | null = null;
+        if (subStatus === 'trial' && subscription?.trial_ends_at) {
+            renewalDate = format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR });
+        }
+        // Note: For paid plans, renewal date logic would be more complex (e.g., based on payment cycle)
         
         return {
           id: b.id,
@@ -65,6 +77,9 @@ const AdminBusinessesPage: React.FC = () => {
           created_at: b.created_at,
           owner_email: ownerEmail,
           subscription_status: subStatus,
+          plan_name: planName,
+          renewal_date: renewalDate,
+          appointment_count: 0, // Placeholder for future count query
           is_active: true, // Placeholder
         };
       });
@@ -86,6 +101,15 @@ const AdminBusinessesPage: React.FC = () => {
     if (window.confirm(`Tem certeza que deseja excluir o negócio ${business.name}? Esta ação é irreversível.`)) {
       // Lógica de exclusão
       toast.info(`Funcionalidade de Excluir Negócio para ${business.name} em desenvolvimento.`);
+    }
+  };
+  
+  const handleSendPaymentReminder = (business: Business) => {
+    if (business.subscription_status === 'pending_payment') {
+        toast.info(`Lembrete de pagamento enviado para ${business.owner_email}. (Simulado)`);
+        // Futuramente: Implementar chamada para Edge Function de envio de email
+    } else {
+        toast.warning(`O negócio ${business.name} não está com pagamento pendente.`);
     }
   };
   
@@ -143,8 +167,8 @@ const AdminBusinessesPage: React.FC = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Proprietário</TableHead>
                     <TableHead>Plano</TableHead>
-                    <TableHead>Status Negócio</TableHead>
-                    <TableHead>Criado em</TableHead>
+                    <TableHead>Status Assinatura</TableHead>
+                    <TableHead>Renovação/Expira</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -161,19 +185,24 @@ const AdminBusinessesPage: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getSubscriptionBadge(business.subscription_status)}
+                        <Badge variant="outline">{business.plan_name}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          className={cn(
-                            business.is_active ? 'bg-green-100 text-green-700 hover:bg-green-100/80' : 'bg-red-100 text-red-700 hover:bg-red-100/80'
-                          )}
-                        >
-                          {business.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
+                        {getSubscriptionBadge(business.subscription_status)}
                       </TableCell>
-                      <TableCell>{format(new Date(business.created_at), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {business.renewal_date ? (
+                            <div className="flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" /> {business.renewal_date}
+                            </div>
+                        ) : 'N/A'}
+                      </TableCell>
                       <TableCell className="text-right space-x-2">
+                        {business.subscription_status === 'pending_payment' && (
+                            <Button variant="default" size="sm" onClick={() => handleSendPaymentReminder(business)} title="Enviar Lembrete">
+                                Lembrete
+                            </Button>
+                        )}
                         <Button variant="outline" size="icon" title="Editar">
                           <Edit className="h-4 w-4" />
                         </Button>
