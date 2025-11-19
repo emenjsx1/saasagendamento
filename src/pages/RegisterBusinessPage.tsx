@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Store, MapPin, Phone, FileText } from 'lucide-react';
 import WorkingHoursForm from '@/components/WorkingHoursForm';
-import SupabaseImageUpload from '@/components/SupabaseImageUpload'; // Import the new component
+import SupabaseImageUpload from '@/components/SupabaseImageUpload';
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -158,7 +158,7 @@ const RegisterBusinessPage = () => {
           {/* Dados do Negócio */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações Básicas e Contato</CardTitle>
+              <CardTitle className="flex items-center"><Store className="h-5 w-5 mr-2" /> Informações Básicas e Contato</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -168,7 +168,10 @@ const RegisterBusinessPage = () => {
                   <FormItem>
                     <FormLabel>Nome do Negócio *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Barbearia do João" {...field} />
+                      <div className="relative">
+                        <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Ex: Barbearia do João" {...field} className="pl-10" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -194,7 +197,10 @@ const RegisterBusinessPage = () => {
                   <FormItem>
                     <FormLabel>Endereço Físico (Para exibição no mapa)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Rua Exemplo, 123" {...field} />
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Rua Exemplo, 123" {...field} className="pl-10" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -207,7 +213,10 @@ const RegisterBusinessPage = () => {
                   <FormItem>
                     <FormLabel>Telefone / WhatsApp do Negócio</FormLabel>
                     <FormControl>
-                      <Input placeholder="(99) 99999-9999" {...field} />
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="(99) 99999-9999" {...field} className="pl-10" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -219,7 +228,7 @@ const RegisterBusinessPage = () => {
           {/* Mídia Uploads */}
           <Card>
             <CardHeader>
-              <CardTitle>Mídia (Logo e Capa)</CardTitle>
+              <CardTitle className="flex items-center"><FileText className="h-5 w-5 mr-2" /> Mídia (Logo e Capa)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {ownerId ? (

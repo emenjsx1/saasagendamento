@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -28,9 +28,9 @@ interface Business {
   name: string;
   description: string;
   address: string | null;
-  phone: string | null; // Novo campo
-  logo_url: string | null; // Novo campo
-  cover_photo_url: string | null; // Novo campo
+  phone: string | null;
+  logo_url: string | null;
+  cover_photo_url: string | null;
   working_hours: DaySchedule[] | null;
 }
 
@@ -47,25 +47,32 @@ interface ClientDetails {
   client_email: string;
 }
 
-// Componente de Seleção de Serviço (Mantido)
+// Componente de Seleção de Serviço
 const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service) => void }> = ({ services, selectedService, onSelectService }) => (
   <div className="space-y-4">
-    <h2 className="text-xl font-semibold">1. Escolha o Serviço</h2>
+    <h2 className="text-2xl font-bold text-gray-800">1. Escolha o Serviço</h2>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {services.map((service) => (
         <Card
           key={service.id}
           className={cn(
-            "cursor-pointer transition-all hover:border-primary",
-            selectedService?.id === service.id && "border-primary ring-2 ring-primary/50"
+            "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
+            selectedService?.id === service.id ? "border-primary ring-2 ring-primary/50 shadow-lg" : "border-gray-200"
           )}
           onClick={() => onSelectService(service)}
         >
-          <CardContent className="p-4">
-            <h3 className="font-bold">{service.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {service.duration_minutes} min - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
-            </p>
+          <CardContent className="p-5 flex flex-col justify-between h-full">
+            <div>
+              <h3 className="text-lg font-bold text-primary">{service.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Duração: {service.duration_minutes} min
+              </p>
+            </div>
+            <div className="mt-3 text-right">
+              <span className="text-xl font-extrabold text-green-600">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+              </span>
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -73,7 +80,7 @@ const ServiceSelector: React.FC<{ services: Service[], selectedService: Service 
   </div>
 );
 
-// Componente de Agendamento (Mantido)
+// Componente de Agendamento
 const AppointmentScheduler: React.FC<{ 
   business: Business;
   selectedService: Service; 
@@ -190,7 +197,7 @@ const AppointmentScheduler: React.FC<{
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">2. Escolha Data e Hora</h2>
+      <h2 className="text-2xl font-bold text-gray-800">2. Escolha Data e Hora</h2>
       
       {/* Seleção de Data */}
       <Popover>
@@ -198,11 +205,11 @@ const AppointmentScheduler: React.FC<{
           <Button
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "w-full justify-start text-left font-normal h-12 text-base",
               !selectedDate && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-5 w-5" />
             {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
           </Button>
         </PopoverTrigger>
@@ -233,18 +240,19 @@ const AppointmentScheduler: React.FC<{
       {selectedDate && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-medium mb-3">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
+            <h3 className="font-medium mb-3 text-gray-700">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
             {isTimesLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : availableTimes.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
                 {availableTimes.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
                     size="sm"
+                    className="text-base h-10"
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -261,35 +269,53 @@ const AppointmentScheduler: React.FC<{
   );
 };
 
-// Componente de Detalhes do Cliente (Mantido)
+// Componente de Detalhes do Cliente
 const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void }> = ({ clientDetails, setClientDetails }) => (
   <div className="space-y-4">
-    <h2 className="text-xl font-semibold">3. Seus Dados</h2>
-    <div className="space-y-3">
-      <Label htmlFor="client_name">Nome Completo *</Label>
-      <Input 
-        id="client_name" 
-        value={clientDetails.client_name} 
-        onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
-        required 
-      />
+    <h2 className="text-2xl font-bold text-gray-800">3. Seus Dados</h2>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="client_name">Nome Completo *</Label>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            id="client_name" 
+            value={clientDetails.client_name} 
+            onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
+            required 
+            className="pl-10 h-10"
+          />
+        </div>
+      </div>
       
-      <Label htmlFor="client_whatsapp">WhatsApp *</Label>
-      <Input 
-        id="client_whatsapp" 
-        value={clientDetails.client_whatsapp} 
-        onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
-        placeholder="(99) 99999-9999"
-        required 
-      />
+      <div className="space-y-2">
+        <Label htmlFor="client_whatsapp">WhatsApp *</Label>
+        <div className="relative">
+          <MessageSquare className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            id="client_whatsapp" 
+            value={clientDetails.client_whatsapp} 
+            onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
+            placeholder="(99) 99999-9999"
+            required 
+            className="pl-10 h-10"
+          />
+        </div>
+      </div>
       
-      <Label htmlFor="client_email">E-mail (Opcional)</Label>
-      <Input 
-        id="client_email" 
-        type="email"
-        value={clientDetails.client_email} 
-        onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
-      />
+      <div className="space-y-2">
+        <Label htmlFor="client_email">E-mail (Opcional)</Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            id="client_email" 
+            type="email"
+            value={clientDetails.client_email} 
+            onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
+            className="pl-10 h-10"
+          />
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -373,7 +399,7 @@ const BookingPage = () => {
     return `https://wa.me/${whatsappNumber}`;
   };
 
-  // 2. Função de Agendamento (Mantida)
+  // 2. Função de Agendamento
   const handleBooking = async () => {
     if (!selectedService || !selectedDate || !selectedTime) {
       toast.error("Por favor, selecione o serviço, data e hora.");
