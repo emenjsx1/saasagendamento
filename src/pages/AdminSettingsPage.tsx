@@ -1,9 +1,39 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Mail, CreditCard, Zap } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Settings, Loader2 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/use-admin-settings';
+import EmailTemplatesForm from '@/components/admin/EmailTemplatesForm';
+import PaymentGatewaysForm from '@/components/admin/PaymentGatewaysForm';
+import SubscriptionConfigForm from '@/components/admin/SubscriptionConfigForm';
 
 const AdminSettingsPage: React.FC = () => {
+  const { settings, isLoading, updateSettings } = useAdminSettings();
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
+  
+  if (!settings) {
+      return <div className="text-center p-10 text-red-500">Erro ao carregar configurações. Verifique se você é um administrador.</div>;
+  }
+
+  // Handlers para atualizar sub-seções
+  const handleUpdateEmailTemplates = async (templates: any) => {
+    return updateSettings({ email_templates: templates });
+  };
+  
+  const handleUpdatePaymentGateways = async (gateways: any) => {
+    return updateSettings({ payment_gateways: gateways });
+  };
+  
+  const handleUpdateSubscriptionConfig = async (config: any) => {
+    return updateSettings({ subscription_config: config });
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold flex items-center text-red-600">
@@ -11,47 +41,23 @@ const AdminSettingsPage: React.FC = () => {
         Configurações da Plataforma
       </h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center text-xl"><Mail className="h-5 w-5 mr-2" /> Gestão de Comunicação e E-mails</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">Gerencie os templates de e-mail automáticos enviados aos clientes (confirmação, cancelamento, lembretes).</p>
-          <div className="border p-4 rounded-md bg-gray-50">
-            <h4 className="font-semibold">Templates de E-mail</h4>
-            <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-              <li>Confirmação de Agendamento (Pendente/Confirmado)</li>
-              <li>Lembrete de Pagamento (Assinatura)</li>
-              <li>Notificação de Vencimento de Teste Gratuito</li>
-            </ul>
-            <p className="mt-3 font-semibold text-red-500">Status: Editor de templates em desenvolvimento.</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 1. Gestão de Comunicação e E-mails */}
+      <EmailTemplatesForm 
+        initialTemplates={settings.email_templates}
+        updateSettings={handleUpdateEmailTemplates}
+      />
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center text-xl"><CreditCard className="h-5 w-5 mr-2" /> Integrações de Pagamento</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">Configure as chaves de API para provedores de pagamento (M-Pesa, e-Mola, Cartão) e gerencie as taxas de transação.</p>
-          <div className="border p-4 rounded-md bg-gray-50">
-            <h4 className="font-semibold">Chaves de API</h4>
-            <p className="text-sm text-gray-600 mt-1">Gerencie as credenciais para ativar pagamentos automáticos e monitoramento de status.</p>
-            <p className="mt-3 font-semibold text-red-500">Status: Integração de gateways de pagamento em desenvolvimento.</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 2. Integrações de Pagamento */}
+      <PaymentGatewaysForm
+        initialConfig={settings.payment_gateways}
+        updateSettings={handleUpdatePaymentGateways}
+      />
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center text-xl"><Zap className="h-5 w-5 mr-2" /> Configurações de Assinatura Global</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Ajustes globais para planos de assinatura, como duração do teste gratuito e preços padrão.</p>
-          <p className="mt-2 font-semibold text-red-500">Status: Gestão de planos em desenvolvimento.</p>
-        </CardContent>
-      </Card>
+      {/* 3. Configurações de Assinatura Global */}
+      <SubscriptionConfigForm
+        initialConfig={settings.subscription_config}
+        updateSettings={handleUpdateSubscriptionConfig}
+      />
     </div>
   );
 };
