@@ -32,7 +32,7 @@ import AdminUsersPage from "./pages/AdminUsersPage"; // Nova
 import AdminAppointmentsPage from "./pages/AdminAppointmentsPage"; // Nova
 import AdminReportsPage from "./pages/AdminReportsPage"; // Nova
 import AdminSettingsPage from "./pages/AdminSettingsPage"; // Nova
-
+import AdminPaymentsPage from "./pages/AdminPaymentsPage"; // Nova
 
 const queryClient = new QueryClient();
 
@@ -75,6 +75,7 @@ const App = () => (
                 <Route path="appointments" element={<AdminAppointmentsPage />} />
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="payments" element={<AdminPaymentsPage />} /> {/* Nova Rota */}
               </Route>
             </Route>
 

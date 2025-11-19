@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, Briefcase, Users, Calendar, BarChart3, Settings, ArrowLeft } from 'lucide-react';
+import { Home, Briefcase, Users, Calendar, BarChart3, Settings, ArrowLeft, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -12,6 +12,7 @@ const AdminSidebar: React.FC = () => {
     { name: 'Gestão de Negócios', href: '/admin/businesses', icon: Briefcase },
     { name: 'Gestão de Usuários', href: '/admin/users', icon: Users },
     { name: 'Controle de Agendamentos', href: '/admin/appointments', icon: Calendar },
+    { name: 'Gestão Financeira', href: '/admin/payments', icon: DollarSign }, // Novo Link
     { name: 'Relatórios', href: '/admin/reports', icon: BarChart3 },
     { name: 'Configurações', href: '/admin/settings', icon: Settings },
   ];

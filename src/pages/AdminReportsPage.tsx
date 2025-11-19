@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Loader2, DollarSign, Users, Briefcase } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAdminMonthlyRevenue } from '@/hooks/use-admin-monthly-revenue';
 import { useAdminMetrics } from '@/hooks/use-admin-metrics';
 import AdminMonthlyBarChart from '@/components/AdminMonthlyBarChart';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { usePlatformMonthlyRevenue } from '@/hooks/use-platform-monthly-revenue'; // Importar novo hook
 
 const AdminReportsPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
-  const { data: monthlyRevenueData, isLoading: isChartLoading } = useAdminMonthlyRevenue(selectedYear);
+  // Usar o novo hook para receita da plataforma (assinaturas)
+  const { data: monthlyRevenueData, isLoading: isChartLoading } = usePlatformMonthlyRevenue(selectedYear);
   const { totalBusinesses, totalUsers, isLoading: isMetricsLoading } = useAdminMetrics();
 
   const isLoading = isChartLoading || isMetricsLoading;
@@ -85,12 +86,15 @@ const AdminReportsPage: React.FC = () => {
         title={`Receita Total da Plataforma por Mês (${selectedYear})`} 
       />
       
+      {/* Nova Seção: Histórico de Pagamentos Detalhado */}
       <Card>
         <CardHeader>
-          <CardTitle>Relatórios de Pagamentos e Assinaturas</CardTitle>
+          <CardTitle>Histórico de Pagamentos Detalhado (Tabela Pagamentos)</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Em breve: Relatórios detalhados sobre status de pagamento, churn e planos mais populares.</p>
+          <p className="text-muted-foreground">
+            Para atender à sua solicitação de "Histórico de Pagamentos", vamos criar uma nova página de administração para listar todas as transações da tabela 'payments'.
+          </p>
         </CardContent>
       </Card>
     </div>
