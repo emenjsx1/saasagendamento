@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, formatCurrency } from '@/lib/utils';
 import RescheduleDialog from '@/components/RescheduleDialog';
 import { useBusinessSchedule } from '@/hooks/use-business-schedule';
+import { useEmailNotifications } from '@/hooks/use-email-notifications'; // Importar hook
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
 
@@ -28,6 +29,7 @@ interface Appointment {
   id: string;
   client_name: string;
   client_whatsapp: string;
+  client_email: string | null; // Adicionado email
   client_code: string;
   start_time: string;
   end_time: string;
@@ -46,6 +48,7 @@ const statusMap: Record<AppointmentStatus, { label: string, variant: 'default' |
 const AppointmentsPage: React.FC = () => {
   const { user } = useSession();
   const { businessSchedule, businessId, isLoading: isScheduleLoading } = useBusinessSchedule();
+  const { sendEmail } = useEmailNotifications(); // Usar hook de notificação
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
@@ -71,6 +74,7 @@ const AppointmentsPage: React.FC = () => {
         id,
         client_name,
         client_whatsapp,
+        client_email,
         client_code,
         start_time,
         end_time,
@@ -122,7 +126,7 @@ const AppointmentsPage: React.FC = () => {
     setRefreshKey(prev => prev + 1); 
   };
 
-  const updateAppointmentStatus = async (id: string, newStatus: AppointmentStatus) => {
+  const updateAppointmentStatus = async (app: Appointment, newStatus: AppointmentStatus) => {
     const loadingToastId = toast.loading(`Atualizando status para ${statusMap[newStatus].label}...`);
     
     try {
@@ -131,10 +135,55 @@ const AppointmentsPage: React.FC = () => {
       const { error } = await supabase
         .from('appointments')
         .update(updates)
-        .eq('id', id);
+        .eq('id', app.id);
 
       if (error) {
         throw error;
+      }
+
+      // Enviar Notificação por E-mail (se o cliente tiver e-mail)
+      if (app.client_email) {
+        const startTime = parseISO(app.start_time);
+        const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
+        const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
+        
+        let subject = '';
+        let statusText = '';
+        
+        if (newStatus === 'confirmed') {
+            subject = `Agendamento CONFIRMADO: ${app.services.name}`;
+            statusText = `Seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>CONFIRMADO</strong>.`;
+        } else if (newStatus === 'rejected') {
+            subject = `Agendamento REJEITADO: ${app.services.name}`;
+            statusText = `Lamentamos informar que seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>REJEITADO</strong>. Por favor, tente remarcar.`;
+        } else if (newStatus === 'cancelled') {
+            subject = `Agendamento CANCELADO: ${app.services.name}`;
+            statusText = `Seu agendamento para ${formattedDate} às ${formattedTime} foi <strong>CANCELADO</strong>.`;
+        } else if (newStatus === 'completed') {
+            subject = `Serviço CONCLUÍDO: ${app.services.name}`;
+            statusText = `Seu serviço de ${app.services.name} em ${formattedDate} foi <strong>CONCLUÍDO</strong>. Obrigado!`;
+        }
+
+        if (subject) {
+            const emailBody = `
+              <h1>Atualização de Agendamento</h1>
+              <p>Olá ${app.client_name},</p>
+              <p>${statusText}</p>
+              <p><strong>Detalhes:</strong></p>
+              <ul>
+                <li>Serviço: ${app.services.name}</li>
+                <li>Data: ${formattedDate}</li>
+                <li>Hora: ${formattedTime}</li>
+                <li>Código de Cliente: ${app.client_code}</li>
+              </ul>
+            `;
+            
+            sendEmail({
+              to: app.client_email,
+              subject: subject,
+              body: emailBody,
+            });
+        }
       }
 
       // Força a atualização da lista
@@ -160,7 +209,6 @@ const AppointmentsPage: React.FC = () => {
       if (!appointmentsByHour.has(hourKey)) {
         appointmentsByHour.set(hourKey, []);
       }
-      // CORREÇÃO: Usar appointmentsByHour em vez de groups
       appointmentsByHour.get(hourKey)?.push(app);
     });
 
@@ -317,12 +365,12 @@ const AppointmentsPage: React.FC = () => {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Gerenciar Agendamento</DropdownMenuLabel>
                                 {app.status !== 'confirmed' && (
-                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'confirmed')}>
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app, 'confirmed')}>
                                     <CheckCircle className="h-4 w-4 mr-2" /> Confirmar
                                   </DropdownMenuItem>
                                 )}
                                 {app.status !== 'completed' && (
-                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'completed')}>
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app, 'completed')}>
                                     Concluir (Registrar Receita)
                                   </DropdownMenuItem>
                                 )}
@@ -332,12 +380,12 @@ const AppointmentsPage: React.FC = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {app.status !== 'rejected' && (
-                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'rejected')}>
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app, 'rejected')}>
                                     <XCircle className="h-4 w-4 mr-2" /> Rejeitar
                                   </DropdownMenuItem>
                                 )}
                                 {app.status !== 'cancelled' && (
-                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app.id, 'cancelled')}>
+                                  <DropdownMenuItem onClick={() => updateAppointmentStatus(app, 'cancelled')}>
                                     Cancelar
                                   </DropdownMenuItem>
                                 )}

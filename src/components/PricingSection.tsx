@@ -127,7 +127,7 @@ const PricingSection: React.FC = () => {
                   variant={plan.isPopular ? 'default' : 'secondary'}
                   asChild
                 >
-                  <Link to="/login">{plan.ctaText}</Link>
+                  <Link to="/signup">{plan.ctaText}</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -139,7 +139,7 @@ const PricingSection: React.FC = () => {
             Novo por aqui? Experimente grátis!
           </p>
           <Button size="lg" variant="outline" asChild className="border-primary text-primary hover:bg-primary/10">
-            <Link to="/login">Criar Conta Teste (3 dias grátis)</Link>
+            <Link to="/signup">Criar Conta Teste (3 dias grátis)</Link>
           </Button>
         </div>
       </div>

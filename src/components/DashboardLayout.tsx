@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3 } from 'lucide-react';
+import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
@@ -24,9 +24,10 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
     { name: 'Serviços', href: '/dashboard/services', icon: Briefcase },
-    { name: 'Financeiro', href: '/dashboard/finance', icon: DollarSign }, // Novo
-    { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3 }, // Novo
-    { name: 'Configurações', href: '/register-business', icon: Briefcase }, // Mantido para edição do negócio
+    { name: 'Financeiro', href: '/dashboard/finance', icon: DollarSign },
+    { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3 },
+    { name: 'Configurações do Negócio', href: '/register-business', icon: Briefcase },
+    { name: 'Meu Perfil', href: '/dashboard/profile', icon: User }, // Novo
   ];
 
   return (

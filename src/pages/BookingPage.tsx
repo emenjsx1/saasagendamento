@@ -15,7 +15,8 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { generateClientCode } from '@/utils/client-code-generator'; // Importando o gerador
+import { generateClientCode } from '@/utils/client-code-generator';
+import { useEmailNotifications } from '@/hooks/use-email-notifications'; // Importar hook
 
 // Tipos de dados
 interface DaySchedule {
@@ -327,6 +328,7 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
 const BookingPage = () => {
   const { businessId } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
+  const { sendEmail } = useEmailNotifications(); // Usar hook de notificação
   
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -416,6 +418,7 @@ const BookingPage = () => {
       toast.error("Nome e WhatsApp são obrigatórios.");
       return;
     }
+    if (!business) return;
 
     setIsSubmitting(true);
 
@@ -462,6 +465,38 @@ const BookingPage = () => {
       console.error(error);
     } else {
       toast.success("Agendamento realizado com sucesso!");
+      
+      // 3. Enviar Notificação por E-mail (para o cliente, se tiver e-mail)
+      if (clientDetails.client_email) {
+        const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
+        const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
+        
+        const emailBody = `
+          <h1>Confirmação de Agendamento</h1>
+          <p>Olá ${clientDetails.client_name},</p>
+          <p>Seu agendamento com ${business.name} foi recebido e está <strong>PENDENTE</strong> de confirmação.</p>
+          <p><strong>Detalhes:</strong></p>
+          <ul>
+            <li>Serviço: ${selectedService.name}</li>
+            <li>Data: ${formattedDate}</li>
+            <li>Hora: ${formattedTime}</li>
+            <li>Duração: ${selectedService.duration_minutes} minutos</li>
+            <li>Código de Cliente: ${clientCode}</li>
+          </ul>
+          <p>Aguarde a confirmação do negócio.</p>
+        `;
+        
+        sendEmail({
+          to: clientDetails.client_email,
+          subject: `Agendamento Pendente: ${selectedService.name} em ${formattedDate}`,
+          body: emailBody,
+        });
+      }
+      
+      // 4. Enviar Notificação para o Admin (se o admin tiver e-mail no perfil)
+      // Nota: Para isso, precisaríamos buscar o email do owner_id do business.
+      // Por enquanto, vamos focar apenas na notificação do cliente.
+
       navigate(`/confirmation/${data.id}`);
     }
   };

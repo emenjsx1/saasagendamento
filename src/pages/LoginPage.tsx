@@ -2,7 +2,8 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const LoginPage = () => {
   const { user, isLoading } = useSession();
@@ -42,6 +43,14 @@ const LoginPage = () => {
           view="sign_in"
           redirectTo={window.location.origin + '/dashboard'}
         />
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-600">
+            Não tem uma conta?{' '}
+            <Link to="/signup" className="text-primary hover:underline font-medium">
+              Crie sua conta gratuita
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
