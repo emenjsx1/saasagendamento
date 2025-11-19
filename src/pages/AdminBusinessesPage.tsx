@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import AdminBusinessDetailsDialog from '@/components/admin/AdminBusinessDetailsDialog'; // Importar o novo componente
 
 interface Business {
   id: string;
@@ -30,13 +31,14 @@ const AdminBusinessesPage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0); // Para forçar refresh
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
   const fetchBusinesses = async () => {
     setIsLoading(true);
     
-    // Tentativa de join: businesses.owner_id -> profiles.id e subscriptions.user_id
-    // Nota: O PostgREST pode ter dificuldade em fazer join direto com auth.users.
-    // Usamos a sintaxe de join implícita do PostgREST.
     let query = supabase
       .from('businesses')
       .select(`
@@ -45,7 +47,7 @@ const AdminBusinessesPage: React.FC = () => {
         slug, 
         owner_id, 
         created_at,
-        profiles!inner(first_name, last_name),
+        profiles!inner(first_name, last_name, email),
         subscriptions!inner(status, plan_name, trial_ends_at)
       `);
 
@@ -60,13 +62,12 @@ const AdminBusinessesPage: React.FC = () => {
       console.error(error);
     } else {
       const mappedData: Business[] = (data || []).map((b: any) => {
-        // O PostgREST retorna os dados do join como um array se for um relacionamento 1:N, 
-        // ou um objeto se for 1:1 (que é o caso de profiles e subscriptions via owner_id/user_id).
         
         const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
         const subscription = Array.isArray(b.subscriptions) ? b.subscriptions[0] : b.subscriptions;
         
         const ownerName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A';
+        const ownerEmail = profile?.email || 'N/A';
         
         const subStatus = subscription?.status || 'N/A';
         const planName = subscription?.plan_name || 'N/A';
@@ -82,7 +83,7 @@ const AdminBusinessesPage: React.FC = () => {
           slug: b.slug,
           owner_id: b.owner_id,
           created_at: b.created_at,
-          owner_email: 'N/A (Busca separada)', // Não podemos buscar o email diretamente aqui
+          owner_email: ownerEmail,
           owner_name: ownerName,
           subscription_status: subStatus,
           plan_name: planName,
@@ -98,7 +99,16 @@ const AdminBusinessesPage: React.FC = () => {
 
   useEffect(() => {
     fetchBusinesses();
-  }, [searchTerm]);
+  }, [searchTerm, refreshKey]);
+
+  const handleEditClick = (id: string) => {
+    setSelectedBusinessId(id);
+    setIsModalOpen(true);
+  };
+  
+  const handleModalSuccess = () => {
+      setRefreshKey(prev => prev + 1);
+  };
 
   const handleToggleActive = (business: Business) => {
     toast.info(`Funcionalidade de Ativar/Inativar Negócio para ${business.name} em desenvolvimento.`);
@@ -188,9 +198,8 @@ const AdminBusinessesPage: React.FC = () => {
                         <div className="flex items-center">
                             <User className="h-3 w-3 mr-1" /> {business.owner_name}
                         </div>
-                        {/* O email não pode ser buscado diretamente via join com auth.users */}
                         <div className="flex items-center">
-                            <Mail className="h-3 w-3 mr-1" /> {business.owner_id} (ID)
+                            <Mail className="h-3 w-3 mr-1" /> {business.owner_email}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -212,7 +221,7 @@ const AdminBusinessesPage: React.FC = () => {
                                 Lembrete
                             </Button>
                         )}
-                        <Button variant="outline" size="icon" title="Editar">
+                        <Button variant="outline" size="icon" title="Editar" onClick={() => handleEditClick(business.id)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="secondary" size="icon" onClick={() => handleToggleActive(business)} title={business.is_active ? 'Inativar' : 'Ativar'}>
@@ -230,6 +239,16 @@ const AdminBusinessesPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Modal de Edição de Negócio */}
+      {selectedBusinessId && (
+        <AdminBusinessDetailsDialog
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          businessId={selectedBusinessId}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   );
 };
