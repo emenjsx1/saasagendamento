@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, DollarSign, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -47,25 +47,32 @@ interface ClientDetails {
   client_email: string;
 }
 
-// Componente de Seleção de Serviço (Mantido)
+// Componente de Seleção de Serviço (Melhorado)
 const ServiceSelector: React.FC<{ services: Service[], selectedService: Service | null, onSelectService: (service: Service) => void }> = ({ services, selectedService, onSelectService }) => (
   <div className="space-y-4">
-    <h2 className="text-xl font-semibold">1. Escolha o Serviço</h2>
+    <h2 className="text-2xl font-bold text-gray-800">1. Escolha o Serviço</h2>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {services.map((service) => (
         <Card
           key={service.id}
           className={cn(
-            "cursor-pointer transition-all hover:border-primary",
-            selectedService?.id === service.id && "border-primary ring-2 ring-primary/50"
+            "cursor-pointer transition-all hover:shadow-lg hover:border-primary/50",
+            selectedService?.id === service.id ? "border-primary ring-2 ring-primary/50 shadow-md" : "border-gray-200"
           )}
           onClick={() => onSelectService(service)}
         >
-          <CardContent className="p-4">
-            <h3 className="font-bold">{service.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {service.duration_minutes} min - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
-            </p>
+          <CardContent className="p-4 space-y-2">
+            <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center">
+                <Timer className="h-4 w-4 mr-1 text-primary" />
+                <span>{service.duration_minutes} min</span>
+              </div>
+              <div className="flex items-center font-semibold text-green-600">
+                <DollarSign className="h-4 w-4 mr-1" />
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+              </div>
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -190,7 +197,7 @@ const AppointmentScheduler: React.FC<{
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">2. Escolha Data e Hora</h2>
+      <h2 className="text-2xl font-bold text-gray-800">2. Escolha Data e Hora</h2>
       
       {/* Seleção de Data */}
       <Popover>
@@ -198,11 +205,11 @@ const AppointmentScheduler: React.FC<{
           <Button
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "w-full justify-start text-left font-normal h-12 text-base",
               !selectedDate && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-5 w-5" />
             {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
           </Button>
         </PopoverTrigger>
@@ -233,18 +240,22 @@ const AppointmentScheduler: React.FC<{
       {selectedDate && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-medium mb-3">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
+            <h3 className="font-medium mb-3 text-gray-700">Horários disponíveis para {format(selectedDate, 'dd/MM', { locale: ptBR })}:</h3>
             {isTimesLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : availableTimes.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
                 {availableTimes.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
                     size="sm"
+                    className={cn(
+                      "transition-all",
+                      selectedTime === time ? "bg-primary text-primary-foreground" : "hover:bg-gray-100"
+                    )}
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -264,7 +275,7 @@ const AppointmentScheduler: React.FC<{
 // Componente de Detalhes do Cliente (Mantido)
 const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void }> = ({ clientDetails, setClientDetails }) => (
   <div className="space-y-4">
-    <h2 className="text-xl font-semibold">3. Seus Dados</h2>
+    <h2 className="text-2xl font-bold text-gray-800">3. Seus Dados</h2>
     <div className="space-y-3">
       <Label htmlFor="client_name">Nome Completo *</Label>
       <Input 
@@ -590,7 +601,7 @@ const BookingPage = () => {
                 )}
 
                 <Button 
-                  className="w-full" 
+                  className="w-full h-12 text-base" 
                   onClick={handleBooking} 
                   disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
                 >
