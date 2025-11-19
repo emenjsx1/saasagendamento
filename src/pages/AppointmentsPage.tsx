@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { format, startOfDay, isSameHour, parseISO, isToday } from 'date-fns';
+import { format, startOfDay, parseISO, isToday, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateFilter } from '@/components/DateFilter';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -19,7 +19,7 @@ interface Appointment {
   id: string;
   client_name: string;
   client_whatsapp: string;
-  client_code: string; // Novo campo
+  client_code: string;
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
@@ -149,25 +149,34 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
-  // Agrupamento por hora para a visualização de agenda
-  const groupedAppointments = useMemo(() => {
-    const groups = new Map<string, Appointment[]>();
-    
+  // Geração de todas as horas do dia (00:00 a 23:00) e mapeamento dos agendamentos
+  const hourlySchedule = useMemo(() => {
+    const schedule = [];
+    const appointmentsByHour = new Map<string, Appointment[]>();
+
+    // 1. Mapear agendamentos existentes por hora de início
     appointments.forEach(app => {
       const startTime = parseISO(app.start_time);
       const hourKey = format(startTime, 'HH:00');
       
-      if (!groups.has(hourKey)) {
-        groups.set(hourKey, []);
+      if (!appointmentsByHour.has(hourKey)) {
+        appointmentsByHour.set(hourKey, []);
       }
-      groups.get(hourKey)?.push(app);
+      appointmentsByHour.get(hourKey)?.push(app);
     });
 
-    // Ordenar as chaves (horas)
-    return Array.from(groups.keys()).sort().map(hour => ({
-      hour,
-      appointments: groups.get(hour) || [],
-    }));
+    // 2. Gerar todas as 24 horas do dia
+    for (let h = 0; h < 24; h++) {
+      const hourDate = setMinutes(setHours(new Date(), h), 0);
+      const hourKey = format(hourDate, 'HH:00');
+      
+      schedule.push({
+        hour: hourKey,
+        appointments: appointmentsByHour.get(hourKey) || [],
+      });
+    }
+
+    return schedule;
   }, [appointments]);
 
   if (isLoading) {
@@ -245,20 +254,18 @@ const AppointmentsPage: React.FC = () => {
           <CardTitle>Agendamentos do Dia ({appointments.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {appointments.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum agendamento encontrado para esta data e status.</p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {groupedAppointments.map(({ hour, appointments: hourlyApps }) => (
-                <div key={hour} className="flex border-b last:border-b-0">
-                  {/* Coluna da Hora */}
-                  <div className="w-20 flex-shrink-0 p-4 bg-gray-50 border-r flex items-start justify-center">
-                    <span className="text-lg font-bold text-gray-700">{hour}</span>
-                  </div>
-                  
-                  {/* Coluna dos Agendamentos */}
-                  <div className="flex-grow p-4 space-y-4">
-                    {hourlyApps.map((app) => {
+          <div className="divide-y divide-gray-100">
+            {hourlySchedule.map(({ hour, appointments: hourlyApps }) => (
+              <div key={hour} className="flex border-b last:border-b-0">
+                {/* Coluna da Hora */}
+                <div className="w-20 flex-shrink-0 p-4 bg-gray-50 border-r flex items-start justify-center">
+                  <span className="text-lg font-bold text-gray-700">{hour}</span>
+                </div>
+                
+                {/* Coluna dos Agendamentos */}
+                <div className="flex-grow p-4 space-y-4">
+                  {hourlyApps.length > 0 ? (
+                    hourlyApps.map((app) => {
                       const startTime = parseISO(app.start_time);
                       const endTime = parseISO(app.end_time);
                       const statusInfo = statusMap[app.status] || statusMap.pending;
@@ -267,9 +274,12 @@ const AppointmentsPage: React.FC = () => {
                         <Card 
                           key={app.id} 
                           className={cn(
-                            "p-4 transition-all duration-200 hover:shadow-md",
+                            "p-4 transition-all duration-200 hover:shadow-lg",
                             app.status === 'confirmed' && 'border-l-4 border-primary',
                             app.status === 'completed' && 'border-l-4 border-green-500',
+                            app.status === 'pending' && 'border-l-4 border-yellow-500',
+                            app.status === 'rejected' && 'border-l-4 border-red-500',
+                            app.status === 'cancelled' && 'border-l-4 border-gray-400',
                           )}
                         >
                           <div className="flex justify-between items-start">
@@ -338,12 +348,14 @@ const AppointmentsPage: React.FC = () => {
                           </div>
                         </Card>
                       );
-                    })}
-                  </div>
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-2">Livre para agendamento.</p>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
