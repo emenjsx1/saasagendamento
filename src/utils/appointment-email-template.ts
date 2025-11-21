@@ -1,0 +1,144 @@
+export const getAppointmentEmailTemplate = (status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): string => {
+  const statusConfig = {
+    pending: {
+      emoji: '⏰',
+      title: 'Agendamento criado com sucesso',
+      message: 'Recebemos seu agendamento e ele está pendente de confirmação.',
+    },
+    confirmed: {
+      emoji: '✅',
+      title: 'Seu agendamento foi confirmado!',
+      message: 'Seu agendamento foi confirmado com sucesso!',
+    },
+    completed: {
+      emoji: '✅',
+      title: 'Agendamento concluído',
+      message: 'Seu agendamento foi concluído com sucesso!',
+    },
+    cancelled: {
+      emoji: '❌',
+      title: 'Agendamento cancelado',
+      message: 'Seu agendamento foi cancelado.',
+    },
+  };
+
+  const config = statusConfig[status];
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${config.title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); overflow: hidden; max-width: 600px; width: 100%;">
+          
+          <!-- Header com Logo e Cor do Negócio -->
+          <tr>
+            <td style="background: linear-gradient(135deg, {{business_primary_color}}15 0%, {{business_primary_color}}08 100%); padding: 40px 30px; text-align: center; border-bottom: 2px solid {{business_primary_color}}20;">
+              <img src="{{business_logo_url}}" alt="{{business_name}}" style="max-width: 180px; max-height: 60px; height: auto; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" onerror="this.style.display='none';" />
+              <div style="font-size: 48px; font-weight: bold; color: {{business_primary_color}}; margin-bottom: 12px; line-height: 1;">{{status_emoji}}</div>
+              <h1 style="margin: 0; color: {{business_primary_color}}; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                ${config.title}
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Conteúdo Principal -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px 0; color: #374151; font-size: 18px; line-height: 1.6; font-weight: 500;">
+                Olá, <strong style="color: #111827; font-weight: 600;">{{client_name}}</strong>!
+              </p>
+              <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 16px; line-height: 1.7;">
+                ${config.message}
+              </p>
+              
+              <!-- Card de Detalhes -->
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border: 2px solid {{business_primary_color}}20; border-left: 5px solid {{business_primary_color}}; padding: 28px; border-radius: 12px; margin: 30px 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
+                <h2 style="margin: 0 0 24px 0; color: #111827; font-size: 20px; font-weight: 700; border-bottom: 2px solid {{business_primary_color}}20; padding-bottom: 12px;">
+                  Detalhes do seu agendamento
+                </h2>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; width: 140px; vertical-align: top;"><strong>Serviço:</strong></td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{service_name}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; vertical-align: top;"><strong>Data:</strong></td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{formatted_date}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; vertical-align: top;"><strong>Hora:</strong></td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{formatted_time}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; vertical-align: top;"><strong>Duração:</strong></td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{service_duration}} min</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; vertical-align: top;"><strong>Valor:</strong></td>
+                    <td style="padding: 12px 0; color: {{business_primary_color}}; font-size: 18px; font-weight: 700; vertical-align: top;">{{service_price}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 15px; vertical-align: top;"><strong>Código do cliente:</strong></td>
+                    <td style="padding: 12px 0; vertical-align: top;">
+                      <span style="display: inline-block; background-color: #f3f4f6; color: #111827; font-family: 'Courier New', monospace; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: 1px solid #e5e7eb; letter-spacing: 1px;">{{client_code}}</span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Informações do Negócio -->
+              <div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 30px 0; border: 1px solid #e5e7eb;">
+                <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 18px; font-weight: 600;">Informações do negócio</h3>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 100px;"><strong>Nome:</strong></td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">{{business_name}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;"><strong>WhatsApp:</strong></td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{business_whatsapp}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; vertical-align: top;"><strong>Endereço:</strong></td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{business_address}}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Botão de Ação -->
+              <div style="text-align: center; margin: 35px 0 20px 0;">
+                <a href="{{appointment_link}}" style="display: inline-block; background: linear-gradient(135deg, {{business_primary_color}} 0%, {{business_primary_color}}dd 100%); color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px {{business_primary_color}}40;">
+                  Ver detalhes do agendamento
+                </a>
+              </div>
+
+              <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.7; text-align: center;">
+                Estamos ansiosos para atendê-lo! Caso precise reagendar ou cancelar, entre em contato conosco através do WhatsApp.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;">FEITO POR AgenCode</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 11px; line-height: 1.6;">Este é um email automático, por favor não responda.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
+

@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useEmailNotifications } from '@/hooks/use-email-notifications';
+import { useAdminSettings } from '@/hooks/use-admin-settings';
+import { replaceEmailTemplate } from '@/utils/email-template-replacer';
 
 interface UserProfile {
   id: string;
@@ -27,75 +30,93 @@ const AdminUsersPage: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const { sendEmail } = useEmailNotifications();
+  const { settings } = useAdminSettings();
 
   const fetchUsers = async () => {
     setIsLoading(true);
     
-    // 1. Buscar todos os perfis e dados de assinatura
-    let profilesQuery = supabase
-      .from('profiles')
-      .select(`
-        id, 
-        email, 
-        first_name, 
-        last_name, 
-        created_at, 
-        subscriptions!user_id(status, plan_name)
-      `);
+    try {
+      // 1. Buscar todos os perfis
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name, created_at');
 
-    if (searchTerm) {
-      profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-    }
-
-    const { data: profilesData, error: profilesError } = await profilesQuery;
-
-    if (profilesError) {
-      toast.error("Erro ao carregar perfis de usuários.");
-      console.error(profilesError);
-      setIsLoading(false);
-      return;
-    }
-
-    // 2. Buscar administradores e donos de negócios para determinar o papel
-    const { data: adminData } = await supabase.from('admin_users').select('user_id');
-    const adminIds = new Set(adminData?.map(a => a.user_id) || []);
-    
-    const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
-    const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
-    
-    // 3. Mapear e combinar
-    const mappedUsers: UserProfile[] = (profilesData || []).map((p: any) => {
-      const isAdministrator = adminIds.has(p.id);
-      const businessName = businessMap.get(p.id) || null;
-      const isOwner = !!businessName;
-      
-      const subscription = Array.isArray(p.subscriptions) ? p.subscriptions[0] : p.subscriptions;
-      const subStatus = subscription?.status || 'N/A';
-      const planName = subscription?.plan_name || 'N/A';
-      
-      let role: UserProfile['role'] = 'Client';
-      if (isAdministrator) {
-        role = 'Admin';
-      } else if (isOwner) {
-        role = 'Owner';
+      if (searchTerm) {
+        profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       }
-      
-      return {
-        id: p.id,
-        email: p.email || 'N/A', 
-        first_name: p.first_name,
-        last_name: p.last_name,
-        created_at: p.created_at,
-        role: role,
-        is_active: true, // Simulado
-        business_name: businessName,
-        subscription_status: subStatus,
-        plan_name: planName,
-      };
-    });
 
-    setUsers(mappedUsers);
-    setIsLoading(false);
+      const { data: profilesData, error: profilesError } = await profilesQuery;
+
+      if (profilesError) {
+        toast.error("Erro ao carregar perfis de usuários.");
+        console.error(profilesError);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!profilesData || profilesData.length === 0) {
+        setUsers([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Buscar administradores e donos de negócios para determinar o papel
+      const { data: adminData } = await supabase.from('admin_users').select('user_id');
+      const adminIds = new Set(adminData?.map(a => a.user_id) || []);
+      
+      const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
+      const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
+      
+      // 3. Buscar subscriptions separadamente
+      const userIds = profilesData.map(p => p.id);
+      const { data: subscriptionsData } = await supabase
+        .from('subscriptions')
+        .select('user_id, status, plan_name')
+        .in('user_id', userIds);
+      
+      const subscriptionsMap = new Map(
+        (subscriptionsData || []).map(s => [s.user_id, { status: s.status, plan_name: s.plan_name }])
+      );
+      
+      // 4. Mapear e combinar
+      const mappedUsers: UserProfile[] = profilesData.map((p: any) => {
+        const isAdministrator = adminIds.has(p.id);
+        const businessName = businessMap.get(p.id) || null;
+        const isOwner = !!businessName;
+        
+        const subscription = subscriptionsMap.get(p.id);
+        const subStatus = subscription?.status || 'N/A';
+        const planName = subscription?.plan_name || 'N/A';
+        
+        let role: UserProfile['role'] = 'Client';
+        if (isAdministrator) {
+          role = 'Admin';
+        } else if (isOwner) {
+          role = 'Owner';
+        }
+        
+        return {
+          id: p.id,
+          email: p.email || 'N/A', 
+          first_name: p.first_name,
+          last_name: p.last_name,
+          created_at: p.created_at,
+          role: role,
+          is_active: true,
+          business_name: businessName,
+          subscription_status: subStatus,
+          plan_name: planName,
+        };
+      });
+
+      setUsers(mappedUsers);
+    } catch (error: any) {
+      console.error('Erro ao buscar usuários:', error);
+      toast.error("Erro ao carregar usuários.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -112,11 +133,103 @@ const AdminUsersPage: React.FC = () => {
     }
   };
   
-  const handleSendPaymentReminder = (user: UserProfile) => {
-    if (user.subscription_status === 'pending_payment') {
-        toast.info(`Lembrete de pagamento enviado para ${user.email}. (Simulado)`);
-    } else {
-        toast.warning(`O usuário ${user.email} não está com pagamento pendente.`);
+  const handleSendPaymentReminder = async (user: UserProfile) => {
+    if (user.subscription_status !== 'pending_payment') {
+      toast.warning(`O usuário ${user.email} não está com pagamento pendente.`);
+      return;
+    }
+
+    try {
+      const loadingToast = toast.loading(`Enviando lembrete de pagamento para ${user.email}...`);
+      
+      // Buscar dados do pagamento pendente
+      const { data: pendingPayments, error: paymentError } = await supabase
+        .from('payments')
+        .select('amount, id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .eq('payment_type', 'subscription')
+        .order('payment_date', { ascending: false })
+        .limit(1);
+
+      if (paymentError) {
+        console.error('Erro ao buscar pagamento pendente:', paymentError);
+        toast.error(`Erro ao buscar pagamento: ${paymentError.message}`, { id: loadingToast });
+        return;
+      }
+
+      const pendingPayment = pendingPayments && pendingPayments.length > 0 ? pendingPayments[0] : null;
+
+      if (!pendingPayment) {
+        toast.error(`Não foi encontrado pagamento pendente para ${user.email}.`, { id: loadingToast });
+        return;
+      }
+
+      // Buscar valor do plano se não houver pagamento pendente específico
+      let paymentAmount = pendingPayment.amount;
+      if (!paymentAmount) {
+        // Tentar buscar da subscription
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('plan_name')
+          .eq('user_id', user.id)
+          .single();
+        
+        // Valor padrão se não encontrar
+        paymentAmount = 588; // Valor padrão mensal
+      }
+
+      // Buscar template de email
+      const template = settings?.email_templates?.payment_reminder || {
+        subject: "💳 Lembrete de Pagamento: Sua Assinatura",
+        body: "<h1>Pagamento Pendente</h1><p>Olá, seu plano {{plan_name}} está com pagamento pendente. Por favor, finalize o pagamento de {{price}} para continuar usando a plataforma.</p>"
+      };
+
+      // Preparar dados para o template
+      const businessData = {
+        logo_url: '',
+        theme_color: '#16a34a',
+        name: 'AgenCode',
+        phone: '',
+        address: '',
+      };
+
+      // Substituir placeholders manualmente para payment reminder
+      const replacePaymentTemplate = (text: string): string => {
+        return text
+          .replace(/\{\{business_logo_url\}\}/g, businessData.logo_url || '')
+          .replace(/\{\{business_primary_color\}15\}/g, 'rgba(22, 163, 74, 0.15)')
+          .replace(/\{\{business_primary_color\}08\}/g, 'rgba(22, 163, 74, 0.08)')
+          .replace(/\{\{business_primary_color\}20\}/g, 'rgba(22, 163, 74, 0.20)')
+          .replace(/\{\{business_primary_color\}30\}/g, 'rgba(22, 163, 74, 0.30)')
+          .replace(/\{\{business_primary_color\}40\}/g, 'rgba(22, 163, 74, 0.40)')
+          .replace(/\{\{business_primary_color\}dd\}/g, '#16a34add')
+          .replace(/\{\{business_primary_color\}d9\}/g, '#16a34ad9')
+          .replace(/\{\{business_primary_color\}e6\}/g, '#16a34ae6')
+          .replace(/\{\{business_primary_color\}\}/g, businessData.theme_color)
+          .replace(/\{\{business_name\}\}/g, businessData.name)
+          .replace(/\{\{business_whatsapp\}\}/g, businessData.phone || '')
+          .replace(/\{\{business_address\}\}/g, businessData.address || '')
+          .replace(/\{\{plan_name\}\}/g, user.plan_name || 'Plano')
+          .replace(/\{\{price\}\}/g, `MT ${paymentAmount.toFixed(2)}`)
+          .replace(/\{\{payment_link\}\}/g, `${window.location.origin}/checkout`);
+      };
+
+      // Substituir placeholders
+      const subject = replacePaymentTemplate(template.subject);
+      const body = replacePaymentTemplate(template.body);
+
+      // Enviar email
+      await sendEmail({
+        to: user.email,
+        subject: subject,
+        body: body,
+      });
+
+      toast.success(`Lembrete de pagamento enviado com sucesso para ${user.email}!`, { id: loadingToast });
+    } catch (error: any) {
+      console.error('Erro ao enviar lembrete de pagamento:', error);
+      toast.error(`Erro ao enviar lembrete: ${error.message}`);
     }
   };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase, Lock } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase, Lock, CreditCard, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -13,13 +13,15 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverHeader, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateClientCode } from '@/utils/client-code-generator';
 import { useEmailNotifications } from '@/hooks/use-email-notifications'; 
 import { useEmailTemplates } from '@/hooks/use-email-templates';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Currency } from '@/utils/currency';
+import { usePublicSettings } from '@/hooks/use-public-settings';
+import { replaceEmailTemplate } from '@/utils/email-template-replacer';
 
 // Tipos de dados
 interface DaySchedule {
@@ -31,6 +33,7 @@ interface DaySchedule {
 
 interface Business {
   id: string; // Still need the UUID for foreign keys
+  owner_id: string; // Adicionado owner_id
   name: string;
   description: string;
   address: string | null;
@@ -38,9 +41,9 @@ interface Business {
   logo_url: string | null;
   cover_photo_url: string | null;
   working_hours: DaySchedule[] | null;
-  theme_color: string | null; // NEW
-  instagram_url: string | null; // NEW
-  facebook_url: string | null; // NEW
+  theme_color: string | null; 
+  instagram_url: string | null; 
+  facebook_url: string | null; 
 }
 
 interface Service {
@@ -56,6 +59,7 @@ interface ClientDetails {
   client_email: string;
 }
 
+
 // Componente de Seleção de Serviço (Usando Select para melhor escalabilidade)
 const ServiceSelector: React.FC<{ 
   services: Service[], 
@@ -63,7 +67,8 @@ const ServiceSelector: React.FC<{
   onSelectService: (service: Service | null) => void,
   themeColor: string,
   currentCurrency: Currency,
-}> = ({ services, selectedService, onSelectService, themeColor, currentCurrency }) => {
+  T: (pt: string, en: string) => string,
+}> = ({ services, selectedService, onSelectService, themeColor, currentCurrency, T }) => {
   
   const handleSelectChange = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId) || null;
@@ -71,25 +76,31 @@ const ServiceSelector: React.FC<{
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">1. Escolha o Serviço</h2>
-      <Select onValueChange={handleSelectChange} value={selectedService?.id || ""}>
-        <SelectTrigger className="w-full h-12 text-base rounded-xl shadow-sm hover:shadow-md">
-          <SelectValue placeholder="Selecione um serviço..." />
-        </SelectTrigger>
-        <SelectContent>
-          {services.map((service) => (
-            <SelectItem key={service.id} value={service.id}>
-              <div className="flex justify-between items-center w-full">
-                <span className="font-medium">{service.name}</span>
-                <span className="text-sm text-muted-foreground ml-4">({service.duration_minutes} min)</span>
-                <span className="font-bold ml-auto" style={{ color: themeColor }}>{formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Card className="shadow-md border border-gray-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold">{T('1. Escolha o Serviço', '1. Choose Service')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Select onValueChange={handleSelectChange} value={selectedService?.id || ""}>
+          <SelectTrigger className="w-full h-11">
+            <SelectValue placeholder={T('Selecione um serviço...', 'Select a service...')} />
+          </SelectTrigger>
+          <SelectContent>
+            {services.map((service) => (
+              <SelectItem key={service.id} value={service.id}>
+                <div className="flex justify-between items-center w-full gap-4">
+                  <div>
+                    <span className="font-medium">{service.name}</span>
+                    <span className="ml-2 text-sm text-gray-500">({service.duration_minutes} {T('min', 'min')})</span>
+                  </div>
+                  <span className="font-semibold" style={{ color: themeColor }}>{formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -102,7 +113,8 @@ const AppointmentScheduler: React.FC<{
   selectedTime: string | null;
   setSelectedTime: (time: string | null) => void;
   themeColor: string;
-}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, themeColor }) => {
+  T: (pt: string, en: string) => string;
+}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, themeColor, T }) => {
   
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isTimesLoading, setIsTimesLoading] = useState(false);
@@ -145,7 +157,7 @@ const AppointmentScheduler: React.FC<{
 
     if (error) {
       toast.error("Erro ao carregar horários existentes.");
-      console.error(error);
+      console.error('[BOOKING] Erro ao buscar agendamentos existentes:', error);
       setIsTimesLoading(false);
       return;
     }
@@ -160,7 +172,14 @@ const AppointmentScheduler: React.FC<{
 
     while (isBefore(addMinutes(currentTime, duration), endTimeLimit) || isSameMinute(addMinutes(currentTime, duration), endTimeLimit)) {
       
-      // 2. Verificar se o slot está no futuro (apenas para o dia de hoje)
+      // 2. Verificar se o slot está no futuro (para qualquer dia, não apenas hoje)
+      // Se o dia for passado, pular
+      if (isBefore(currentTime, now)) {
+        currentTime = addMinutes(currentTime, 30); // Avança para o próximo slot de 30 min
+        continue;
+      }
+      
+      // Se for o mesmo dia, verificar se o horário já passou
       if (isSameDay(currentTime, now) && isBefore(currentTime, now)) {
         currentTime = addMinutes(currentTime, 30); // Avança para o próximo slot de 30 min
         continue;
@@ -210,31 +229,32 @@ const AppointmentScheduler: React.FC<{
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">2. Escolha Data e Hora</h2>
-      
-      {/* Seleção de Data */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={"outline"}
-            className={cn(
-              "w-full justify-start text-left font-normal h-12 text-base rounded-xl shadow-sm hover:shadow-md",
-              !selectedDate && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-5 w-5" style={{ color: themeColor }} />
-            {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-xl shadow-lg">
+    <Card className="shadow-md border border-gray-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold">{T('2. Escolha Data e Hora', '2. Choose Date and Time')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Seleção de Data */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "w-full justify-start text-left font-normal h-11",
+                !selectedDate && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>{T('Selecione uma data', 'Select a date')}</span>}
+            </Button>
+          </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
           <ShadcnCalendar
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
             initialFocus
             locale={ptBR}
-            // Desabilita datas passadas e domingos/dias fechados
             disabled={(date) => {
               const today = startOfToday();
               if (isBefore(date, today) && !isSameDay(date, today)) return true;
@@ -250,27 +270,23 @@ const AppointmentScheduler: React.FC<{
         </PopoverContent>
       </Popover>
 
-      {/* Seleção de Hora */}
-      {selectedDate && (
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 text-gray-700">Horários disponíveis:</h3>
+        {/* Seleção de Hora */}
+        {selectedDate && (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">{T('Horários disponíveis', 'Available times')}</p>
             {isTimesLoading ? (
               <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin" style={{ color: themeColor }} />
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: themeColor }} />
               </div>
             ) : availableTimes.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                 {availableTimes.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
-                    size="lg" // Botões maiores para mobile
-                    className={cn(
-                      "text-base h-10 rounded-lg transition-all",
-                      selectedTime === time ? "text-white" : "hover:bg-gray-100"
-                    )}
-                    style={selectedTime === time ? { backgroundColor: themeColor, borderColor: themeColor, color: 'white' } : {}}
+                    size="sm"
+                    className={cn("h-10 font-medium")}
+                    style={selectedTime === time ? { backgroundColor: themeColor, borderColor: themeColor } : {}}
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -278,73 +294,77 @@ const AppointmentScheduler: React.FC<{
                 ))}
               </div>
             ) : (
-              <p className="text-center text-sm text-muted-foreground py-4">Nenhum horário disponível neste dia.</p>
+              <p className="text-sm text-gray-500 text-center py-4">{T('Nenhum horário disponível.', 'No available times.')}</p>
             )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
 // Componente de Detalhes do Cliente
-const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void }> = ({ clientDetails, setClientDetails }) => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">3. Seus Dados</h2>
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <Label htmlFor="client_name" className="font-semibold">Nome Completo *</Label>
-        <div className="relative">
-          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            id="client_name" 
-            value={clientDetails.client_name} 
-            onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
-            required 
-            className="pl-10 h-12 rounded-xl text-base"
-          />
-        </div>
+const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void, T: (pt: string, en: string) => string }> = ({ clientDetails, setClientDetails, T }) => (
+  <Card className="shadow-md border border-gray-200">
+    <CardHeader className="pb-3">
+      <CardTitle className="text-lg font-semibold">{T('3. Seus Dados', '3. Your Details')}</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div>
+        <Label htmlFor="client_name" className="text-sm font-medium">
+          {T('Nome Completo', 'Full Name')} *
+        </Label>
+        <Input 
+          id="client_name" 
+          value={clientDetails.client_name} 
+          onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
+          required 
+          className="mt-1 h-11"
+          placeholder={T('Digite seu nome completo', 'Enter your full name')}
+        />
       </div>
       
-      <div className="space-y-1">
-        <Label htmlFor="client_whatsapp" className="font-semibold">WhatsApp *</Label>
-        <div className="relative">
-          <MessageSquare className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            id="client_whatsapp" 
-            value={clientDetails.client_whatsapp} 
-            onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
-            placeholder="(99) 99999-9999"
-            required 
-            className="pl-10 h-12 rounded-xl text-base"
-          />
-        </div>
+      <div>
+        <Label htmlFor="client_whatsapp" className="text-sm font-medium">
+          WhatsApp *
+        </Label>
+        <Input 
+          id="client_whatsapp" 
+          value={clientDetails.client_whatsapp} 
+          onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
+          placeholder="841234567"
+          required 
+          className="mt-1 h-11"
+        />
+        <p className="text-xs text-gray-500 mt-1">{T('Digite apenas números (9 dígitos)', 'Enter numbers only (9 digits)')}</p>
       </div>
       
-      <div className="space-y-1">
-        <Label htmlFor="client_email" className="font-semibold">E-mail (Opcional)</Label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            id="client_email" 
-            type="email"
-            value={clientDetails.client_email} 
-            onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
-            className="pl-10 h-12 rounded-xl text-base"
-          />
-        </div>
+      <div>
+        <Label htmlFor="client_email" className="text-sm font-medium">
+          {T('E-mail (Opcional)', 'Email (Optional)')}
+        </Label>
+        <Input 
+          id="client_email" 
+          type="email"
+          value={clientDetails.client_email} 
+          onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
+          className="mt-1 h-11"
+          placeholder="seu@email.com"
+        />
+        <p className="text-xs text-gray-500 mt-1">{T('Recomendado para receber confirmações', 'Recommended to receive confirmations')}</p>
       </div>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 );
 
 
 const BookingPage = () => {
-  const { businessId: businessSlug } = useParams<{ businessId: string }>(); // Renomeado para businessSlug
+  const { businessId: businessSlug } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
   const { sendEmail } = useEmailNotifications(); 
   const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
-  const { currentCurrency } = useCurrency();
+  const { currentCurrency, T } = useCurrency();
+  const { subscriptionConfig } = usePublicSettings();
   
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -361,51 +381,105 @@ const BookingPage = () => {
     client_email: '',
   });
 
+
   // 1. Carregar dados do negócio e serviços
   useEffect(() => {
     if (!businessSlug) {
       setIsLoading(false);
-      toast.error("ID do negócio inválido.");
+      toast.error(T("ID do negócio inválido.", "Invalid business ID."));
       return;
     }
 
     const fetchData = async () => {
-      // Buscar dados do negócio USANDO O SLUG
-      const { data: businessData, error: businessError } = await supabase
-        .from('businesses')
-        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
-        .eq('slug', businessSlug) // Busca pelo slug
-        .single();
-
-      if (businessError || !businessData) {
-        toast.error("Negócio não encontrado ou erro ao carregar.");
-        console.error(businessError);
-        setIsLoading(false);
-        return;
-      }
-      setBusiness(businessData as Business);
-      const actualBusinessId = businessData.id; // Usamos o ID real para buscar serviços e agendar
-
-      // Buscar serviços
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
-        .select('id, name, duration_minutes, price')
-        .eq('business_id', actualBusinessId)
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (servicesError) {
-        toast.error("Erro ao carregar serviços.");
-        console.error(servicesError);
-      } else {
-        setServices(servicesData as Service[]);
-        // Se houver serviços, pré-seleciona o primeiro para melhor UX
-        if (servicesData.length > 0 && !selectedService) {
-            setSelectedService(servicesData[0] as Service);
-        }
-      }
+      console.log('[BOOKING] 🔍 Iniciando busca de dados do negócio. Slug recebido:', businessSlug);
       
-      setIsLoading(false);
+      try {
+        // Buscar dados do negócio USANDO O SLUG
+        console.log('[BOOKING] 📡 Buscando negócio pelo slug:', businessSlug);
+        const { data: businessData, error: businessError } = await supabase
+          .from('businesses')
+          .select('id, owner_id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
+          .eq('slug', businessSlug)
+          .maybeSingle();
+
+        if (businessError) {
+          console.error('[BOOKING] ❌ Erro ao buscar negócio:', {
+            code: businessError.code,
+            message: businessError.message,
+            details: businessError.details,
+            hint: businessError.hint,
+          });
+          toast.error(
+            T(
+              "Erro ao carregar dados do negócio. Tente novamente mais tarde.",
+              "Error loading business data. Please try again later."
+            )
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        if (!businessData) {
+          console.warn('[BOOKING] ⚠️ Negócio não encontrado para o slug:', businessSlug);
+          toast.error(
+            T(
+              `Negócio não encontrado para "${businessSlug}". Verifique o link e tente novamente.`,
+              `Business not found for "${businessSlug}". Please check the link and try again.`
+            )
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('[BOOKING] ✅ Negócio encontrado:', {
+          id: businessData.id,
+          name: businessData.name,
+          owner_id: businessData.owner_id,
+        });
+
+        setBusiness(businessData as Business);
+        const actualBusinessId = businessData.id;
+
+        // Buscar serviços
+        console.log('[BOOKING] 📡 Buscando serviços para business_id:', actualBusinessId);
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('id, name, duration_minutes, price')
+          .eq('business_id', actualBusinessId)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (servicesError) {
+          console.error('[BOOKING] ❌ Erro ao buscar serviços:', {
+            code: servicesError.code,
+            message: servicesError.message,
+            details: servicesError.details,
+          });
+          toast.error(
+            T(
+              "Erro ao carregar serviços. Tente novamente mais tarde.",
+              "Error loading services. Please try again later."
+            )
+          );
+        } else {
+          console.log('[BOOKING] ✅ Serviços encontrados:', servicesData?.length || 0);
+          setServices(servicesData as Service[]);
+          // Se houver serviços, pré-seleciona o primeiro para melhor UX
+          if (servicesData && servicesData.length > 0 && !selectedService) {
+            setSelectedService(servicesData[0] as Service);
+          }
+        }
+      } catch (error: any) {
+        console.error('[BOOKING] ❌ Erro inesperado ao carregar dados:', error);
+        toast.error(
+          T(
+            "Ocorreu um erro ao carregar os dados do agendamento. Tente novamente mais tarde.",
+            "An error occurred while loading booking data. Please try again later."
+          )
+        );
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -424,18 +498,96 @@ const BookingPage = () => {
     const whatsappNumber = cleanPhone;
     return `https://wa.me/${whatsappNumber}`;
   };
+  
+  // Função para buscar o email do proprietário
+  const fetchOwnerEmail = useCallback(async (ownerId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', ownerId)
+      .single();
+      
+    if (error) {
+      console.error('[BOOKING] Erro ao buscar email do proprietário:', error);
+      return null;
+    }
+    return data?.email || null;
+  }, []);
 
-  // 2. Função de Agendamento
+
+  // Validação de dados básicos
+  const validateBookingData = (): boolean => {
+    if (!clientDetails.client_name || clientDetails.client_name.trim().length < 3) {
+      toast.error(T("Nome completo é obrigatório (mínimo 3 caracteres).", "Full name is required (minimum 3 characters)."));
+      return false;
+    }
+
+    if (!clientDetails.client_whatsapp) {
+      toast.error(T("WhatsApp é obrigatório.", "WhatsApp is required."));
+      return false;
+    }
+
+    return true;
+  };
+
+  // Função de Agendamento (SEM pagamento)
   const handleBooking = async () => {
     if (!selectedService || !selectedDate || !selectedTime) {
-      toast.error("Por favor, selecione o serviço, data e hora.");
+      toast.error(T("Por favor, selecione o serviço, data e hora.", "Please select service, date and time."));
       return;
     }
-    if (!clientDetails.client_name || !clientDetails.client_whatsapp) {
-      toast.error("Nome e WhatsApp são obrigatórios.");
+
+    // Validar dados básicos
+    if (!validateBookingData()) {
       return;
     }
+
     if (!business || !templates) return;
+
+    // Verificar limite de agendamentos diários para contas de teste grátis
+    try {
+      const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('status, is_trial')
+        .eq('user_id', business.owner_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Se for conta de teste grátis, verificar limite de 10 agendamentos diários
+      if (subscriptionData?.status === 'trial' || subscriptionData?.is_trial) {
+        const today = startOfToday();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Contar agendamentos criados hoje para este negócio
+        const { count: appointmentsToday, error: countError } = await supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', business.id)
+          .gte('created_at', today.toISOString())
+          .lt('created_at', tomorrow.toISOString());
+
+        if (countError) {
+          console.error('[BOOKING] Erro ao contar agendamentos:', countError);
+        } else {
+          const MAX_DAILY_APPOINTMENTS = 10;
+          if ((appointmentsToday || 0) >= MAX_DAILY_APPOINTMENTS) {
+            toast.error(
+              T(
+                "Atingiu o número máximo de agendamento. Só vai retornar depois das 24h.",
+                "Reached maximum number of appointments. Will return after 24 hours."
+              ),
+              { duration: 5000 }
+            );
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[BOOKING] Erro ao verificar limite de agendamentos:', error);
+      // Continuar mesmo se houver erro na verificação
+    }
 
     setIsSubmitting(true);
 
@@ -444,7 +596,7 @@ const BookingPage = () => {
     let startTime = new Date(selectedDate);
     startTime = setHours(startTime, hours);
     startTime = setMinutes(startTime, minutes);
-    startTime.setSeconds(0, 0); // Zera segundos e milissegundos
+    startTime.setSeconds(0, 0);
 
     // Calcula o tempo final
     const endTime = addMinutes(startTime, selectedService.duration_minutes);
@@ -452,53 +604,166 @@ const BookingPage = () => {
     // Gera o código único do cliente
     const clientCode = generateClientCode();
 
-    const appointmentData = {
-      business_id: business.id, // Usa o ID real do negócio
+    const newAppointmentData = {
+      business_id: business.id,
       service_id: selectedService.id,
       client_name: clientDetails.client_name,
       client_whatsapp: clientDetails.client_whatsapp,
       client_email: clientDetails.client_email || null,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
-      status: 'pending', // Começa como pendente
-      client_code: clientCode, // Adiciona o código do cliente
+      status: 'pending',
+      client_code: clientCode,
     };
 
-    const { data, error } = await supabase
-      .from('appointments')
-      .insert(appointmentData)
-      .select('id')
-      .single();
+    console.log('[BOOKING] 📝 Criando agendamento com dados:', {
+      business_id: business.id,
+      business_name: business.name,
+      business_owner_id: business.owner_id,
+      service_id: selectedService.id,
+      service_name: selectedService.name,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      client_code: clientCode,
+      client_name: clientDetails.client_name,
+      full_data: newAppointmentData,
+    });
 
-    setIsSubmitting(false);
+    // Criar o agendamento
+    console.log('[BOOKING] 📤 Enviando requisição para criar agendamento:', {
+      table: 'appointments',
+      payload: newAppointmentData,
+    });
 
-    if (error) {
-      // Se o erro for de unicidade do client_code, podemos tentar novamente (embora improvável)
-      if (error.code === '23505') { 
-        toast.error("Erro de código duplicado. Tente novamente.");
-      } else {
-        toast.error("Erro ao finalizar agendamento: " + error.message);
+    try {
+      const { data: createdAppointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .insert(newAppointmentData)
+        .select('id, business_id, start_time, status')
+        .single();
+
+      console.log('[BOOKING] 📥 Resposta da criação:', { 
+        success: !appointmentError,
+        data: createdAppointment,
+        error: appointmentError ? {
+          code: appointmentError.code,
+          message: appointmentError.message,
+          details: appointmentError.details,
+          hint: appointmentError.hint,
+        } : null,
+      });
+
+      if (appointmentError) {
+        console.error('[BOOKING] ❌ Erro ao criar agendamento:', {
+          code: appointmentError.code,
+          message: appointmentError.message,
+          details: appointmentError.details,
+          hint: appointmentError.hint,
+        });
+        
+        let errorMessage = T("Erro ao criar agendamento.", "Error creating appointment.");
+        
+        if (appointmentError.code === '23505') {
+          errorMessage = T("Erro de código duplicado. Tente novamente.", "Duplicate code error. Please try again.");
+        } else if (appointmentError.message) {
+          errorMessage = T("Erro ao criar agendamento: ", "Error creating appointment: ") + appointmentError.message;
+        }
+        
+        toast.error(errorMessage);
+        setIsSubmitting(false);
+        return;
       }
-      console.error(error);
-    } else {
-      toast.success("Agendamento realizado com sucesso!");
+
+      if (!createdAppointment || !createdAppointment.id) {
+        console.error('[BOOKING] ❌ Agendamento criado mas sem ID:', createdAppointment);
+        toast.error(
+          T(
+            "Ocorreu um erro ao criar o agendamento. Tente novamente mais tarde.",
+            "An error occurred while creating the appointment. Please try again later."
+          )
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('[BOOKING] ✅ Agendamento criado com sucesso! ID:', createdAppointment.id);
+
+      // Enviar dados para o webhook
+      try {
+        const webhookPayload = {
+          appointment_id: createdAppointment.id,
+          business_id: business.id,
+          business_name: business.name,
+          business_phone: business.phone || null,
+          business_whatsapp: business.phone || null, // Usando phone como WhatsApp
+          service_id: selectedService.id,
+          service_name: selectedService.name,
+          service_duration: selectedService.duration_minutes,
+          service_price: selectedService.price,
+          client_name: clientDetails.client_name,
+          client_whatsapp: clientDetails.client_whatsapp,
+          client_email: clientDetails.client_email || null,
+          client_code: clientCode,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          formatted_date: format(startTime, 'dd/MM/yyyy', { locale: ptBR }),
+          formatted_time: format(startTime, 'HH:mm', { locale: ptBR }),
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        };
+
+        console.log('[BOOKING] 📤 Enviando dados para webhook:', webhookPayload);
+
+        const webhookResponse = await fetch('https://srv-4544.cloudnuvem.net/webhook/agencodes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookPayload),
+        });
+
+        if (webhookResponse.ok) {
+          console.log('[BOOKING] ✅ Webhook enviado com sucesso!');
+        } else {
+          console.warn('[BOOKING] ⚠️ Webhook retornou status não-OK:', webhookResponse.status, webhookResponse.statusText);
+        }
+      } catch (webhookError: any) {
+        // Não bloquear o fluxo se o webhook falhar
+        console.error('[BOOKING] ⚠️ Erro ao enviar webhook (não crítico):', webhookError);
+      }
+
+      toast.success(T("Agendamento realizado com sucesso!", "Appointment successfully scheduled!"));
       
-      // 3. Enviar Notificação por E-mail (para o cliente, se tiver e-mail)
+      const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
+      const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
+      
+      // Enviar notificação para o cliente (se tiver e-mail)
       if (clientDetails.client_email) {
         const template = templates.appointment_pending;
-        const formattedDate = format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR });
-        const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
         
-        let subject = template.subject;
-        let body = template.body;
-        
-        // Substituição de Placeholders
-        subject = subject.replace(/\{\{service_name\}\}/g, selectedService.name);
-        body = body.replace(/\{\{client_name\}\}/g, clientDetails.client_name);
-        body = body.replace(/\{\{service_name\}\}/g, selectedService.name);
-        body = body.replace(/\{\{date\}\}/g, formattedDate);
-        body = body.replace(/\{\{time\}\}/g, formattedTime);
-        body = body.replace(/\{\{client_code\}\}/g, clientCode);
+        const appointmentData = {
+          client_name: clientDetails.client_name,
+          client_code: clientCode,
+          service_name: selectedService.name,
+          service_duration: selectedService.duration_minutes,
+          service_price: selectedService.price,
+          formatted_date: format(startTime, 'dd/MM/yyyy', { locale: ptBR }),
+          formatted_time: formattedTime,
+          appointment_status: 'pending' as const,
+          appointment_id: createdAppointment.id,
+          appointment_link: `${window.location.origin}/confirmation/${createdAppointment.id}`,
+        };
+
+        const businessData = {
+          logo_url: business.logo_url,
+          theme_color: business.theme_color,
+          name: business.name,
+          phone: business.phone,
+          address: business.address,
+        };
+
+        let subject = replaceEmailTemplate(template.subject, businessData, appointmentData, currentCurrency);
+        let body = replaceEmailTemplate(template.body, businessData, appointmentData, currentCurrency);
         
         sendEmail({
           to: clientDetails.client_email,
@@ -507,7 +772,42 @@ const BookingPage = () => {
         });
       }
       
-      navigate(`/confirmation/${data.id}`);
+      // Enviar notificação para o dono do negócio
+      const ownerEmail = await fetchOwnerEmail(business.owner_id);
+      if (ownerEmail) {
+          const ownerSubject = `[NOVO AGENDAMENTO] ${business.name}: ${clientDetails.client_name} - ${selectedService.name}`;
+          const ownerBody = `
+            <h1>Novo Agendamento Pendente</h1>
+            <p>Um novo agendamento foi feito para o seu negócio, ${business.name}.</p>
+            <ul>
+                <li><strong>Cliente:</strong> ${clientDetails.client_name}</li>
+                <li><strong>Serviço:</strong> ${selectedService.name}</li>
+                <li><strong>Data/Hora:</strong> ${formattedDate} às ${formattedTime}</li>
+                <li><strong>WhatsApp:</strong> ${clientDetails.client_whatsapp}</li>
+                <li><strong>E-mail:</strong> ${clientDetails.client_email || 'N/A'}</li>
+                <li><strong>Código Cliente:</strong> ${clientCode}</li>
+            </ul>
+            <p><a href="${window.location.origin}/dashboard/agenda">Acessar Agenda</a></p>
+          `;
+          
+          sendEmail({
+              to: ownerEmail,
+              subject: ownerSubject,
+              body: ownerBody,
+          });
+      }
+
+      // Redirecionar para página de confirmação
+      navigate(`/confirmation/${createdAppointment.id}`);
+    } catch (error: any) {
+      console.error('[BOOKING] ❌ Erro inesperado ao criar agendamento:', error);
+      toast.error(
+        T(
+          "Ocorreu um erro inesperado. Tente novamente mais tarde.",
+          "An unexpected error occurred. Please try again later."
+        )
+      );
+      setIsSubmitting(false);
     }
   };
 
@@ -520,7 +820,7 @@ const BookingPage = () => {
   }
 
   if (!business) {
-    return <div className="text-center p-10">Negócio não encontrado.</div>;
+    return <div className="text-center p-10">{T('Negócio não encontrado.', 'Business not found.')}</div>;
   }
   
   if (services.length === 0) {
@@ -530,11 +830,11 @@ const BookingPage = () => {
           <Card className="mb-8 rounded-xl shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-primary">{business.name}</CardTitle>
-              <p className="text-gray-600">Agende seu horário de forma rápida e fácil.</p>
+              <p className="text-gray-600">{T('Agende seu horário de forma rápida e fácil.', 'Schedule your appointment quickly and easily.')}</p>
             </CardHeader>
           </Card>
           <Card className="p-6 text-center rounded-xl shadow-lg">
-            <p className="text-muted-foreground">Desculpe, este negócio não possui serviços ativos para agendamento no momento.</p>
+            <p className="text-muted-foreground">{T('Desculpe, este negócio não possui serviços ativos para agendamento no momento.', 'Sorry, this business does not have active services for booking at the moment.')}</p>
           </Card>
         </div>
       </div>
@@ -547,91 +847,121 @@ const BookingPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       {/* Banner Section */}
       {business.cover_photo_url && (
         <div 
-          className="h-40 w-full bg-cover bg-center relative"
+          className="h-40 md:h-48 w-full bg-cover bg-center relative"
           style={{ backgroundImage: `url(${business.cover_photo_url})` }}
         >
-          <div className="absolute inset-0 bg-black/30"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto p-4 md:p-8 -mt-12 relative z-10">
-        {/* Business Header Card (Melhorado) */}
-        <Card className="mb-8 p-4 rounded-xl shadow-xl border-t-4" style={{ borderTopColor: themeColor }}>
-          <CardHeader className="flex flex-col md:flex-row items-center md:items-start space-y-3 md:space-y-0 md:space-x-4 p-0">
-            {business.logo_url && (
-              <img 
-                src={business.logo_url} 
-                alt={`${business.name} Logo`} 
-                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md flex-shrink-0"
-              />
-            )}
-            <div className="text-center md:text-left flex-grow">
-              <CardTitle className="text-3xl md:text-4xl font-extrabold text-gray-900">{business.name}</CardTitle>
-              <p className="text-md text-gray-600 mt-1 max-w-xl">
-                {business.description || "Organize sua agenda de forma simples e eficaz."}
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-4 flex flex-col md:flex-row items-center md:justify-start">
-            {business.address && (
-              <a 
-                href={getMapLink(business.address)} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors font-medium md:mr-4"
-              >
-                <MapPin className="h-4 w-4 mr-2 text-red-500"/> 
-                {business.address} (Ver no Mapa)
-              </a>
-            )}
-            {whatsappLink && (
-              <Button 
-                asChild 
-                className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white transition-colors shadow-md h-9 text-sm rounded-lg"
-                size="default"
-              >
-                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Falar no WhatsApp
-                </a>
-              </Button>
-            )}
-            
-            {/* Social Links */}
-            {(business.instagram_url || business.facebook_url) && (
-                <div className="flex space-x-3 ml-0 md:ml-4 pt-2 md:pt-0">
-                    {business.instagram_url && (
-                        <a href={business.instagram_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-pink-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-                        </a>
-                    )}
-                    {business.facebook_url && (
-                        <a href={business.facebook_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-                        </a>
-                    )}
+      <div className="max-w-5xl mx-auto p-4 md:p-8 -mt-8 relative z-10">
+        {/* Business Header Card */}
+        <Card className="mb-6 shadow-lg border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+              {business.logo_url && (
+                <img 
+                  src={business.logo_url} 
+                  alt={`${business.name} Logo`} 
+                  className="w-20 h-20 rounded-xl object-cover border-2 border-white shadow-md flex-shrink-0"
+                />
+              )}
+              <div className="text-center md:text-left flex-grow">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">{business.name}</h1>
+                {business.description && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    {business.description}
+                  </p>
+                )}
+                
+                {/* Localização */}
+                {business.address && (
+                  <a 
+                    href={getMapLink(business.address)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-primary transition-colors mb-3"
+                  >
+                    <MapPin className="h-4 w-4 text-red-500"/> 
+                    <span>{business.address}</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+
+                {/* WhatsApp e Redes Sociais */}
+                <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start">
+                  {whatsappLink && (
+                    <Button 
+                      asChild 
+                      size="sm"
+                      className="bg-[#25D366] hover:bg-[#20BA5A] text-white h-9"
+                    >
+                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                        <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                        </svg>
+                        WhatsApp
+                      </a>
+                    </Button>
+                  )}
+                  
+                  {/* Redes Sociais */}
+                  {business.instagram_url && (
+                    <Button 
+                      asChild 
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                    >
+                      <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
+                        <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        </svg>
+                        Instagram
+                      </a>
+                    </Button>
+                  )}
+                  
+                  {business.facebook_url && (
+                    <Button 
+                      asChild 
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                    >
+                      <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
+                        <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        Facebook
+                      </a>
+                    </Button>
+                  )}
                 </div>
-            )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Coluna de Seleção */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6">
             
             <ServiceSelector 
               services={services} 
               selectedService={selectedService} 
               onSelectService={(service) => {
                 setSelectedService(service);
-                setSelectedDate(undefined); // Reset date/time when service changes
+                setSelectedDate(undefined);
                 setSelectedTime(null); 
               }} 
               themeColor={themeColor}
               currentCurrency={currentCurrency}
+              T={T}
             />
 
             {selectedService && business.working_hours && (
@@ -643,6 +973,7 @@ const BookingPage = () => {
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
                 themeColor={themeColor}
+                T={T}
               />
             )}
 
@@ -650,86 +981,91 @@ const BookingPage = () => {
               <ClientDetailsForm 
                 clientDetails={clientDetails}
                 setClientDetails={setClientDetails}
+                T={T}
               />
             )}
           </div>
 
           {/* Coluna de Resumo */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-8 rounded-xl shadow-xl border-2 border-gray-100">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold" style={{ color: themeColor }}>Resumo do Agendamento</CardTitle>
+            <Card className="sticky top-8 shadow-md border border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">{T('Resumo', 'Summary')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedService ? (
                   <>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-base">
-                        <span className="font-bold text-gray-700 flex items-center"><Briefcase className="h-4 w-4 mr-2" style={{ color: themeColor }} /> Serviço:</span>
-                        <span className="font-extrabold" style={{ color: themeColor }}>{selectedService.name}</span>
+                    <div className="space-y-2 pb-4 border-b">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">{selectedService.name}</span>
+                        <span className="font-medium">{formatCurrency(selectedService.price, currentCurrency.key, currentCurrency.locale)}</span>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Duração:</span>
-                        <span>{selectedService.duration_minutes} minutos</span>
-                      </div>
+                      <div className="text-xs text-gray-500">{selectedService.duration_minutes} {T('min', 'min')}</div>
                     </div>
                     
-                    <Separator />
+                    {selectedDate && selectedTime && (
+                      <div className="space-y-2 pb-4 border-b text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">{T('Data', 'Date')}</span>
+                          <span>{format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">{T('Hora', 'Time')}</span>
+                          <span>{selectedTime}</span>
+                        </div>
+                      </div>
+                    )}
 
-                    <div className="flex items-center justify-between text-xl font-extrabold pt-2">
-                      <span>Preço Total:</span>
-                      <span className="text-xl font-extrabold text-green-600">
-                        {formatCurrency(selectedService.price, currentCurrency.key, currentCurrency.locale)}
-                      </span>
+                    {clientDetails.client_name && (
+                      <div className="pb-4 border-b text-sm">
+                        <div className="text-gray-600">{T('Cliente', 'Client')}</div>
+                        <div className="font-medium">{clientDetails.client_name}</div>
+                      </div>
+                    )}
+
+
+                    <div className="pt-2">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="font-semibold">{T('Total', 'Total')}</span>
+                        <span className="text-xl font-bold" style={{ color: themeColor }}>
+                          {formatCurrency(selectedService.price, currentCurrency.key, currentCurrency.locale)}
+                        </span>
+                      </div>
+                      
+                      <Button 
+                        className="w-full h-11" 
+                        onClick={handleBooking} 
+                        disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
+                        style={{ backgroundColor: themeColor }}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {T('Confirmando...', 'Confirming...')}
+                          </>
+                        ) : (
+                          T('Confirmar Agendamento', 'Confirm Appointment')
+                        )}
+                      </Button>
                     </div>
-                    <Separator />
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-2 text-center">Selecione um serviço para ver o resumo.</p>
+                  <p className="text-sm text-gray-500 text-center py-8">{T('Selecione um serviço', 'Select a service')}</p>
                 )}
-
-                {selectedDate && selectedTime && (
-                  <div className="space-y-2">
-                    <div className="flex items-center text-base">
-                      <Calendar className="h-4 w-4 mr-2" style={{ color: themeColor }} />
-                      <span className="font-medium">Data:</span> {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
-                    </div>
-                    <div className="flex items-center text-base">
-                      <Clock className="h-4 w-4 mr-2" style={{ color: themeColor }} />
-                      <span className="font-medium">Hora:</span> {selectedTime}
-                    </div>
-                    <Separator />
-                  </div>
-                )}
-
-                {clientDetails.client_name && (
-                  <div className="space-y-2">
-                    <div className="flex items-center text-base">
-                      <User className="h-4 w-4 mr-2" style={{ color: themeColor }} />
-                      <span className="font-medium">Cliente:</span> {clientDetails.client_name}
-                    </div>
-                    <Separator />
-                  </div>
-                )}
-
-                <Button 
-                  className="w-full text-white transition-all duration-300 shadow-lg h-12 text-lg rounded-xl hover:shadow-xl md:h-10 md:text-base" 
-                  size="lg" 
-                  onClick={handleBooking} 
-                  disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
-                  style={{ backgroundColor: themeColor, borderColor: themeColor, color: 'white' }}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle className="h-5 w-5 mr-2" />
-                      Confirmar Agendamento
-                    </>
-                  )}
-                </Button>
               </CardContent>
             </Card>
+          </div>
+        </div>
+        
+        {/* Footer AGENCODES */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <div className="text-center">
+            <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">
+              FEITO POR AgenCode
+            </p>
+            <p className="text-xs text-gray-400">
+              {T('Plataforma de agendamentos inteligente', 'Smart booking platform')}
+            </p>
           </div>
         </div>
       </div>
@@ -738,3 +1074,4 @@ const BookingPage = () => {
 };
 
 export default BookingPage;
+

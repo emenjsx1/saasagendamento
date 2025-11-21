@@ -22,9 +22,12 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold text-center mb-6">Acesso ao Painel do Negócio</h2>
+    <div className="min-h-screen flex items-center justify-center bg-white p-4 relative overflow-hidden">
+      {/* Grid pattern sutil */}
+      <div className="absolute inset-0 grid-pattern opacity-20"></div>
+      
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-black/10 relative z-10">
+        <h2 className="text-3xl font-bold text-center mb-8 text-black">Acesso ao Painel do Negócio</h2>
         <Auth
           supabaseClient={supabase}
           providers={[]}
@@ -33,8 +36,8 @@ const LoginPage = () => {
             variables: {
               default: {
                 colors: {
-                  brand: 'hsl(var(--primary))',
-                  brandAccent: 'hsl(var(--primary-foreground))',
+                  brand: '#000000',
+                  brandAccent: '#000000',
                 },
               },
             },
@@ -43,10 +46,10 @@ const LoginPage = () => {
           view="sign_in"
           redirectTo={window.location.origin + '/dashboard'}
         />
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Não tem uma conta?{' '}
-            <Link to="/checkout/trial" className="text-primary hover:underline font-medium">
+            <Link to="/checkout/trial" className="text-black hover:underline font-semibold border-b border-black/0 hover:border-black/30 transition-all">
               Crie sua conta gratuita
             </Link>
           </p>

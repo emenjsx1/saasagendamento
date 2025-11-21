@@ -43,7 +43,7 @@ export const useBusiness = (): UseBusinessResult => {
         .from('businesses')
         .select('id, name, description, address, working_hours, phone, logo_url, cover_photo_url, theme_color, instagram_url, facebook_url, slug')
         .eq('owner_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
         toast.error("Erro ao carregar dados do negócio.");

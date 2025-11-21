@@ -40,7 +40,7 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
     const filePath = `${pathPrefix}/${fileName}`;
 
     try {
-      // 1. Upload the file (upsert: true garante que ele sobrescreva)
+      // 1. Tentar fazer upload diretamente (mais eficiente)
       const { data, error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -49,6 +49,29 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
         });
 
       if (uploadError) {
+        // Se o erro for relacionado ao bucket não encontrado ou permissões
+        if (uploadError.message?.includes('Bucket not found') || 
+            uploadError.message?.includes('not found') ||
+            uploadError.message?.includes('does not exist') ||
+            uploadError.statusCode === 404 ||
+            uploadError.message?.includes('permission') ||
+            uploadError.message?.includes('policy') ||
+            uploadError.statusCode === 403) {
+          const isPermissionError = uploadError.message?.includes('permission') || 
+                                   uploadError.message?.includes('policy') || 
+                                   uploadError.statusCode === 403;
+          
+          toast.error(
+            isPermissionError
+              ? `Erro de permissão no bucket "${bucket}". Execute: supabase/migrations/fix_user_avatars_policies.sql no Supabase SQL Editor.`
+              : `Bucket "${bucket}" não encontrado. Execute: supabase/migrations/create_user_avatars_bucket.sql no Supabase SQL Editor.`,
+            { duration: 10000 }
+          );
+          console.error('Erro de bucket/permissão:', uploadError);
+          setIsUploading(false);
+          return;
+        }
+        // Outros erros de upload (permissões, tamanho, etc.)
         throw uploadError;
       }
 
@@ -69,8 +92,19 @@ const SupabaseImageUpload: React.FC<SupabaseImageUploadProps> = ({
       toast.success(`${label} carregado com sucesso!`);
 
     } catch (error: any) {
-      toast.error(`Erro ao carregar ${label}: ${error.message}`);
-      console.error(error);
+      console.error('Erro completo no upload:', error);
+      
+      // Mensagens de erro mais específicas
+      if (error.message?.includes('permission') || error.message?.includes('policy') || error.statusCode === 403) {
+        toast.error(
+          `Erro de permissão ao fazer upload. Verifique se as políticas RLS do bucket "${bucket}" estão configuradas corretamente.`,
+          { duration: 10000 }
+        );
+      } else if (error.message?.includes('size') || error.message?.includes('limit')) {
+        toast.error(`Arquivo muito grande. O limite é de 5MB.`);
+      } else {
+        toast.error(`Erro ao carregar ${label}: ${error.message || 'Erro desconhecido'}`);
+      }
     } finally {
       setIsUploading(false);
       // Limpa o input file para permitir o re-upload do mesmo arquivo

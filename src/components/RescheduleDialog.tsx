@@ -117,7 +117,14 @@ const RescheduleDialog: React.FC<RescheduleDialogProps> = ({
 
     while (isBefore(addMinutes(currentTime, duration), endTimeLimit) || isSameMinute(addMinutes(currentTime, duration), endTimeLimit)) {
       
-      // 2. Verificar se o slot está no futuro (apenas para o dia de hoje)
+      // 2. Verificar se o slot está no futuro (para qualquer dia, não apenas hoje)
+      // Se o dia for passado, pular
+      if (isBefore(currentTime, now)) {
+        currentTime = addMinutes(currentTime, 30); // Avança para o próximo slot de 30 min
+        continue;
+      }
+      
+      // Se for o mesmo dia, verificar se o horário já passou
       if (isSameDay(currentTime, now) && isBefore(currentTime, now)) {
         currentTime = addMinutes(currentTime, 30); // Avança para o próximo slot de 30 min
         continue;

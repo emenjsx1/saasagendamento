@@ -42,9 +42,9 @@ const SupportForm: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg border border-black/10">
       <CardHeader>
-        <CardTitle className="text-2xl flex items-center"><Send className="h-5 w-5 mr-2" /> Formulário de Suporte</CardTitle>
+        <CardTitle className="text-2xl flex items-center text-black"><Send className="h-5 w-5 mr-2" /> Formulário de Suporte</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -88,7 +88,7 @@ const SupportForm: React.FC = () => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-black hover:bg-black/90 text-white shadow-lg hover:shadow-xl transition-all duration-300" disabled={isSubmitting}>
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -103,28 +103,28 @@ const SupportForm: React.FC = () => {
 };
 
 const ContactInfo: React.FC = () => (
-  <div className="space-y-6 p-6 bg-gray-100 rounded-lg shadow-inner">
-    <h3 className="text-xl font-bold text-gray-800">Informações de Contato</h3>
+  <div className="space-y-6 p-6 bg-black/5 rounded-2xl border border-black/10 shadow-lg">
+    <h3 className="text-xl font-bold text-black">Informações de Contato</h3>
     <div className="space-y-3">
       <div className="flex items-center text-gray-700">
-        <Mail className="h-5 w-5 mr-3 text-primary" />
+        <Mail className="h-5 w-5 mr-3 text-black" />
         <div>
-          <p className="font-semibold">E-mail:</p>
-          <p className="text-sm">suporte@exemplo.com</p>
+          <p className="font-semibold text-black">E-mail:</p>
+          <p className="text-sm text-gray-600">suporte@exemplo.com</p>
         </div>
       </div>
       <div className="flex items-center text-gray-700">
-        <Phone className="h-5 w-5 mr-3 text-primary" />
+        <Phone className="h-5 w-5 mr-3 text-black" />
         <div>
-          <p className="font-semibold">Telefone:</p>
-          <p className="text-sm">+258 123 456 789</p>
+          <p className="font-semibold text-black">Telefone:</p>
+          <p className="text-sm text-gray-600">+258 123 456 789</p>
         </div>
       </div>
       <div className="flex items-center text-gray-700">
-        <Clock className="h-5 w-5 mr-3 text-primary" />
+        <Clock className="h-5 w-5 mr-3 text-black" />
         <div>
-          <p className="font-semibold">Horário de Atendimento:</p>
-          <p className="text-sm">Segunda a Sexta, 09h às 18h</p>
+          <p className="font-semibold text-black">Horário de Atendimento:</p>
+          <p className="text-sm text-gray-600">Segunda a Sexta, 09h às 18h</p>
         </div>
       </div>
     </div>
@@ -133,9 +133,12 @@ const ContactInfo: React.FC = () => (
 
 const SupportSection: React.FC = () => {
   return (
-    <section id="support" className="py-16 md:py-24 bg-white">
-      <div className="container mx-auto px-4 text-center">
-        <h2 className="text-4xl font-extrabold text-gray-900 mb-4">Precisa de ajuda?</h2>
+    <section id="support" className="py-16 md:py-24 bg-white relative overflow-hidden">
+      {/* Grid pattern sutil */}
+      <div className="absolute inset-0 grid-pattern opacity-20"></div>
+      
+      <div className="container mx-auto px-4 text-center relative z-10">
+        <h2 className="text-4xl font-extrabold text-black mb-4">Precisa de ajuda?</h2>
         <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
           Estamos aqui para resolver suas dúvidas! Entre em contato através do formulário ou dos nossos canais diretos.
         </p>

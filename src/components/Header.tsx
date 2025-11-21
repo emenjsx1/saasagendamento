@@ -22,11 +22,11 @@ const Header: React.FC = () => {
   const startText = T('Começar Agora', 'Start Now');
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md transition-shadow duration-300 shadow-sm">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-extrabold text-primary tracking-wider">
-          AGENCODES
+    <header className="sticky top-0 z-50 w-full border-b border-black/10 bg-white/95 backdrop-blur-xl transition-all duration-300 shadow-sm">
+      <div className="container mx-auto flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 md:px-6">
+        {/* Logo minimalista */}
+        <Link to="/" className="text-xl sm:text-2xl font-extrabold tracking-wider text-black hover:opacity-80 transition-opacity duration-300">
+          AgenCode
         </Link>
 
         {/* Desktop Navigation */}
@@ -36,25 +36,30 @@ const Header: React.FC = () => {
               <a 
                 key={item.name_pt}
                 href={item.href}
-                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors relative group"
+                className="text-sm font-semibold text-gray-700 hover:text-black transition-colors duration-300 relative group"
               >
                 {T(item.name_pt, item.name_en)}
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
               </a>
             ) : (
               <Link 
                 key={item.name_pt}
                 to={item.href}
-                className="text-sm font-medium text-gray-600 hover:text-primary transition-colors relative group"
+                className="text-sm font-semibold text-gray-700 hover:text-black transition-colors duration-300 relative group"
               >
                 {T(item.name_pt, item.name_en)}
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
               </Link>
             )
           ))}
           <CurrencySelector />
-          <Button asChild className="shadow-md hover:shadow-lg transition-all duration-300">
-            <Link to="/login">{loginText}</Link>
+          <Button 
+            asChild 
+            className="bg-black hover:bg-black/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          >
+            <Link to="/login">
+              {loginText}
+            </Link>
           </Button>
         </nav>
 

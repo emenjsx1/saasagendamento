@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY'); // Assumindo que a chave Resend será configurada
-const RESEND_FROM_EMAIL = Deno.env.get('RESEND_TEST_EMAIL') || 'onboarding@resend.dev';
+// Usando o email fixo fornecido pelo usuário
+const RESEND_FROM_EMAIL = 'agencodes@mozcodes.space'; 
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

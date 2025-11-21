@@ -24,7 +24,7 @@ interface DateRange {
 
 const FinancePage: React.FC = () => {
   const { businessId, isLoading: isBusinessLoading } = useBusiness();
-  const { currentCurrency } = useCurrency();
+  const { currentCurrency, T } = useCurrency();
   
   // Inicializa o filtro para o Mês Atual
   const today = new Date();
@@ -72,158 +72,209 @@ const FinancePage: React.FC = () => {
 
   if (!businessId) {
     return (
-      <Card className="p-6 text-center">
-        <CardTitle className="text-xl mb-4">Negócio Não Cadastrado</CardTitle>
-        <p className="mb-4">Você precisa cadastrar as informações do seu negócio antes de gerenciar as finanças.</p>
-        <Button asChild>
-          <a href="/register-business">Cadastrar Meu Negócio</a>
+      <Card className="p-6 text-center rounded-3xl border border-gray-200 shadow-xl">
+        <CardTitle className="text-xl mb-4">{T('Negócio Não Cadastrado', 'Business Not Registered')}</CardTitle>
+        <p className="mb-4">{T('Você precisa cadastrar as informações do seu negócio antes de gerenciar as finanças.', 'You need to register your business information before managing finances.')}</p>
+        <Button asChild className="rounded-2xl bg-black text-white">
+          <a href="/register-business">{T('Cadastrar Meu Negócio', 'Register My Business')}</a>
         </Button>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-3xl font-bold flex items-center">
-          <DollarSign className="h-7 w-7 mr-3" />
-          Gestão Financeira
-        </h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Transação
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Transação Manual</DialogTitle>
-            </DialogHeader>
-            <TransactionForm businessId={businessId} onSuccess={handleTransactionSuccess} />
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      {/* Filtros */}
-      <div className="flex flex-col gap-4">
-        <PeriodFilter range={periodRange} setRange={setPeriodRange} />
-        
-        {/* Filtro por Serviço */}
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select 
-            onValueChange={(value) => setSelectedServiceId(value === 'all' ? null : value)} 
-            value={selectedServiceId || 'all'}
-          >
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Filtrar por Serviço" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Serviços</SelectItem>
-              {services.map(service => (
-                <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="space-y-10 pb-16">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Sala financeira', 'Finance Room')}</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold mt-2">{T('Gestão Estratégica', 'Strategic Management')}</h1>
+            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+              {T('Controle completo do fluxo de caixa, atualizado em tempo real. Acompanhe entradas, saídas e lucro líquido em uma única visão de alto impacto.', 'Complete cash flow control, updated in real time. Track income, expenses and net profit in a single high-impact view.')}
+            </p>
+          </div>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="rounded-2xl bg-white text-black hover:bg-white/90">
+                <Plus className="h-4 w-4 mr-2" />
+                {T('Nova transação', 'New Transaction')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[480px] rounded-3xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">{T('Registrar transação manual', 'Register Manual Transaction')}</DialogTitle>
+              </DialogHeader>
+              <TransactionForm businessId={businessId} onSuccess={handleTransactionSuccess} />
+            </DialogContent>
+          </Dialog>
         </div>
-
-        <h2 className="text-xl font-semibold text-gray-700">Resumo do Período: {periodLabel}</h2>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Receitas */}
-        <Card className="border-l-4 border-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <ArrowUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total de entradas no período.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Receita', 'Revenue')}</p>
+            <p className="text-3xl font-bold mt-2">{formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {T('Entradas no período selecionado', 'Income in selected period')} ({periodLabel})
             </p>
+          </div>
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Despesas', 'Expenses')}</p>
+            <p className="text-3xl font-bold mt-2">{formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-sm mt-1">{T('Saídas totais controladas', 'Total controlled expenses')}</p>
+          </div>
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Lucro líquido', 'Net Profit')}</p>
+            <p className="text-3xl font-bold mt-2">{formatCurrency(netProfit, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-sm mt-1">{T('Resultado consolidado', 'Consolidated result')}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Card className="xl:col-span-2 rounded-3xl border border-black/5 shadow-xl">
+          <CardHeader className="pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl font-semibold">{T('Painel de filtros', 'Filter Panel')}</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">{T('Defina período e serviço para refinar todos os cálculos.', 'Set period and service to refine all calculations.')}</p>
+            </div>
+            <div className="w-full lg:w-auto">
+              <PeriodFilter range={periodRange} setRange={setPeriodRange} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-[0.3em]">
+                <Filter className="h-4 w-4" />
+                {T('Serviço', 'Service')}
+              </div>
+              <Select onValueChange={(value) => setSelectedServiceId(value === 'all' ? null : value)} value={selectedServiceId || 'all'}>
+                <SelectTrigger className="w-full md:w-64 rounded-2xl border-gray-200">
+                  <SelectValue placeholder={T('Filtrar por serviço', 'Filter by service')} />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  <SelectItem value="all">{T('Todos os serviços', 'All services')}</SelectItem>
+                  {services.map(service => (
+                    <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+              {T('Período analisado:', 'Analyzed period:')} <span className="font-semibold text-gray-900">{periodLabel}</span>
+            </div>
           </CardContent>
         </Card>
-        
-        {/* Despesas */}
-        <Card className="border-l-4 border-red-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesa Total</CardTitle>
-            <ArrowDown className="h-4 w-4 text-red-500" />
+
+        <Card className="rounded-3xl border border-gray-200 shadow-xl bg-white">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">{T('Insights rápidos', 'Quick Insights')}</CardTitle>
+            <p className="text-sm text-gray-500">{T('Ações recomendadas para manter o caixa saudável.', 'Recommended actions to keep cash flow healthy.')}</p>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total de saídas no período.
-            </p>
+          <CardContent className="space-y-4">
+            {[
+              T('Verifique despesas extraordinárias acima de 20% da receita', 'Check extraordinary expenses above 20% of revenue'),
+              T('Mantenha a margem líquida acima de 40%', 'Keep net margin above 40%'),
+              T('Registre manualmente serviços upsell/diferenciados', 'Manually register upsell/differentiated services'),
+            ].map((tip) => (
+              <div key={tip} className="flex gap-3 text-sm text-gray-600">
+                <span className="h-2 w-2 rounded-full bg-black mt-2 flex-shrink-0" />
+                {tip}
+              </div>
+            ))}
           </CardContent>
         </Card>
+      </section>
 
-        {/* Lucro Líquido */}
-        <Card className={`border-l-4 ${netProfit >= 0 ? 'border-primary' : 'border-red-700'}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-            <DollarSign className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-700'}`}>{formatCurrency(netProfit, currentCurrency.key, currentCurrency.locale)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Resultado do período.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[
+          {
+            title: T('Receita total', 'Total Revenue'),
+            value: formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale),
+            icon: <ArrowUp className="h-4 w-4" />,
+            description: T('Entradas registradas em serviços e vendas adicionais.', 'Income registered from services and additional sales.'),
+            accent: 'bg-emerald-50',
+          },
+          {
+            title: T('Despesa total', 'Total Expense'),
+            value: formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale),
+            icon: <ArrowDown className="h-4 w-4" />,
+            description: T('Custos operacionais e investimentos.', 'Operational costs and investments.'),
+            accent: 'bg-rose-50',
+          },
+          {
+            title: T('Margem líquida', 'Net Margin'),
+            value: `${(totalRevenue ? (netProfit / totalRevenue) * 100 : 0).toFixed(1)}%`,
+            icon: <TrendingUp className="h-4 w-4" />,
+            description: T('Proporção de lucro sobre faturamento.', 'Profit ratio over revenue.'),
+            accent: 'bg-gray-50',
+          },
+        ].map((card) => (
+          <div key={card.title} className={`rounded-3xl border border-gray-200 p-5 shadow-sm ${card.accent}`}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">{card.title}</p>
+              <div className="rounded-full border border-gray-300 p-2 text-gray-600">{card.icon}</div>
+            </div>
+            <p className="text-3xl font-bold mt-3 text-gray-900">{card.value}</p>
+            <p className="text-sm text-gray-600 mt-1">{card.description}</p>
+          </div>
+        ))}
+      </section>
 
-      {/* Tabela de Transações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transações Detalhadas</CardTitle>
+      <Card className="rounded-3xl border border-gray-200 shadow-xl">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <CardTitle className="text-2xl font-semibold">{T('Transações detalhadas', 'Detailed Transactions')}</CardTitle>
+            <p className="text-sm text-gray-500">{T('Veja todas as movimentações filtradas em ordem cronológica.', 'View all filtered transactions in chronological order.')}</p>
+          </div>
+          <Button variant="outline" className="rounded-full border-black/10">{T('Exportar CSV', 'Export CSV')}</Button>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nenhuma transação registrada neste período com os filtros selecionados.</p>
+            <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
+              {T('Nenhuma transação registrada neste período com os filtros selecionados.', 'No transactions recorded in this period with selected filters.')}
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-gray-200">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Fonte</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-gray-500">{T('Data', 'Date')}</TableHead>
+                    <TableHead className="text-gray-500">{T('Descrição', 'Description')}</TableHead>
+                    <TableHead className="text-gray-500">{T('Fonte', 'Source')}</TableHead>
+                    <TableHead className="text-gray-500">{T('Tipo', 'Type')}</TableHead>
+                    <TableHead className="text-right text-gray-500">{T('Valor', 'Amount')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.map((t) => (
                     <TableRow key={t.id + t.source}>
-                      <TableCell>{format(t.date, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="font-semibold text-gray-800">{format(t.date, 'dd/MM/yyyy')}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{t.description}</div>
+                        <p className="font-medium text-gray-900">{t.description}</p>
                         {t.type === 'expense' && t.category && (
-                          <div className="text-xs text-muted-foreground">Categoria: {t.category}</div>
+                          <p className="text-xs text-gray-500">Categoria: {t.category}</p>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {t.source === 'appointment' ? 'Agendamento' : 'Manual'}
+                        <Badge variant="outline" className="text-xs rounded-full px-3">
+                          {t.source === 'appointment' ? T('Agendamento', 'Appointment') : T('Manual', 'Manual')}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           className={cn(
-                            t.type === 'revenue' ? 'bg-green-100 text-green-700 hover:bg-green-100/80' : 'bg-red-100 text-red-700 hover:bg-red-100/80'
+                            'rounded-full px-3 text-xs',
+                            t.type === 'revenue' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                           )}
                         >
-                          {t.type === 'revenue' ? 'Receita' : 'Despesa'}
+                          {t.type === 'revenue' ? T('Receita', 'Revenue') : T('Despesa', 'Expense')}
                         </Badge>
                       </TableCell>
-                      <TableCell className={cn(
-                        "text-right font-semibold",
-                        t.type === 'revenue' ? 'text-green-600' : 'text-red-600'
-                      )}>
+                      <TableCell
+                        className={cn(
+                          'text-right font-semibold',
+                          t.type === 'revenue' ? 'text-emerald-600' : 'text-rose-600'
+                        )}
+                      >
                         {t.type === 'revenue' ? '+' : '-'} {formatCurrency(t.amount, currentCurrency.key, currentCurrency.locale)}
                       </TableCell>
                     </TableRow>

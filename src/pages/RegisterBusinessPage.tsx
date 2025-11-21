@@ -14,6 +14,10 @@ import { Loader2, Store, MapPin, Phone, FileText, Palette, Instagram, Facebook }
 import WorkingHoursForm from '@/components/WorkingHoursForm';
 import SupabaseImageUpload from '@/components/SupabaseImageUpload';
 import { generateBusinessSlug } from '@/utils/slug-generator'; // Importar utilitário de slug
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { useSubscription } from '@/hooks/use-subscription';
+import { useNavigate } from 'react-router-dom';
+import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -54,6 +58,9 @@ const initialSchedule = [
 
 const RegisterBusinessPage = () => {
   const { user } = useSession();
+  const { T } = useCurrency();
+  const navigate = useNavigate();
+  const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -86,7 +93,7 @@ const RegisterBusinessPage = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-        toast.error("Erro ao carregar dados do negócio.");
+        toast.error(T("Erro ao carregar dados do negócio.", "Error loading business data."));
         console.error(error);
         return;
       }
@@ -111,9 +118,30 @@ const RegisterBusinessPage = () => {
     fetchBusiness();
   }, [user, form]);
 
+  // Verificar se conta está ativa
+  useEffect(() => {
+    if (!isSubscriptionLoading && subscription) {
+      if (subscription.status !== 'active' && subscription.status !== 'trial') {
+        toast.error(T("Sua conta precisa estar ativa para criar um negócio. Complete o pagamento primeiro.", "Your account needs to be active to create a business. Complete payment first."));
+        navigate('/choose-plan');
+      }
+    } else if (!isSubscriptionLoading && !subscription) {
+      toast.error(T("Você precisa ter uma assinatura ativa para criar um negócio.", "You need an active subscription to create a business."));
+      navigate('/choose-plan');
+    }
+  }, [subscription, isSubscriptionLoading, navigate, T]);
+
   // 2. Submissão do formulário
   const onSubmit = async (values: BusinessFormValues) => {
     if (!user) return;
+    
+    // Validar se conta está ativa
+    if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trial')) {
+      toast.error(T("Sua conta precisa estar ativa para criar um negócio. Complete o pagamento primeiro.", "Your account needs to be active to create a business. Complete payment first."));
+      navigate('/choose-plan');
+      return;
+    }
+    
     setIsSubmitting(true);
 
     let finalSlug = values.slug;
@@ -139,7 +167,7 @@ const RegisterBusinessPage = () => {
         }
 
         if (!unique) {
-            toast.error("Não foi possível gerar um slug único. Tente novamente.");
+            toast.error(T("Não foi possível gerar um slug único. Tente novamente.", "Could not generate unique slug. Please try again."));
             setIsSubmitting(false);
             return;
         }
@@ -181,12 +209,22 @@ const RegisterBusinessPage = () => {
     setIsSubmitting(false);
 
     if (result.error) {
-      toast.error("Erro ao salvar o negócio: " + result.error.message);
+      toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + result.error.message);
       console.error(result.error);
     } else {
       setBusinessId(result.data.id);
       form.setValue('slug', result.data.slug); // Atualiza o slug no formulário
-      toast.success("Dados do negócio salvos com sucesso!");
+      
+      // Atualizar tabela consolidada (se existir)
+      // Os triggers do banco também vão atualizar automaticamente, mas isso garante atualização imediata
+      try {
+        await refreshConsolidatedUserData(user.id);
+        console.log('✅ Tabela consolidada atualizada após criar/atualizar negócio');
+      } catch (error) {
+        console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+      }
+      
+      toast.success(T("Dados do negócio salvos com sucesso!", "Business data saved successfully!"));
     }
   };
 
@@ -196,29 +234,31 @@ const RegisterBusinessPage = () => {
   const currentSlug = form.watch('slug');
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Configuração do Meu Negócio</h1>
-      <p className="text-gray-600">Preencha as informações que aparecerão na sua página de agendamento.</p>
+    <div className="space-y-8 pb-10">
+      <div className="rounded-3xl bg-gradient-to-r from-black via-gray-900 to-gray-800 text-white p-8 md:p-10 shadow-2xl">
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-2">{T('Configuração do Meu Negócio', 'My Business Configuration')}</h1>
+        <p className="text-gray-300 mt-2 max-w-2xl text-sm md:text-base">{T('Preencha as informações que aparecerão na sua página de agendamento.', 'Fill in the information that will appear on your booking page.')}</p>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           
           {/* Dados do Negócio */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><Store className="h-5 w-5 mr-2" /> Informações Básicas e Contato</CardTitle>
+          <Card className="border border-gray-200 shadow-xl rounded-3xl">
+            <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-3xl">
+              <CardTitle className="flex items-center text-black text-xl"><Store className="h-5 w-5 mr-2" /> {T('Informações Básicas e Contato', 'Basic Information and Contact')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome do Negócio *</FormLabel>
+                    <FormLabel className="font-semibold">{T('Nome do Negócio', 'Business Name')} *</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Ex: Barbearia do João" {...field} className="pl-10" />
+                        <Input placeholder={T("Ex: Barbearia do João", "Ex: John's Barber Shop")} {...field} className="pl-10 rounded-2xl h-12" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -228,10 +268,12 @@ const RegisterBusinessPage = () => {
               
               {currentSlug && (
                 <FormItem>
-                    <FormLabel>Link Público</FormLabel>
-                    <p className="text-sm text-muted-foreground break-all">
+                    <FormLabel className="font-semibold">{T('Link Público', 'Public Link')}</FormLabel>
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                      <p className="text-sm text-muted-foreground break-all">
                         {window.location.origin}/book/<span className="font-bold text-primary">{currentSlug}</span>
-                    </p>
+                      </p>
+                    </div>
                 </FormItem>
               )}
 
@@ -240,9 +282,9 @@ const RegisterBusinessPage = () => {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descrição Curta (Aparece na página de agendamento)</FormLabel>
+                    <FormLabel className="font-semibold">{T('Descrição Curta (Aparece na página de agendamento)', 'Short Description (Appears on booking page)')}</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Uma breve descrição para seus clientes." {...field} />
+                      <Textarea placeholder={T("Uma breve descrição para seus clientes.", "A brief description for your clients.")} {...field} className="rounded-2xl min-h-[100px]" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -253,11 +295,11 @@ const RegisterBusinessPage = () => {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Endereço Físico (Para exibição no mapa)</FormLabel>
+                    <FormLabel className="font-semibold">{T('Endereço Físico (Para exibição no mapa)', 'Physical Address (For map display)')}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Rua Exemplo, 123" {...field} className="pl-10" />
+                        <Input placeholder={T("Rua Exemplo, 123", "Example Street, 123")} {...field} className="pl-10 rounded-2xl h-12" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -269,11 +311,11 @@ const RegisterBusinessPage = () => {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone / WhatsApp do Negócio</FormLabel>
+                    <FormLabel className="font-semibold">{T('Telefone / WhatsApp do Negócio', 'Phone / WhatsApp of Business')}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="(99) 99999-9999" {...field} className="pl-10" />
+                        <Input placeholder="(99) 99999-9999" {...field} className="pl-10 rounded-2xl h-12" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -284,11 +326,11 @@ const RegisterBusinessPage = () => {
           </Card>
 
           {/* Personalização Visual e Mídia */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><Palette className="h-5 w-5 mr-2" /> Personalização e Mídia</CardTitle>
+          <Card className="border border-gray-200 shadow-xl rounded-3xl">
+            <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-3xl">
+              <CardTitle className="flex items-center text-black text-xl"><Palette className="h-5 w-5 mr-2" /> {T('Personalização e Mídia', 'Customization and Media')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               
               {/* Theme Color */}
               <FormField
@@ -296,18 +338,18 @@ const RegisterBusinessPage = () => {
                 name="theme_color"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cor Principal da Página de Agendamento</FormLabel>
-                    <p className="text-xs text-muted-foreground">Esta cor será usada nos botões e destaques da sua página pública.</p>
+                    <FormLabel className="font-semibold">{T('Cor Principal da Página de Agendamento', 'Main Color of Booking Page')}</FormLabel>
+                    <p className="text-xs text-muted-foreground">{T('Esta cor será usada nos botões e destaques da sua página pública.', 'This color will be used on buttons and highlights of your public page.')}</p>
                     <FormControl>
                       <div className="flex items-center space-x-4">
                         <Input 
                           type="color" 
-                          className="w-16 h-10 p-1 cursor-pointer" 
+                          className="w-16 h-12 p-1 cursor-pointer rounded-2xl" 
                           {...field} 
                         />
                         <Input 
                           placeholder="#2563eb" 
-                          className="flex-grow" 
+                          className="flex-grow rounded-2xl h-12" 
                           {...field} 
                         />
                       </div>
@@ -332,7 +374,7 @@ const RegisterBusinessPage = () => {
                           currentUrl={currentLogoUrl}
                           onUploadSuccess={(url) => field.onChange(url)}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Recomendado: Imagem quadrada (ex: 200x200 px).</p>
+                        <p className="text-xs text-muted-foreground mt-1">{T('Recomendado: Imagem quadrada (ex: 200x200 px).', 'Recommended: Square image (e.g., 200x200 px).')}</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -346,36 +388,36 @@ const RegisterBusinessPage = () => {
                           bucket="business_media"
                           pathPrefix={ownerId}
                           fileName="banner.jpg"
-                          label="Foto de Capa (Banner)"
+                          label={T("Foto de Capa (Banner)", "Cover Photo (Banner)")}
                           currentUrl={currentCoverUrl}
                           onUploadSuccess={(url) => field.onChange(url)}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Recomendado: Proporção 3:1 ou 4:1 (ex: 1200x300 px).</p>
+                        <p className="text-xs text-muted-foreground mt-1">{T('Recomendado: Proporção 3:1 ou 4:1 (ex: 1200x300 px).', 'Recommended: 3:1 or 4:1 ratio (e.g., 1200x300 px).')}</p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Carregando informações do usuário...</p>
+                <p className="text-sm text-muted-foreground">{T('Carregando informações do usuário...', 'Loading user information...')}</p>
               )}
             </CardContent>
           </Card>
           
           {/* Redes Sociais */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><Instagram className="h-5 w-5 mr-2" /> Redes Sociais (Opcional)</CardTitle>
+          <Card className="border border-gray-200 shadow-xl rounded-3xl">
+            <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-3xl">
+              <CardTitle className="flex items-center text-black text-xl"><Instagram className="h-5 w-5 mr-2" /> {T('Redes Sociais (Opcional)', 'Social Media (Optional)')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <FormField
                 control={form.control}
                 name="instagram_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link do Instagram</FormLabel>
+                    <FormLabel className="font-semibold">{T('Link do Instagram', 'Instagram Link')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://instagram.com/seu_negocio" {...field} />
+                      <Input placeholder="https://instagram.com/seu_negocio" {...field} className="rounded-2xl h-12" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -386,9 +428,9 @@ const RegisterBusinessPage = () => {
                 name="facebook_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link do Facebook</FormLabel>
+                    <FormLabel className="font-semibold">{T('Link do Facebook', 'Facebook Link')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://facebook.com/seu_negocio" {...field} />
+                      <Input placeholder="https://facebook.com/seu_negocio" {...field} className="rounded-2xl h-12" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -409,11 +451,11 @@ const RegisterBusinessPage = () => {
             )}
           />
 
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="bg-black hover:bg-black/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl h-12 text-base">
             {isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              'Salvar Configurações'
+              T('Salvar Configurações', 'Save Settings')
             )}
           </Button>
         </form>

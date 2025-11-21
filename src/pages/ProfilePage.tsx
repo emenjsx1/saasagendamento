@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 import { useSubscription } from '@/hooks/use-subscription';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -18,12 +18,15 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import SubscriptionManagementSection from '@/components/SubscriptionManagementSection';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import SupabaseImageUpload from '@/components/SupabaseImageUpload';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Esquema de validação para o perfil
 const ProfileSchema = z.object({
   first_name: z.string().min(1, "O primeiro nome é obrigatório."),
   last_name: z.string().min(1, "O sobrenome é obrigatório."),
   phone: z.string().optional(),
+  avatar_url: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof ProfileSchema>;
@@ -33,7 +36,8 @@ const ProfilePage: React.FC = () => {
   const { subscription, daysLeft, isLoading: isSubscriptionLoading } = useSubscription();
   const { T } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPlanManagement, setShowPlanManagement] = useState(false); // Novo estado para o toggle
+  const [showPlanManagement, setShowPlanManagement] = useState(false);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(ProfileSchema),
@@ -41,6 +45,7 @@ const ProfilePage: React.FC = () => {
       first_name: "",
       last_name: "",
       phone: "",
+      avatar_url: "",
     },
   });
 
@@ -51,7 +56,7 @@ const ProfilePage: React.FC = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone')
+        .select('first_name, last_name, phone, avatar_url')
         .eq('id', user.id)
         .single();
 
@@ -62,10 +67,12 @@ const ProfilePage: React.FC = () => {
       }
 
       if (data) {
+        setCurrentAvatarUrl(data.avatar_url || null);
         form.reset({
           first_name: data.first_name || "",
           last_name: data.last_name || "",
           phone: data.phone || "",
+          avatar_url: data.avatar_url || "",
         });
       }
     };
@@ -83,6 +90,7 @@ const ProfilePage: React.FC = () => {
         first_name: values.first_name,
         last_name: values.last_name,
         phone: values.phone,
+        avatar_url: values.avatar_url || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
@@ -108,7 +116,7 @@ const ProfilePage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500 hover:bg-green-600 text-white">{T('Ativo', 'Active')}</Badge>;
+        return <Badge className="bg-gray-800 hover:bg-gray-900 text-white">{T('Ativo', 'Active')}</Badge>;
       case 'trial':
         return <Badge variant="secondary">{T('Teste Gratuito', 'Free Trial')}</Badge>;
       case 'pending_payment':
@@ -119,25 +127,85 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold flex items-center"><User className="h-7 w-7 mr-3" /> {T('Meu Perfil e Conta', 'My Profile and Account')}</h1>
-      
-      <Card>
+    <div className="space-y-10 pb-16 max-w-4xl mx-auto">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Área do proprietário', 'Owner Area')}</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold mt-2 flex items-center gap-3">
+              <User className="h-8 w-8" />
+              {T('Perfil e assinatura', 'Profile & Subscription')}
+            </h1>
+            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+              {T('Atualize seus dados pessoais, telefone de contato e acompanhe o status do seu plano em um painel único.', 'Update personal data, phone number and track your plan status in a single panel.')}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/20 px-6 py-4 text-center bg-white/5">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Status geral', 'General status')}</p>
+            <p className="text-lg font-semibold mt-2">{subscription ? T('Conta ativa', 'Account active') : T('Sem assinatura', 'No subscription')}</p>
+            <p className="text-gray-400 text-xs mt-1">{user?.email}</p>
+          </div>
+        </div>
+      </section>
+
+      <Card className="rounded-3xl border border-gray-200 shadow-xl">
         <CardHeader>
-          <CardTitle>{T('Informações Pessoais', 'Personal Information')}</CardTitle>
+          <CardTitle className="text-2xl font-semibold">{T('Informações pessoais', 'Personal Information')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Seção de Foto de Perfil */}
+              <div className="flex flex-col items-center md:flex-row md:items-start gap-6 pb-6 border-b border-gray-200">
+                <div className="flex flex-col items-center gap-4">
+                  <Avatar className="h-32 w-32 border-4 border-gray-200 shadow-lg">
+                    <AvatarImage src={currentAvatarUrl || undefined} alt={form.watch('first_name') || 'User'} />
+                    <AvatarFallback className="bg-gradient-to-br from-gray-800 to-gray-900 text-white text-3xl font-bold">
+                      {form.watch('first_name')?.[0]?.toUpperCase() || form.watch('last_name')?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {form.watch('first_name') && form.watch('last_name')
+                        ? `${form.watch('first_name')} ${form.watch('last_name')}`
+                        : T('Sem nome', 'No name')}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
+                  </div>
+                </div>
+                <div className="flex-1 w-full md:w-auto">
+                  <FormField
+                    control={form.control}
+                    name="avatar_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SupabaseImageUpload
+                          bucket="user_avatars"
+                          pathPrefix={user?.id || ''}
+                          fileName="avatar.jpg"
+                          label={T('Foto de Perfil', 'Profile Picture')}
+                          currentUrl={currentAvatarUrl}
+                          onUploadSuccess={(url) => {
+                            field.onChange(url);
+                            setCurrentAvatarUrl(url);
+                          }}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="first_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{T('Primeiro Nome', 'First Name')} *</FormLabel>
+                      <FormLabel>{T('Primeiro nome', 'First Name')} *</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} className="rounded-2xl" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -150,18 +218,18 @@ const ProfilePage: React.FC = () => {
                     <FormItem>
                       <FormLabel>{T('Sobrenome', 'Last Name')} *</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} className="rounded-2xl" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
+
               <FormItem>
                 <FormLabel>{T('E-mail', 'Email')}</FormLabel>
                 <FormControl>
-                  <Input value={user?.email} disabled className="bg-gray-100" />
+                  <Input value={user?.email} disabled className="bg-gray-100 rounded-2xl" />
                 </FormControl>
               </FormItem>
 
@@ -172,84 +240,102 @@ const ProfilePage: React.FC = () => {
                   <FormItem>
                     <FormLabel>{T('Telefone / WhatsApp', 'Phone / WhatsApp')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="(99) 99999-9999" {...field} />
+                      <Input placeholder="(99) 99999-9999" {...field} className="rounded-2xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : T('Salvar Perfil', 'Save Profile')}
+              <Button type="submit" disabled={isSubmitting} className="rounded-2xl bg-black text-white hover:bg-black/90">
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : T('Salvar perfil', 'Save Profile')}
               </Button>
             </form>
           </Form>
         </CardContent>
       </Card>
-      
-      {/* Seção de Status do Plano */}
-      <Card>
+
+      <Card className="rounded-3xl border border-gray-200 shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="h-5 w-5 mr-2" /> {T('Status do Plano', 'Plan Status')}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-xl font-semibold">
+            <Briefcase className="h-5 w-5" />
+            {T('Status do plano', 'Plan Status')}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {subscription ? (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">{T('Plano Atual:', 'Current Plan:')}</span>
-                <span className="font-bold">{subscription.plan_name}</span>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-gray-500">{T('Plano atual', 'Current plan')}</p>
+                  <p className="text-2xl font-bold mt-2">{subscription.plan_name}</p>
+                </div>
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.3em] text-gray-500">{T('Status', 'Status')}</p>
+                  <div className="mt-3">{getStatusBadge(subscription.status)}</div>
+                </div>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="font-medium">{T('Status:', 'Status:')}</span>
-                {getStatusBadge(subscription.status)}
-              </div>
-              
+
               {subscription.is_trial && subscription.trial_ends_at && (
-                <div className={cn(
-                    "p-3 rounded-md border",
-                    daysLeft !== null && daysLeft <= 1 ? "bg-red-50 border-red-300" : "bg-yellow-50 border-yellow-300"
-                )}>
-                    <div className="flex justify-between items-center text-sm font-semibold">
-                        <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> {T('Expiração do Teste:', 'Trial Expiration:')}</span>
-                        <span>{format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                    </div>
-                    {daysLeft !== null && (
-                        <p className={cn(
-                            "text-xs mt-1",
-                            daysLeft <= 1 ? "text-red-600 font-bold" : "text-yellow-700"
-                        )}>
-                            {daysLeft === 0 ? T('Seu teste expira hoje!', 'Your trial expires today!') : T(`Faltam ${daysLeft} dia(s) para o fim do teste.`, `${daysLeft} day(s) left in trial.`)}
-                        </p>
-                    )}
+                <div
+                  className={cn(
+                    'rounded-2xl border p-4 bg-gradient-to-r',
+                    daysLeft !== null && daysLeft <= 1
+                      ? 'from-red-50 to-red-100 border-red-200'
+                      : 'from-yellow-50 to-yellow-100 border-yellow-200'
+                  )}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm font-semibold">
+                    <span className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      {T('Expiração do teste', 'Trial Expiration')}
+                    </span>
+                    <span>{format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                  </div>
+                  {daysLeft !== null && (
+                    <p
+                      className={cn(
+                        'text-xs mt-2',
+                        daysLeft <= 1 ? 'text-red-700 font-bold' : 'text-yellow-700'
+                      )}
+                    >
+                      {daysLeft === 0
+                        ? T('Seu teste expira hoje!', 'Your trial expires today!')
+                        : T(`Faltam ${daysLeft} dia(s) para o fim do teste.`, `${daysLeft} day(s) left in trial.`)}
+                    </p>
+                  )}
                 </div>
               )}
-              
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => setShowPlanManagement(prev => !prev)}
+
+              <Button
+                variant="outline"
+                className="w-full rounded-2xl border-black/10"
+                onClick={() => setShowPlanManagement((prev) => !prev)}
               >
                 {showPlanManagement ? (
-                    <>
-                        <ChevronUp className="h-4 w-4 mr-2" /> {T('Esconder Planos', 'Hide Plans')}
-                    </>
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-2" /> {T('Esconder planos', 'Hide Plans')}
+                  </>
                 ) : (
-                    <>
-                        <ChevronDown className="h-4 w-4 mr-2" /> {T('Mudar de Plano / Renovar', 'Change Plan / Renew')}
-                    </>
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-2" /> {T('Mudar de plano / Renovar', 'Change Plan / Renew')}
+                  </>
                 )}
               </Button>
             </div>
           ) : (
-            <p className="text-muted-foreground">{T('Nenhuma assinatura encontrada.', 'No subscription found.')} <Button variant="link" onClick={() => setShowPlanManagement(true)} className="p-0 h-auto">{T('Escolha um plano.', 'Choose a plan.')}</Button></p>
+            <div className="rounded-2xl border border-dashed border-gray-300 p-4 text-center text-gray-500">
+              {T('Nenhuma assinatura encontrada.', 'No subscription found.')}
+              <Button variant="link" onClick={() => setShowPlanManagement(true)} className="p-0 h-auto">
+                {T('Escolha um plano.', 'Choose a plan.')}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
-      
-      {/* Seção de Gerenciamento de Planos (Toggle) */}
+
       {showPlanManagement && (
-        <div className="mt-8">
+        <div className="rounded-3xl border border-gray-200 shadow-xl p-6">
           <SubscriptionManagementSection />
         </div>
       )}

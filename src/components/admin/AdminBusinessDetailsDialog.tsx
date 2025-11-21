@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import WorkingHoursForm from '@/components/WorkingHoursForm';
 import SupabaseImageUpload from '@/components/SupabaseImageUpload';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Tipos de dados (replicados do use-business.ts e RegisterBusinessPage.tsx)
 interface DaySchedule {
@@ -75,6 +76,7 @@ const AdminBusinessDetailsDialog: React.FC<AdminBusinessDetailsDialogProps> = ({
   businessId,
   onSuccess,
 }) => {
+  const { T } = useCurrency();
   const [business, setBusiness] = useState<BusinessDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,7 +106,7 @@ const AdminBusinessDetailsDialog: React.FC<AdminBusinessDetailsDialogProps> = ({
         .single();
 
       if (error) {
-        toast.error("Erro ao carregar detalhes do negócio.");
+        toast.error(T("Erro ao carregar detalhes do negócio.", "Error loading business details."));
         console.error(error);
         setBusiness(null);
       } else {
@@ -156,10 +158,10 @@ const AdminBusinessDetailsDialog: React.FC<AdminBusinessDetailsDialogProps> = ({
     setIsSubmitting(false);
 
     if (error) {
-      toast.error("Erro ao salvar o negócio: " + error.message);
+      toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + error.message);
       console.error(error);
     } else {
-      toast.success("Negócio atualizado com sucesso!");
+      toast.success(T("Negócio atualizado com sucesso!", "Business updated successfully!"));
       onSuccess();
       onOpenChange(false);
     }
@@ -181,8 +183,8 @@ const AdminBusinessDetailsDialog: React.FC<AdminBusinessDetailsDialogProps> = ({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader><DialogTitle>Erro</DialogTitle></DialogHeader>
-          <p>Detalhes do negócio não puderam ser carregados.</p>
+          <DialogHeader><DialogTitle>{T('Erro', 'Error')}</DialogTitle></DialogHeader>
+          <p>{T('Detalhes do negócio não puderam ser carregados.', 'Business details could not be loaded.')}</p>
         </DialogContent>
       </Dialog>
     );
@@ -192,10 +194,10 @@ const AdminBusinessDetailsDialog: React.FC<AdminBusinessDetailsDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Store className="h-6 w-6 mr-2" /> Editar Negócio: {business.name}
+          <DialogTitle className="flex items-center text-xl">
+            <Store className="h-6 w-6 mr-2" /> {T('Editar Negócio:', 'Edit Business:')} {business.name}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">ID: {business.id} | Proprietário: {business.owner_id}</p>
+          <p className="text-sm text-muted-foreground">{T('ID:', 'ID:')} {business.id} | {T('Proprietário:', 'Owner:')} {business.owner_id}</p>
         </DialogHeader>
         
         <FormProvider {...form}>

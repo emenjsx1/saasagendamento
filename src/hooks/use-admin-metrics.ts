@@ -144,17 +144,23 @@ export const useAdminMetrics = (): AdminMetrics => {
         // 7. Status das Assinaturas
         const { data: subscriptionsData, error: subscriptionsError } = await supabase
             .from('subscriptions')
-            .select('status');
+            .select('status, is_trial');
             
         if (subscriptionsError) throw subscriptionsError;
         
         const statusCounts: SubscriptionStatusCount = { active: 0, trial: 0, pending_payment: 0, other: 0 };
         
         (subscriptionsData || []).forEach(sub => {
-            if (sub.status === 'active') statusCounts.active++;
-            else if (sub.status === 'trial') statusCounts.trial++;
-            else if (sub.status === 'pending_payment') statusCounts.pending_payment++;
-            else statusCounts.other++;
+            // Contar como trial se is_trial=true OU status='trial'
+            if (sub.is_trial || sub.status === 'trial') {
+                statusCounts.trial++;
+            } else if (sub.status === 'active') {
+                statusCounts.active++;
+            } else if (sub.status === 'pending_payment') {
+                statusCounts.pending_payment++;
+            } else {
+                statusCounts.other++;
+            }
         });
 
 

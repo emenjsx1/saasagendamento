@@ -16,7 +16,7 @@ export const CURRENCIES: Currency[] = [
     locale: 'pt-MZ',
     flag: '🇲🇿',
     language: 'pt',
-    weeklyBasePrice: 147, // Base MZN price from existing defaults
+    weeklyBasePrice: 1, // Base MZN price from existing defaults
   },
   {
     key: 'BRL',
