@@ -466,7 +466,7 @@ const AppointmentsPage: React.FC = () => {
             </div>
             <Button
               variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 rounded-2xl"
+              className="border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-2xl font-semibold"
               onClick={() => setFilterDate(startOfDay(new Date()))}
             >
               {T('Voltar para hoje', 'Back to Today')}

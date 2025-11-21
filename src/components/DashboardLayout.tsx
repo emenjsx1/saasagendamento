@@ -270,42 +270,6 @@ const MobileProfileArea: React.FC<{ user: any; business: any; onLogout: () => vo
   );
 };
 
-const MobileBottomNav: React.FC<{ location: any; T: (pt: string, en: string) => string; isAdmin: boolean }> = ({ location, T, isAdmin }) => {
-  const mainNavItems = [
-    { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
-    { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
-    { name: T('Serviços', 'Services'), href: '/dashboard/services', icon: Briefcase },
-    { name: T('Perfil', 'Profile'), href: '/dashboard/profile', icon: User },
-  ];
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl md:hidden">
-      <div className="flex items-center justify-around h-16 px-2">
-        {mainNavItems.map((item) => {
-          const isActive = location.pathname === item.href || 
-                          (location.pathname.startsWith(item.href) && item.href !== '/dashboard');
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all duration-200",
-                isActive ? 'text-gray-900' : 'text-gray-500'
-              )}
-            >
-              <item.icon className={cn("h-6 w-6", isActive && "scale-110")} />
-              <span className="text-xs font-medium">{item.name}</span>
-              {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900 rounded-t-full" />
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-};
-
 const MobileSidebar: React.FC<{ 
   user: any; 
   business: any; 
@@ -433,7 +397,7 @@ const DashboardLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-100">
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-72 flex-shrink-0">
         <Sidebar />
@@ -450,12 +414,11 @@ const DashboardLayout: React.FC = () => {
       />
       
       {/* Main Content */}
-      <div className="flex-grow p-4 md:p-8 overflow-auto pb-20 md:pb-8 pt-16 md:pt-4">
-        <Outlet />
+      <div className="flex-grow w-full overflow-auto pt-16 md:pt-4 min-h-screen bg-gray-100">
+        <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+          <Outlet />
+        </div>
       </div>
-      
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav location={location} T={T} isAdmin={isAdmin} />
     </div>
   );
 };
