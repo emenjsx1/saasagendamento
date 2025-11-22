@@ -13,7 +13,7 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
   const { T } = useCurrency();
   return (
     <div 
-      className="relative flex flex-col items-start text-left p-4 sm:p-5 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden"
+      className="relative flex flex-col items-start text-left p-4 sm:p-5 md:p-6 lg:p-8 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden"
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Borda sutil no hover */}
@@ -25,10 +25,10 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
             {icon}
           </div>
         </div>
-        <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 text-black transition-all duration-300">
+        <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-1.5 sm:mb-2 md:mb-3 text-black transition-all duration-300">
           {T(title_pt, title_en)}
         </h3>
-        <p className="text-gray-600 text-xs leading-relaxed mb-2 sm:mb-3">{T(description_pt, description_en)}</p>
+        <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed mb-2 sm:mb-3 md:mb-4">{T(description_pt, description_en)}</p>
         <Link 
           to="/register" 
           className="mt-2 sm:mt-3 text-xs font-semibold text-black flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2 border-b border-black/0 group-hover:border-black/30 pb-1"
@@ -76,31 +76,31 @@ const Index = () => {
               </div>
               
               {/* Título Principal */}
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 leading-tight animate-slide-up text-white">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold mb-3 sm:mb-4 md:mb-5 leading-tight animate-slide-up text-white">
                 {heroTitle}
               </h1>
               
               {/* Descrição */}
-              <p className="text-xs sm:text-sm md:text-base text-gray-300 mb-4 sm:mb-6 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-5 sm:mb-6 md:mb-8 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '200ms' }}>
                 {heroSubtitle}
               </p>
               
               {/* Botões CTA */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center items-center animate-slide-up mb-6 sm:mb-8" style={{ animationDelay: '400ms' }}>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center animate-slide-up mb-6 sm:mb-8 md:mb-10" style={{ animationDelay: '400ms' }}>
                 <Button 
                   asChild 
-                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg"
                 >
                   <Link to="/register" className="flex items-center justify-center gap-2">
                     {heroCta}
-                    <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                   </Link>
                 </Button>
                 
                 <Button 
                   variant="outline"
                   asChild
-                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-2 border-white bg-white/0 hover:bg-white hover:text-black text-white transition-all duration-300 rounded-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-white bg-white/0 hover:bg-white hover:text-black text-white transition-all duration-300 rounded-lg"
                 >
                   <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
                 </Button>
@@ -133,7 +133,7 @@ const Index = () => {
         </section>
 
         {/* Benefits Section - Cards Minimalistas */}
-        <section className="py-4 sm:py-6 md:py-8 bg-gray-50 relative overflow-hidden">
+        <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-gray-50 relative overflow-hidden">
           {/* Grid pattern sutil com movimento */}
           <div className="absolute inset-0 grid-pattern opacity-20 animate-gradient"></div>
           
@@ -142,11 +142,11 @@ const Index = () => {
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-4 sm:mb-6 md:mb-8 animate-fade-in-up">
-              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-extrabold mb-1.5 text-black px-2">
+            <div className="text-center mb-6 sm:mb-8 md:mb-12 animate-fade-in-up">
+              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-extrabold mb-2 sm:mb-3 md:mb-4 text-black px-2">
                 {benefitsTitle}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 max-w-2xl mx-auto px-2">{benefitsSubtitle}</p>
+              <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-2">{benefitsSubtitle}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
@@ -179,15 +179,15 @@ const Index = () => {
         </section>
         
         {/* Business Types Section - Seção de Negócios Aumentada */}
-        <section className="py-6 sm:py-8 md:py-10 bg-white relative overflow-hidden">
+        <section className="py-8 sm:py-10 md:py-12 lg:py-16 bg-white relative overflow-hidden">
           <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 text-black px-2">
+            <div className="text-center mb-8 sm:mb-10 md:mb-12 lg:mb-16 animate-fade-in-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold mb-3 sm:mb-4 md:mb-5 text-black px-2">
                 {T('Para Todos os Tipos de Negócios', 'For All Types of Businesses')}
               </h2>
-              <p className="text-xs sm:text-sm md:text-base text-gray-600 max-w-3xl mx-auto px-2">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-2">
                 {T('Nossa plataforma se adapta perfeitamente ao seu segmento, oferecendo soluções personalizadas.', 'Our platform perfectly adapts to your segment, offering personalized solutions.')}
               </p>
             </div>
@@ -303,17 +303,17 @@ const Index = () => {
         </section>
 
         {/* Testimonials Section - Seção de Depoimentos */}
-        <section className="py-6 sm:py-8 md:py-10 bg-gray-50 relative overflow-hidden">
+        <section className="py-8 sm:py-10 md:py-12 lg:py-16 bg-gray-50 relative overflow-hidden">
           <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 text-black px-2">
+            <div className="text-center mb-8 sm:mb-10 md:mb-12 lg:mb-16 animate-fade-in-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold mb-3 sm:mb-4 md:mb-5 text-black px-2">
                 {T('O Que Nossos Clientes Dizem', 'What Our Clients Say')}
               </h2>
-              <p className="text-xs sm:text-sm md:text-base text-gray-600 max-w-3xl mx-auto px-2">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-2">
                 {T('Milhares de empresas já transformaram sua gestão com nossa plataforma.', 'Thousands of companies have already transformed their management with our platform.')}
               </p>
             </div>
@@ -437,7 +437,7 @@ const Index = () => {
         <PricingSection />
 
         {/* Final CTA Section - Minimalista com Motion */}
-        <section className="relative py-6 sm:py-8 md:py-10 bg-black text-white overflow-hidden">
+        <section className="relative py-8 sm:py-10 md:py-12 lg:py-16 bg-black text-white overflow-hidden">
           {/* Grid pattern animado */}
           <div className="absolute inset-0 grid-pattern-dark opacity-10 animate-gradient"></div>
           
@@ -458,22 +458,22 @@ const Index = () => {
           <div className="absolute top-1/2 right-1/4 w-1 h-1 bg-white/50 rounded-full animate-sparkle"></div>
           
           <div className="container mx-auto px-4 text-center relative z-10">
-            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-3 md:mb-4 text-white animate-fade-in-up">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 md:mb-6 lg:mb-8 text-white animate-fade-in-up">
               {ctaTitle}
             </h2>
-            <p className="text-sm sm:text-base text-gray-300 mb-6 md:mb-8 max-w-2xl mx-auto px-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 md:mb-10 lg:mb-12 max-w-2xl mx-auto px-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
               {T('Junte-se a milhares de empresas que já transformaram sua gestão.', 'Join thousands of companies that have already transformed their management.')}
             </p>
             <Button 
               size="lg" 
               asChild 
-              className="group relative px-6 sm:px-8 py-4 sm:py-5 text-sm sm:text-base font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
+              className="group relative px-8 sm:px-10 md:px-12 py-5 sm:py-6 md:py-7 text-base sm:text-lg md:text-xl font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
               style={{ animationDelay: '400ms' }}
             >
               <Link to="/register">
-                <span className="relative z-10 flex items-center gap-2">
+                <span className="relative z-10 flex items-center gap-2 sm:gap-3">
                   {ctaButton}
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transform group-hover:translate-x-2 transition-transform duration-300" />
+                  <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 transform group-hover:translate-x-2 transition-transform duration-300" />
                 </span>
                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-shimmer"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
