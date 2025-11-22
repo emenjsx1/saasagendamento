@@ -220,16 +220,16 @@ const ServicesPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-10 pb-16">
-      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    <div className="space-y-6 pb-12">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-3 md:p-5 shadow-2xl flex flex-col gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Catálogo premium', 'Premium Catalog')}</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold mt-2 flex items-center gap-3">
-              <Briefcase className="h-8 w-8" />
+            <h1 className="text-xl md:text-2xl font-extrabold mt-2 flex items-center gap-2">
+              <Briefcase className="h-6 w-6 md:h-7 md:w-7" />
               {T('Serviços e produtos', 'Services and Products')}
             </h1>
-            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+            <p className="text-gray-300 mt-2 text-xs sm:text-sm max-w-2xl">
               {T('Estruture seu portfólio com clareza. Ajuste duração, preço e destaque cada serviço para aumentar a conversão no agendamento online.', 'Structure your portfolio clearly. Adjust duration, price and highlight each service to increase conversion in online booking.')}
             </p>
           </div>

@@ -13,25 +13,25 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
   const { T } = useCurrency();
   return (
     <div 
-      className="relative flex flex-col items-start text-left p-5 sm:p-6 md:p-8 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden"
+      className="relative flex flex-col items-start text-left p-4 sm:p-5 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden"
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Borda sutil no hover */}
       <div className="absolute inset-0 rounded-xl sm:rounded-2xl border-2 border-black/0 group-hover:border-black/20 transition-all duration-500"></div>
       
       <div className="relative z-10 w-full">
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-black/5 transition-all duration-300 group-hover:bg-black/10 group-hover:scale-105">
+        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-black/5 transition-all duration-300 group-hover:bg-black/10 group-hover:scale-105">
           <div className="text-black">
             {icon}
           </div>
         </div>
-        <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-black transition-all duration-300">
+        <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 text-black transition-all duration-300">
           {T(title_pt, title_en)}
         </h3>
-        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">{T(description_pt, description_en)}</p>
+        <p className="text-gray-600 text-xs leading-relaxed mb-2 sm:mb-3">{T(description_pt, description_en)}</p>
         <Link 
           to="/register" 
-          className="mt-3 sm:mt-4 text-xs sm:text-sm font-semibold text-black flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2 border-b border-black/0 group-hover:border-black/30 pb-1"
+          className="mt-2 sm:mt-3 text-xs font-semibold text-black flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2 border-b border-black/0 group-hover:border-black/30 pb-1"
         >
           {T('Saiba Mais', 'Learn More')} 
           <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2 transform group-hover:translate-x-1 transition-transform" />
@@ -60,77 +60,59 @@ const Index = () => {
       
       <main className="flex-grow">
         {/* Hero Section - Design Futurista e Movimentado */}
-        <section className="relative py-12 sm:py-16 md:py-24 lg:py-32 bg-gradient-to-br from-white via-gray-50 to-white overflow-hidden particles-bg">
-          {/* Grid pattern animado com movimento */}
-          <div className="absolute inset-0 grid-pattern opacity-30 animate-gradient"></div>
+        <section className="relative py-4 sm:py-6 md:py-8 lg:py-10 bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-hidden">
+          {/* Grid pattern de pontos claros */}
+          <div className="absolute inset-0 opacity-20" style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
           
-          {/* Linhas de energia animadas */}
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer"></div>
-          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
-          
-          {/* Efeitos de fundo futuristas e movimentados - mais dinâmicos */}
-          <div className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-black/5 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-black/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-black/3 rounded-full blur-3xl animate-scale-pulse"></div>
-          
-          {/* Partículas flutuantes - mais partículas */}
-          <div className="absolute top-20 left-10 w-2 h-2 bg-black/20 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute top-40 right-20 w-3 h-3 bg-black/15 rounded-full animate-float" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute bottom-40 left-20 w-2 h-2 bg-black/20 rounded-full animate-float" style={{ animationDelay: '2.5s' }}></div>
-          <div className="absolute bottom-20 right-10 w-3 h-3 bg-black/15 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
-          <div className="absolute top-1/3 left-1/3 w-1.5 h-1.5 bg-black/25 rounded-full animate-float" style={{ animationDelay: '4s' }}></div>
-          <div className="absolute bottom-1/3 right-1/3 w-2 h-2 bg-black/20 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
-          
-          {/* Efeitos de brilho em movimento */}
-          <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-black/3 rounded-full blur-2xl animate-float" style={{ animationDelay: '1.5s' }}></div>
-          <div className="absolute bottom-1/4 left-1/4 w-32 h-32 bg-black/3 rounded-full blur-2xl animate-float" style={{ animationDelay: '3.5s' }}></div>
-          
-          <div className="container mx-auto px-4 sm:px-6 text-center relative z-10">
-            {/* Badge minimalista com animação melhorada */}
-            <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 mb-4 sm:mb-6 md:mb-8 rounded-full bg-black text-white border border-black animate-fade-in-up hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
-              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-white rounded-full animate-pulse"></span>
-              <span className="text-xs sm:text-sm md:text-base font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
-            </div>
-            
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-5 md:mb-6 leading-tight animate-slide-up text-black relative px-2">
-              <span className="relative z-10 bg-gradient-to-r from-black via-gray-900 to-black bg-clip-text text-transparent animate-gradient inline-block">
-                {heroTitle}
-              </span>
-              <div className="absolute inset-0 blur-xl opacity-20 bg-gradient-to-r from-black via-gray-900 to-black animate-gradient"></div>
-            </h1>
-            
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto leading-relaxed px-2 animate-slide-up" style={{ animationDelay: '200ms' }}>
-              {heroSubtitle}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center animate-slide-up mb-8 sm:mb-10 md:mb-0" style={{ animationDelay: '400ms' }}>
-              <Button 
-                size="lg" 
-                asChild 
-                className="group relative w-full sm:w-auto px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-bold bg-gradient-to-r from-black via-gray-900 to-black hover:from-gray-900 hover:via-black hover:to-gray-900 text-white transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-black/50 overflow-hidden rounded-lg"
-              >
-                <Link to="/register">
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {heroCta}
-                    <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transform group-hover:translate-x-2 transition-transform duration-300" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer"></div>
-                  <div className="absolute inset-0 bg-white/5 animate-gradient"></div>
-                </Link>
-              </Button>
+          <div className="container mx-auto px-4 sm:px-6 relative z-10">
+            <div className="max-w-4xl mx-auto text-center">
+              {/* Badge "Plataforma de Nova Geração" */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 mb-4 rounded-full bg-black text-white animate-fade-in-up">
+                <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                <span className="text-xs font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
+              </div>
               
-              <Button 
-                size="lg" 
-                variant="outline"
-                asChild
-                className="w-full sm:w-auto px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold border-2 border-black text-black hover:bg-black hover:text-white transition-all duration-300 transform hover:scale-105 rounded-lg"
-              >
-                <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
-              </Button>
+              {/* Título Principal */}
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 leading-tight animate-slide-up text-white">
+                {heroTitle}
+              </h1>
+              
+              {/* Descrição */}
+              <p className="text-xs sm:text-sm md:text-base text-gray-300 mb-4 sm:mb-6 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '200ms' }}>
+                {heroSubtitle}
+              </p>
+              
+              {/* Botões CTA */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center items-center animate-slide-up mb-6 sm:mb-8" style={{ animationDelay: '400ms' }}>
+                <Button 
+                  asChild 
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg"
+                >
+                  <Link to="/register" className="flex items-center justify-center gap-2">
+                    {heroCta}
+                    <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Link>
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  asChild
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-2 border-white bg-white/0 hover:bg-white hover:text-black text-white transition-all duration-300 rounded-lg"
+                >
+                  <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
+                </Button>
+              </div>
             </div>
-            
-            {/* Estatísticas rápidas com animações */}
-            <div className="mt-6 sm:mt-8 md:mt-12 lg:mt-16 grid grid-cols-3 gap-2 sm:gap-3 md:gap-6 lg:gap-8 max-w-4xl mx-auto animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+          </div>
+        </section>
+        
+        {/* Cards de Estatísticas - Imediatamente após o hero */}
+        <section className="py-3 sm:py-4 bg-white">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-4xl mx-auto">
               {[
                 { value: '24/7', label_pt: 'Disponível', label_en: 'Available' },
                 { value: '100%', label_pt: 'Seguro', label_en: 'Secure' },
@@ -138,14 +120,12 @@ const Index = () => {
               ].map((stat, idx) => (
                 <div 
                   key={idx} 
-                  className="glass-light rounded-xl sm:rounded-2xl p-2.5 sm:p-3 md:p-4 lg:p-6 border border-black/10 hover:border-black/30 transition-all duration-300 hover:shadow-lg hover:scale-105 transform group cursor-pointer"
-                  style={{ animationDelay: `${700 + idx * 100}ms` }}
+                  className="rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 text-center"
                 >
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-black mb-1 group-hover:scale-110 transition-transform duration-300">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-black mb-0.5">
                     {stat.value}
                   </div>
-                  <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">{T(stat.label_pt, stat.label_en)}</div>
-                  <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-black/0 group-hover:bg-black/5 transition-colors duration-300 -z-10"></div>
+                  <div className="text-xs text-gray-600">{T(stat.label_pt, stat.label_en)}</div>
                 </div>
               ))}
             </div>
@@ -153,7 +133,7 @@ const Index = () => {
         </section>
 
         {/* Benefits Section - Cards Minimalistas */}
-        <section className="py-12 sm:py-16 md:py-24 lg:py-32 bg-gray-50 relative overflow-hidden">
+        <section className="py-4 sm:py-6 md:py-8 bg-gray-50 relative overflow-hidden">
           {/* Grid pattern sutil com movimento */}
           <div className="absolute inset-0 grid-pattern opacity-20 animate-gradient"></div>
           
@@ -162,14 +142,14 @@ const Index = () => {
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-8 sm:mb-12 md:mb-16 animate-fade-in-up">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-2 sm:mb-4 text-black px-2">
+            <div className="text-center mb-4 sm:mb-6 md:mb-8 animate-fade-in-up">
+              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-extrabold mb-1.5 text-black px-2">
                 {benefitsTitle}
               </h2>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-2">{benefitsSubtitle}</p>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-2xl mx-auto px-2">{benefitsSubtitle}</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8 lg:gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
               <BenefitCard
                 icon={<CalendarCheck className="h-8 w-8 sm:h-10 sm:w-10 text-black" />}
                 title_pt="Agendamento 24/7"
@@ -199,20 +179,20 @@ const Index = () => {
         </section>
         
         {/* Business Types Section - Seção de Negócios Aumentada */}
-        <section className="py-16 sm:py-20 md:py-32 bg-white relative overflow-hidden">
+        <section className="py-6 sm:py-8 md:py-10 bg-white relative overflow-hidden">
           <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-12 sm:mb-16 md:mb-20 animate-fade-in-up">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 text-black px-2">
+            <div className="text-center mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
+              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 text-black px-2">
                 {T('Para Todos os Tipos de Negócios', 'For All Types of Businesses')}
               </h2>
-              <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-2">
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 max-w-3xl mx-auto px-2">
                 {T('Nossa plataforma se adapta perfeitamente ao seu segmento, oferecendo soluções personalizadas.', 'Our platform perfectly adapts to your segment, offering personalized solutions.')}
               </p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {[
                 { 
                   name_pt: 'Salões de Beleza', 
@@ -301,17 +281,17 @@ const Index = () => {
               ].map((business, idx) => (
                 <div
                   key={idx}
-                  className="group relative p-4 sm:p-6 bg-white rounded-xl sm:rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-fade-in-up"
+                  className="group relative p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-fade-in-up"
                   style={{ animationDelay: `${idx * 50}ms` }}
                 >
                   <div className="text-center">
-                    <div className="text-4xl sm:text-5xl mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <div className="text-2xl sm:text-3xl mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300">
                       {business.icon}
                     </div>
-                    <h3 className="text-sm sm:text-base font-bold text-black mb-2 group-hover:text-black transition-colors">
+                    <h3 className="text-xs sm:text-sm font-bold text-black mb-1.5 group-hover:text-black transition-colors">
                       {T(business.name_pt, business.name_en)}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                    <p className="text-xs text-gray-600 leading-relaxed">
                       {T(business.description_pt, business.description_en)}
                     </p>
                   </div>
@@ -323,22 +303,22 @@ const Index = () => {
         </section>
 
         {/* Testimonials Section - Seção de Depoimentos */}
-        <section className="py-16 sm:py-20 md:py-32 bg-gray-50 relative overflow-hidden">
+        <section className="py-6 sm:py-8 md:py-10 bg-gray-50 relative overflow-hidden">
           <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-12 sm:mb-16 md:mb-20 animate-fade-in-up">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 text-black px-2">
+            <div className="text-center mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
+              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-2 sm:mb-3 text-black px-2">
                 {T('O Que Nossos Clientes Dizem', 'What Our Clients Say')}
               </h2>
-              <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-2">
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 max-w-3xl mx-auto px-2">
                 {T('Milhares de empresas já transformaram sua gestão com nossa plataforma.', 'Thousands of companies have already transformed their management with our platform.')}
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
               {[
                 {
                   name_pt: 'Maria Silva',
@@ -432,7 +412,7 @@ const Index = () => {
                   
                   {/* Author Info */}
                   <div className="flex items-center gap-3 sm:gap-4 pt-4 border-t border-gray-200">
-                    <div className="text-3xl sm:text-4xl flex-shrink-0">
+                    <div className="text-2xl sm:text-3xl flex-shrink-0">
                       {testimonial.image}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -457,7 +437,7 @@ const Index = () => {
         <PricingSection />
 
         {/* Final CTA Section - Minimalista com Motion */}
-        <section className="relative py-16 sm:py-20 md:py-32 bg-black text-white overflow-hidden">
+        <section className="relative py-6 sm:py-8 md:py-10 bg-black text-white overflow-hidden">
           {/* Grid pattern animado */}
           <div className="absolute inset-0 grid-pattern-dark opacity-10 animate-gradient"></div>
           
@@ -478,22 +458,22 @@ const Index = () => {
           <div className="absolute top-1/2 right-1/4 w-1 h-1 bg-white/50 rounded-full animate-sparkle"></div>
           
           <div className="container mx-auto px-4 text-center relative z-10">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 md:mb-8 text-white animate-fade-in-up">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold mb-3 md:mb-4 text-white animate-fade-in-up">
               {ctaTitle}
             </h2>
-            <p className="text-lg sm:text-xl text-gray-300 mb-8 md:mb-12 max-w-2xl mx-auto px-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            <p className="text-sm sm:text-base text-gray-300 mb-6 md:mb-8 max-w-2xl mx-auto px-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
               {T('Junte-se a milhares de empresas que já transformaram sua gestão.', 'Join thousands of companies that have already transformed their management.')}
             </p>
             <Button 
               size="lg" 
               asChild 
-              className="group relative px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
+              className="group relative px-6 sm:px-8 py-4 sm:py-5 text-sm sm:text-base font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
               style={{ animationDelay: '400ms' }}
             >
               <Link to="/register">
-                <span className="relative z-10 flex items-center gap-2 sm:gap-3">
+                <span className="relative z-10 flex items-center gap-2">
                   {ctaButton}
-                  <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transform group-hover:translate-x-2 transition-transform duration-300" />
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transform group-hover:translate-x-2 transition-transform duration-300" />
                 </span>
                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-shimmer"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>

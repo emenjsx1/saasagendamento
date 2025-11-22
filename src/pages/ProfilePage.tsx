@@ -180,22 +180,22 @@ const ProfilePage: React.FC = () => {
   const nextRenewalDate = getNextRenewalDate();
 
   return (
-    <div className="space-y-10 pb-16 max-w-4xl mx-auto">
-      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-6 pb-12 max-w-4xl mx-auto">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-3 md:p-5 shadow-2xl flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Área do proprietário', 'Owner Area')}</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold mt-2 flex items-center gap-3">
-              <User className="h-8 w-8" />
+            <h1 className="text-xl md:text-2xl font-extrabold mt-2 flex items-center gap-2">
+              <User className="h-6 w-6 md:h-7 md:w-7" />
               {T('Perfil e assinatura', 'Profile & Subscription')}
             </h1>
-            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+            <p className="text-gray-300 mt-2 text-xs sm:text-sm max-w-2xl">
               {T('Atualize seus dados pessoais, telefone de contato e acompanhe o status do seu plano em um painel único.', 'Update personal data, phone number and track your plan status in a single panel.')}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/20 px-6 py-4 text-center bg-white/5">
+          <div className="rounded-2xl border border-white/20 px-4 py-3 text-center bg-white/5">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Status geral', 'General status')}</p>
-            <p className="text-lg font-semibold mt-2">{subscription ? T('Conta ativa', 'Account active') : T('Sem assinatura', 'No subscription')}</p>
+            <p className="text-base font-semibold mt-1.5">{subscription ? T('Conta ativa', 'Account active') : T('Sem assinatura', 'No subscription')}</p>
             <p className="text-gray-400 text-xs mt-1">{user?.email}</p>
           </div>
         </div>
@@ -203,17 +203,17 @@ const ProfilePage: React.FC = () => {
 
       <Card className="rounded-3xl border border-gray-200 shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">{T('Informações pessoais', 'Personal Information')}</CardTitle>
+          <CardTitle className="text-xl font-semibold">{T('Informações pessoais', 'Personal Information')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               {/* Seção de Foto de Perfil */}
-              <div className="flex flex-col items-center md:flex-row md:items-start gap-6 pb-6 border-b border-gray-200">
+              <div className="flex flex-col items-center md:flex-row md:items-start gap-4 pb-4 border-b border-gray-200">
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32 border-4 border-gray-200 shadow-lg">
                     <AvatarImage src={currentAvatarUrl || undefined} alt={form.watch('first_name') || 'User'} />
-                    <AvatarFallback className="bg-gradient-to-br from-gray-800 to-gray-900 text-white text-3xl font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-gray-800 to-gray-900 text-white text-xl md:text-2xl font-bold">
                       {form.watch('first_name')?.[0]?.toUpperCase() || form.watch('last_name')?.[0]?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>

@@ -83,13 +83,13 @@ const FinancePage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-10 pb-16">
-      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-6 pb-12">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-700 text-white p-3 md:p-5 shadow-2xl flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Sala financeira', 'Finance Room')}</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold mt-2">{T('Gestão Estratégica', 'Strategic Management')}</h1>
-            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+            <h1 className="text-xl md:text-2xl font-extrabold mt-2">{T('Gestão Estratégica', 'Strategic Management')}</h1>
+            <p className="text-gray-300 mt-2 text-xs sm:text-sm max-w-2xl">
               {T('Controle completo do fluxo de caixa, atualizado em tempo real. Acompanhe entradas, saídas e lucro líquido em uma única visão de alto impacto.', 'Complete cash flow control, updated in real time. Track income, expenses and net profit in a single high-impact view.')}
             </p>
           </div>
@@ -108,23 +108,23 @@ const FinancePage: React.FC = () => {
             </DialogContent>
           </Dialog>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Receita', 'Revenue')}</p>
-            <p className="text-3xl font-bold mt-2">{formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale)}</p>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-xl md:text-2xl font-bold mt-2">{formatCurrency(totalRevenue, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">
               {T('Entradas no período selecionado', 'Income in selected period')} ({periodLabel})
             </p>
           </div>
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Despesas', 'Expenses')}</p>
-            <p className="text-3xl font-bold mt-2">{formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale)}</p>
-            <p className="text-gray-400 text-sm mt-1">{T('Saídas totais controladas', 'Total controlled expenses')}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{formatCurrency(totalExpense, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Saídas totais controladas', 'Total controlled expenses')}</p>
           </div>
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Lucro líquido', 'Net Profit')}</p>
-            <p className="text-3xl font-bold mt-2">{formatCurrency(netProfit, currentCurrency.key, currentCurrency.locale)}</p>
-            <p className="text-gray-400 text-sm mt-1">{T('Resultado consolidado', 'Consolidated result')}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{formatCurrency(netProfit, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Resultado consolidado', 'Consolidated result')}</p>
           </div>
         </div>
       </section>

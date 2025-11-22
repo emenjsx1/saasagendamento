@@ -31,6 +31,7 @@ interface Service {
 
 interface Appointment {
   id: string;
+  business_id?: string; // Adicionado business_id
   client_name: string;
   client_whatsapp: string;
   client_email: string | null; // Adicionado email
@@ -157,6 +158,7 @@ const AppointmentsPage: React.FC = () => {
       .from('appointments')
       .select(`
         id,
+        business_id,
         client_name,
         client_whatsapp,
         client_email,
@@ -344,11 +346,11 @@ const AppointmentsPage: React.FC = () => {
                   };
 
                   const businessInfo = {
-                    logo_url: businessData?.logo_url || business?.logo_url || null,
-                    theme_color: businessData?.theme_color || business?.theme_color || themeColor || '#2563eb',
-                    name: businessData?.name || business?.name || 'Negócio',
-                    phone: businessData?.phone || business?.phone || null,
-                    address: businessData?.address || business?.address || null,
+                    logo_url: business?.logo_url || null,
+                    theme_color: business?.theme_color || themeColor || '#2563eb',
+                    name: business?.name || 'Negócio',
+                    phone: business?.phone || null,
+                    address: business?.address || null,
                   };
 
                   let subject = replaceEmailTemplate(template.subject, businessInfo, appointmentData, currentCurrency);
@@ -449,13 +451,13 @@ const AppointmentsPage: React.FC = () => {
   const formattedDate = filterDate ? format(filterDate, 'EEEE, dd \'de\' MMMM', { locale: ptBR }) : T('Selecione uma Data', 'Select a Date');
 
   return (
-    <div className="space-y-10 pb-16">
-      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white p-6 md:p-10 shadow-2xl flex flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-6 pb-12">
+      <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white p-3 md:p-5 shadow-2xl flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-gray-400">{T('Agenda inteligente', 'Smart Schedule')}</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold mt-2">{T('Visão diária', 'Daily View')}</h1>
-            <p className="text-gray-300 mt-3 text-sm md:text-base max-w-2xl">
+            <h1 className="text-xl md:text-2xl font-extrabold mt-2">{T('Visão diária', 'Daily View')}</h1>
+            <p className="text-gray-300 mt-2 text-xs sm:text-sm max-w-2xl">
               {T('Centralize todos os agendamentos do dia, confirme clientes em um clique e mantenha sua operação fluindo sem atritos.', 'Centralize all day appointments, confirm clients with one click and keep your operation flowing smoothly.')}
             </p>
           </div>
@@ -475,32 +477,32 @@ const AppointmentsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Confirmados', 'Confirmed')}</p>
-            <p className="text-3xl font-bold mt-2">{appointments.filter(app => app.status === 'confirmed').length}</p>
-            <p className="text-gray-400 text-sm mt-1">{T('Clientes aguardando atendimento hoje', 'Clients waiting for service today')}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{appointments.filter(app => app.status === 'confirmed').length}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Clientes aguardando atendimento hoje', 'Clients waiting for service today')}</p>
           </div>
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Pendentes', 'Pending')}</p>
-            <p className="text-3xl font-bold mt-2">{appointments.filter(app => app.status === 'pending').length}</p>
-            <p className="text-gray-400 text-sm mt-1">{T('Agendamentos aguardando ação', 'Appointments awaiting action')}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{appointments.filter(app => app.status === 'pending').length}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Agendamentos aguardando ação', 'Appointments awaiting action')}</p>
           </div>
-          <div className="bg-white/5 rounded-2xl border border-white/15 p-4">
+          <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Receita estimada', 'Estimated Revenue')}</p>
-            <p className="text-3xl font-bold mt-2">
+            <p className="text-xl md:text-2xl font-bold mt-2">
               {formatCurrency(
                 appointments.reduce((sum, app) => sum + (app.services?.price || 0), 0),
                 currentCurrency.key,
                 currentCurrency.locale
               )}
             </p>
-            <p className="text-gray-400 text-sm mt-1">{T('Total considerando todos os horários do dia', 'Total considering all day times')}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Total considerando todos os horários do dia', 'Total considering all day times')}</p>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Card className="xl:col-span-2 rounded-3xl border border-black/5 shadow-xl">
           <CardHeader className="pb-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

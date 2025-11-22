@@ -19,7 +19,7 @@ function validatePhoneNumber(phone: string): boolean {
 
 serve(async (req) => {
   // Handle CORS preflight - CRÍTICO: Deve retornar antes de qualquer validação JWT
-  // Se JWT verification estiver habilitada no Supabase, isso pode não funcionar
+  // Se JWT verification estiver h abilitada no Supabase, isso pode não funcionar
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       status: 204, // 204 No Content é padrão para OPTIONS
