@@ -1,0 +1,37 @@
+[33mf9648cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat: Adicionar seção de próxima renovação no perfil e melhorias no sistema de pagamento - Adicionada seção no perfil mostrando plano atual e próxima renovação - Implementada validação para permitir teste gratuito apenas uma vez por conta - Criada Edge Function process-payment para resolver problemas de CORS - Adicionadas instruções de deploy e solução para CORS - Melhorado cálculo de próxima renovação baseado na data de criação da subscription - Atualizado sistema de QR Code para negócios - Adicionadas validações de limite de trial único
+ COMANDOS_SUPABASE_CLI.md                      |  70 [32m++++[m
+ INSTRUCOES_DEPLOY_EDGE_FUNCTION.md            | 119 [32m+++++++[m
+ SOLUCAO_CORS_EDGE_FUNCTION.md                 |  98 [32m++++++[m
+ index.html                                    |   2 [32m+[m[31m-[m
+ package-lock.json                             |  10 [32m+[m
+ package.json                                  |   1 [32m+[m
+ src/App.tsx                                   |  14 [32m+[m[31m-[m
+ src/components/DashboardLayout.tsx            |   4 [32m+[m[31m-[m
+ src/components/Header.tsx                     | 165 [32m+++++++[m[31m---[m
+ src/components/PlanLimitModal.tsx             | 109 [32m++++++[m
+ src/components/PricingSection.tsx             | 392 [32m++++++++++++++[m[31m--------[m
+ src/components/ThemeToggle.tsx                | 137 [32m++++++[m[31m--[m
+ src/globals.css                               |  38 [32m+++[m
+ src/hooks/use-plan-limits.ts                  | 232 [32m+++++++++++++[m
+ src/hooks/use-subscription.ts                 |   3 [32m+[m[31m-[m
+ src/pages/AdminTicketDetailsPage.tsx          |   4 [32m+[m
+ src/pages/BookingPage.tsx                     | 433 [32m++++++++++++++++++[m[31m------[m
+ src/pages/BookingPage_FIXED.tsx               |   4 [32m+[m
+ src/pages/CheckoutPage.tsx                    | 456 [32m++++++++++++++++++++++[m[31m----[m
+ src/pages/ChoosePlanPage.tsx                  | 114 [32m++++++[m[31m-[m
+ src/pages/DashboardPage.tsx                   |  66 [32m+++[m[31m-[m
+ src/pages/Index.tsx                           | 281 [32m+++++++++++++++[m[31m-[m
+ src/pages/LoginPage.tsx                       | 255 [32m+++++++++++[m[31m---[m
+ src/pages/PricingPage.tsx                     | 352 [32m++++++++++++++++++++[m
+ src/pages/ProfilePage.tsx                     |  71 [32m+++[m[31m-[m
+ src/pages/QRCodePage.tsx                      | 285 [32m++++++++++++++++[m
+ src/pages/RegisterBusinessPage.tsx            |  18 [32m+[m
+ src/pages/RegisterPage.tsx                    | 219 [32m+++++++++[m[31m----[m
+ src/pages/TicketDetailPage.tsx                |   4 [32m+[m
+ src/pages/TrialStartedPage.tsx                | 234 [32m+++++++++++++[m
+ src/pages/WelcomePage.tsx                     | 334 [32m+++++++++++++++++++[m
+ src/utils/paymentApi.ts                       | 234 [32m++++++[m[31m-------[m
+ src/utils/pricing-plans.ts                    | 191 [32m++++++[m[31m-----[m
+ supabase/functions/process-payment/index.ts   | 277 [32m++++++++++++++++[m
+ supabase/migrations/create_tickets_tables.sql |   4 [32m+[m
+ 35 files changed, 4498 insertions(+), 732 deletions(-)
