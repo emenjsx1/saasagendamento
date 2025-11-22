@@ -914,6 +914,101 @@ const CheckoutPage: React.FC = () => {
       }
     }
 
+    // 6.5. Enviar email de notificação para admin (emenjoseph7@gmail.com)
+    try {
+      // Buscar dados do negócio (se houver)
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('name')
+        .eq('owner_id', tempUserId)
+        .maybeSingle();
+
+      const businessName = businessData?.name || 'N/A';
+      const userFullName = `${firstName} ${lastName}`;
+      const userPhone = phone || 'N/A';
+      const userEmailForAdmin = form.getValues('email') || 'N/A';
+
+      const adminEmailSubject = `🆕 Novo Negócio - Pagamento Confirmado`;
+      const adminEmailBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #000000 0%, #333333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #000000; }
+            .info-row { padding: 10px 0; border-bottom: 1px solid #eee; }
+            .info-row:last-child { border-bottom: none; }
+            .info-label { font-weight: bold; color: #333; }
+            .info-value { color: #666; margin-top: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🆕 Novo Negócio</h1>
+              <p>Pagamento Confirmado</p>
+            </div>
+            <div class="content">
+              <div class="info-box">
+                <div class="info-row">
+                  <div class="info-label">Usuário:</div>
+                  <div class="info-value">${userFullName}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Email:</div>
+                  <div class="info-value">${userEmailForAdmin}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Telefone/Número:</div>
+                  <div class="info-value">${userPhone}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Negócio:</div>
+                  <div class="info-value">${businessName}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Valor Pago:</div>
+                  <div class="info-value">${formatCurrency(amount, currentCurrency.key, currentCurrency.locale)}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Plano:</div>
+                  <div class="info-value">${selectedPlanForPayment.name}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Método de Pagamento:</div>
+                  <div class="info-value">${method === 'mpesa' ? 'M-Pesa' : 'e-Mola'}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">ID da Transação:</div>
+                  <div class="info-value">${transactionId || reference}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Data:</div>
+                  <div class="info-value">${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await sendEmail({
+        to: 'emenjoseph7@gmail.com',
+        subject: adminEmailSubject,
+        body: adminEmailBody,
+      });
+
+      console.log('✅ Email de notificação enviado para admin');
+    } catch (adminEmailError) {
+      console.error('Erro ao enviar email de notificação para admin:', adminEmailError);
+      // Não falhar o processo se o email não for enviado
+    }
+
     // 7. Enviar webhook para Utmify (APENAS UMA VEZ, após confirmação do pagamento)
     if (orderId && customer && utmData) {
       try {
