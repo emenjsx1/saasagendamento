@@ -2,16 +2,19 @@ import React, { useMemo, useState } from 'react';
 import { useBusiness } from '@/hooks/use-business';
 import { useAppointmentsSummary } from '@/hooks/use-appointments-summary';
 import { usePeriodFinanceSummary } from '@/hooks/use-period-finance-summary';
-import { Loader2, Link as LinkIcon, CalendarCheck, Clock, DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
+import { Loader2, Link as LinkIcon, CalendarCheck, Clock, DollarSign, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { formatCurrency, cn } from '@/lib/utils';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PeriodFilter } from '@/components/PeriodFilter';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface DateRange {
   from: Date;
@@ -20,7 +23,8 @@ interface DateRange {
 
 const DashboardPage = () => {
   const { business, isLoading: isBusinessLoading, isRegistered, businessId, businessSlug } = useBusiness();
-  const { currentCurrency } = useCurrency();
+  const { currentCurrency, T } = useCurrency();
+  const { limits, isLoading: isLimitsLoading } = usePlanLimits();
   
   // Inicializa o filtro para a Semana Atual
   const initialRange: DateRange = useMemo(() => {
@@ -46,7 +50,7 @@ const DashboardPage = () => {
     isLoading: isFinanceLoading 
   } = usePeriodFinanceSummary(businessId, periodRange.from, periodRange.to);
 
-  const isLoading = isBusinessLoading || isSummaryLoading || isFinanceLoading;
+  const isLoading = isBusinessLoading || isSummaryLoading || isFinanceLoading || isLimitsLoading;
   
   const periodLabel = `${format(periodRange.from, 'dd/MM/yyyy', { locale: ptBR })} - ${format(periodRange.to, 'dd/MM/yyyy', { locale: ptBR })}`;
 
@@ -96,6 +100,58 @@ const DashboardPage = () => {
             </Button>
           </div>
         </div>
+        {/* Alerta de Limite de Agendamentos (Free) */}
+        {limits.planName === 'free' && limits.maxAppointments !== null && (
+          <div className="mb-6">
+            <Alert className={cn(
+              "border-2 rounded-xl",
+              limits.appointmentsUsed >= limits.maxAppointments
+                ? "border-orange-500 bg-orange-50"
+                : limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 5
+                ? "border-yellow-500 bg-yellow-50"
+                : "border-blue-500 bg-blue-50"
+            )}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-sm sm:text-base text-black mb-1">
+                    {limits.appointmentsUsed >= limits.maxAppointments
+                      ? T('Limite de agendamentos atingido!', 'Appointment limit reached!')
+                      : T('Agendamentos do mês:', 'Monthly appointments:')
+                    }
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <Progress 
+                      value={limits.maxAppointments ? (limits.appointmentsUsed / limits.maxAppointments) * 100 : 0} 
+                      className="h-2 flex-1"
+                    />
+                    <span className="text-sm font-semibold text-black whitespace-nowrap">
+                      {limits.appointmentsUsed}/{limits.maxAppointments}
+                    </span>
+                  </div>
+                  {limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 5 && limits.appointmentsRemaining > 0 && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      {T(`Restam ${limits.appointmentsRemaining} agendamentos`, `Only ${limits.appointmentsRemaining} appointments remaining`)}
+                    </p>
+                  )}
+                  {limits.appointmentsUsed >= limits.maxAppointments && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      {T('Atualize para continuar criando agendamentos.', 'Upgrade to continue creating appointments.')}
+                    </p>
+                  )}
+                </div>
+                {limits.appointmentsUsed >= limits.maxAppointments && (
+                  <Button asChild size="sm" className="bg-black hover:bg-black/90 text-white">
+                    <Link to="/pricing">
+                      {T('Ver Planos', 'View Plans')}
+                    </Link>
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mt-6 sm:mt-8">
           <div className="bg-white/5 rounded-2xl p-4 sm:p-5 border border-white/10">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-2">Agenda Hoje</p>

@@ -23,7 +23,8 @@ import FinancePage from "./pages/FinancePage";
 import ReportsPage from "./pages/ReportsPage"; 
 import AboutPage from "./pages/AboutPage"; 
 import SupportPage from "./pages/SupportPage"; 
-import ContactPage from "./pages/ContactPage"; 
+import ContactPage from "./pages/ContactPage";
+import PricingPage from "./pages/PricingPage"; 
 import ProfilePage from "./pages/ProfilePage"; 
 import CheckoutPage from "./pages/CheckoutPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -40,6 +41,9 @@ import AdminTicketDetailsPage from "./pages/AdminTicketDetailsPage";
 import TicketsPage from "./pages/TicketsPage";
 import CreateTicketPage from "./pages/CreateTicketPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
+import WelcomePage from "./pages/WelcomePage";
+import TrialStartedPage from "./pages/TrialStartedPage";
+import QRCodePage from "./pages/QRCodePage";
 
 const queryClient = new QueryClient();
 
@@ -54,11 +58,14 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<AboutPage />} /> 
             <Route path="/support" element={<SupportPage />} /> 
-            <Route path="/contact" element={<ContactPage />} /> 
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/pricing" element={<PricingPage />} /> 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/choose-plan" element={<ChoosePlanPage />} />
-            <Route path="/checkout/:planSlug" element={<CheckoutPage />} /> 
+            <Route path="/checkout/:planSlug" element={<CheckoutPage />} />
+            <Route path="/welcome" element={<WelcomePage />} />
+            <Route path="/trial-started" element={<TrialStartedPage />} /> 
             <Route path="/book/:businessId" element={<BookingPage />} />
             <Route path="/confirmation/:appointmentId" element={<ConfirmationPage />} />
 
@@ -72,6 +79,7 @@ const App = () => (
                 <Route path="/dashboard/finance" element={<FinancePage />} /> 
                 <Route path="/dashboard/reports" element={<ReportsPage />} /> 
                 <Route path="/dashboard/profile" element={<ProfilePage />} />
+                <Route path="/dashboard/qr-code" element={<QRCodePage />} />
                 <Route path="/dashboard/tickets" element={<TicketsPage />} />
                 <Route path="/dashboard/tickets/create" element={<CreateTicketPage />} />
                 <Route path="/dashboard/tickets/:ticketId" element={<TicketDetailPage />} />

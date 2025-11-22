@@ -9,61 +9,64 @@ export interface PricingPlan {
   billingPeriod: string;
   originalPrice?: number;
   discount?: number;
+  monthlyPrice?: number; // Preço mensal do plano
+  annualPrice?: number; // Preço anual do plano (já com desconto)
+  annualBasePrice?: number; // Preço anual bruto (antes do desconto)
   isPopular: boolean;
   isTrial: boolean;
+  isFree?: boolean;
   features: string[];
-  planKey: 'trial' | 'weekly' | 'monthly' | 'annual';
+  planKey: 'trial' | 'free' | 'weekly' | 'monthly' | 'annual';
   planSlug: string;
   ctaText: string;
 }
+
+// Preços fixos em MTn (convertidos conforme a moeda)
+const FREE_PRICE = 0;
+const STANDARD_MONTHLY_PRICE_MTN = 3;
+const TEAMS_MONTHLY_PRICE_MTN = 31;
+const STANDARD_ANNUAL_DISCOUNT = 10; // 10%
+const TEAMS_ANNUAL_DISCOUNT = 40; // 40%
+
+// Função para converter preço de MTn para outra moeda
+const convertPrice = (priceMTN: number, currency: Currency): number => {
+  // Se já está em MTN, retorna direto
+  if (currency.key === 'MZN') {
+    return priceMTN;
+  }
+  // Para outras moedas, usa proporção baseada no preço semanal base
+  // Assumindo que weeklyBasePrice está em MTN para MZN
+  // Para outras moedas, fazer conversão proporcional
+  const baseRate = currency.weeklyBasePrice / 1; // 1 MTn = baseRate da moeda atual
+  return parseFloat((priceMTN * baseRate).toFixed(2));
+};
 
 // Função para gerar os planos com base na configuração dinâmica e na moeda
 export const generatePricingPlans = (config: PublicSubscriptionConfig, currency: Currency): PricingPlan[] => {
   const { trial_days } = config;
   
-  const WEEKLY_PRICE = currency.weeklyBasePrice;
-  const MONTHLY_PRICE_BASE = WEEKLY_PRICE * 4; // Base mensal (4 semanas)
-  const ANNUAL_PRICE_BASE = WEEKLY_PRICE * 52; // Base anual (52 semanas)
-
-  // Descontos fixos (mantidos por enquanto)
-  const MONTHLY_DISCOUNT_PERCENT = 10;
-  const ANNUAL_DISCOUNT_PERCENT = 40;
+  // Calcular preços Standard
+  const STANDARD_MONTHLY = convertPrice(STANDARD_MONTHLY_PRICE_MTN, currency);
+  const STANDARD_ANNUAL_BASE = STANDARD_MONTHLY * 12;
+  const STANDARD_ANNUAL = parseFloat((STANDARD_ANNUAL_BASE * (1 - STANDARD_ANNUAL_DISCOUNT / 100)).toFixed(2));
   
-  const calculateDiscountedPrice = (base: number, discount: number) => {
-      return parseFloat((base * (1 - discount / 100)).toFixed(2));
-  };
-
-  // Textos em Português (serão traduzidos via contexto/componente se language === 'en')
+  // Calcular preços Teams
+  const TEAMS_MONTHLY = convertPrice(TEAMS_MONTHLY_PRICE_MTN, currency);
+  const TEAMS_ANNUAL_BASE = TEAMS_MONTHLY * 12;
+  const TEAMS_ANNUAL = parseFloat((TEAMS_ANNUAL_BASE * (1 - TEAMS_ANNUAL_DISCOUNT / 100)).toFixed(2));
+  
+  // Textos em Português
   const texts = {
       trialName: 'Teste Gratuito',
       trialPeriod: `por ${trial_days} dias`,
       trialCta: 'Começar Teste Gratuito',
-      weeklyName: 'Plano Semanal',
-      weeklyPeriod: 'por semana',
-      weeklyCta: 'Escolher Semanal',
-      monthlyName: 'Plano Mensal',
-      monthlyPeriod: 'por mês',
-      monthlyCta: 'Escolher Mensal',
-      annualName: 'Plano Anual',
-      annualPeriod: 'por ano',
-      annualCta: 'Escolher Anual',
-      monthlyDiscount: 'Desconto de 10%',
-      annualDiscount: 'Desconto de 40% (Melhor Valor)',
-      // Features (simplificadas para não precisar de i18n complexo aqui)
-      features: [
-        'Agendamentos Ilimitados',
-        'Página de Agendamento Personalizada',
-        'Gestão de Serviços',
-        'Gestão Financeira Completa',
-        'Relatórios Básicos',
-        'Notificações por E-mail',
-        'Suporte Padrão',
-        'Sem expiração',
-        'Suporte Prioritário',
-        'Relatórios Avançados',
-        'Integração WhatsApp (Futuro)',
-        'Consultoria de Setup',
-      ]
+      freeName: 'Free',
+      freePeriod: 'por 3 dias',
+      freeCta: 'Começar',
+      standardName: 'Standard',
+      standardCta: 'Começar',
+      teamsName: 'Teams',
+      teamsCta: 'Experimente grátis',
   };
 
   return [
@@ -73,57 +76,77 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       billingPeriod: texts.trialPeriod,
       isTrial: true,
       isPopular: false,
-      features: [texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5]],
+      features: [],
       planKey: 'trial',
       planSlug: 'trial',
       ctaText: texts.trialCta,
     },
     {
-      name: texts.weeklyName,
-      price: WEEKLY_PRICE,
-      billingPeriod: texts.weeklyPeriod,
+      name: texts.freeName,
+      price: 0,
+      billingPeriod: texts.freePeriod,
       isTrial: false,
+      isFree: true,
       isPopular: false,
-      features: [texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5], texts.features[6], texts.features[7]],
-      planKey: 'weekly',
-      planSlug: 'weekly',
-      ctaText: texts.weeklyCta,
+      features: [
+        '30 agendamentos por mês',
+        '1 negócio',
+        'Gestão Financeira habilitada',
+        'Página de agendamento personalizada',
+        'Gestão de serviços',
+        'Relatórios básicos',
+        'Notificações WhatsApp',
+        'Suporte padrão'
+      ],
+      planKey: 'free',
+      planSlug: 'free',
+      ctaText: texts.freeCta,
     },
     {
-      name: texts.monthlyName,
-      price: calculateDiscountedPrice(MONTHLY_PRICE_BASE, MONTHLY_DISCOUNT_PERCENT),
-      billingPeriod: texts.monthlyPeriod,
-      originalPrice: MONTHLY_PRICE_BASE,
-      discount: MONTHLY_DISCOUNT_PERCENT,
+      name: texts.standardName,
+      price: STANDARD_MONTHLY,
+      monthlyPrice: STANDARD_MONTHLY,
+      annualPrice: STANDARD_ANNUAL,
+      annualBasePrice: STANDARD_ANNUAL_BASE,
+      billingPeriod: 'por mês',
+      discount: STANDARD_ANNUAL_DISCOUNT,
       isPopular: true,
       isTrial: false,
       features: [
-        texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5],
-        texts.monthlyDiscount, 
-        texts.features[8]
+        'Agendamentos ilimitados',
+        'Página de agendamento totalmente personalizável',
+        'Gestão de serviços completa',
+        'Gestão financeira completa',
+        'Relatórios básicos',
+        'Notificações no WhatsApp',
+        'Suporte prioritário',
+        'Máximo 1 negócio criado'
       ],
       planKey: 'monthly',
-      planSlug: 'monthly',
-      ctaText: texts.monthlyCta,
+      planSlug: 'standard',
+      ctaText: texts.standardCta,
     },
     {
-      name: texts.annualName,
-      price: calculateDiscountedPrice(ANNUAL_PRICE_BASE, ANNUAL_DISCOUNT_PERCENT),
-      billingPeriod: texts.annualPeriod,
-      originalPrice: ANNUAL_PRICE_BASE,
-      discount: ANNUAL_DISCOUNT_PERCENT,
+      name: texts.teamsName,
+      price: TEAMS_MONTHLY,
+      monthlyPrice: TEAMS_MONTHLY,
+      annualPrice: TEAMS_ANNUAL,
+      annualBasePrice: TEAMS_ANNUAL_BASE,
+      billingPeriod: 'por mês',
+      discount: TEAMS_ANNUAL_DISCOUNT,
       isPopular: false,
       isTrial: false,
       features: [
-        texts.features[0], texts.features[1], texts.features[2], texts.features[3], texts.features[4], texts.features[5],
-        texts.annualDiscount, 
-        texts.features[9], 
-        texts.features[10], 
-        texts.features[11]
+        'Tudo do plano Standard',
+        'Múltiplos negócios (sem limite)',
+        'Relatórios avançados',
+        'Integração com WhatsApp (futuro)',
+        'Consultoria de setup',
+        'Melhor custo-benefício'
       ],
       planKey: 'annual',
-      planSlug: 'annual',
-      ctaText: texts.annualCta,
+      planSlug: 'teams',
+      ctaText: texts.teamsCta,
     },
   ];
 };
@@ -134,17 +157,37 @@ export const getPlanBySlug = (slug: string, plans: PricingPlan[]): PricingPlan |
 
 export const calculateRenewalDate = (plan: PricingPlan, trialDays: number): string => {
     const today = new Date();
-    if (plan.planSlug === 'weekly') {
+    
+    // Verificar por planKey primeiro (mais confiável)
+    if (plan.planKey === 'weekly' || plan.planSlug === 'weekly') {
         return format(addDays(today, 7), 'dd/MM/yyyy');
     }
-    if (plan.planSlug === 'monthly') {
+    if (plan.planKey === 'monthly' || plan.planSlug === 'standard' || plan.planSlug === 'monthly') {
         return format(addDays(today, 30), 'dd/MM/yyyy');
     }
-    if (plan.planSlug === 'annual') {
+    if (plan.planKey === 'annual' || plan.planSlug === 'teams' || plan.planSlug === 'annual') {
         return format(addDays(today, 365), 'dd/MM/yyyy');
     }
-    if (plan.isTrial) {
-        return format(addDays(today, trialDays), 'dd/MM/yyyy');
+    if (plan.isTrial || plan.planKey === 'trial' || plan.planKey === 'free' || plan.isFree) {
+        const days = plan.planKey === 'free' ? 3 : trialDays;
+        return format(addDays(today, days), 'dd/MM/yyyy');
     }
+    
+    // Fallback: verificar billingPeriod
+    if (plan.billingPeriod?.includes('mês') || plan.billingPeriod?.includes('month')) {
+        return format(addDays(today, 30), 'dd/MM/yyyy');
+    }
+    if (plan.billingPeriod?.includes('ano') || plan.billingPeriod?.includes('year')) {
+        return format(addDays(today, 365), 'dd/MM/yyyy');
+    }
+    if (plan.billingPeriod?.includes('semana') || plan.billingPeriod?.includes('week')) {
+        return format(addDays(today, 7), 'dd/MM/yyyy');
+    }
+    if (plan.billingPeriod?.includes('dia') || plan.billingPeriod?.includes('day')) {
+        const daysMatch = plan.billingPeriod.match(/\d+/);
+        const days = daysMatch ? parseInt(daysMatch[0]) : trialDays;
+        return format(addDays(today, days), 'dd/MM/yyyy');
+    }
+    
     return 'N/A';
 };

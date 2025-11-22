@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { getPlanBySlug, calculateRenewalDate, PricingPlan, generatePricingPlans } from '@/utils/pricing-plans';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { addDays } from 'date-fns';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -58,7 +58,7 @@ type AccountFormValues = z.infer<typeof AccountSchema>;
 // --- Componentes de Passo ---
 
 interface PaymentMethod {
-  key: 'mpesa' | 'emola' | 'card';
+  key: 'mpesa' | 'emola';
   name_pt: string;
   name_en: string;
   icon: React.ReactNode;
@@ -71,7 +71,17 @@ const paymentMethods: PaymentMethod[] = [
     key: 'mpesa',
     name_pt: 'M-Pesa',
     name_en: 'M-Pesa',
-    icon: <Phone className="h-5 w-5 text-red-600" />,
+    icon: (
+      <img 
+        src="https://idolo.co.mz/wp-content/uploads/2024/07/MPESA.png" 
+        alt="M-Pesa" 
+        className="h-6 w-6 object-contain"
+        onError={(e) => {
+          // Fallback para ícone se a imagem não carregar
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    ),
     instructions_pt: "Instruções: Pague para o número XXXXXXXX via M-Pesa. Após o pagamento, clique em 'Verificar Pagamento'.",
     instructions_en: "Instructions: Pay to number XXXXXXXX via M-Pesa. After payment, click 'Verify Payment'.",
   },
@@ -79,17 +89,19 @@ const paymentMethods: PaymentMethod[] = [
     key: 'emola',
     name_pt: 'e-Mola',
     name_en: 'e-Mola',
-    icon: <MessageSquare className="h-5 w-5 text-green-600" />,
+    icon: (
+      <img 
+        src="https://play-lh.googleusercontent.com/2TGAhJ55tiyhCwW0ZM43deGv4lUTFTBMoq83mnAO6-bU5hi2NPyKX8BN8iKt13irK7Y=w240-h480-rw" 
+        alt="e-Mola" 
+        className="h-6 w-6 object-contain rounded"
+        onError={(e) => {
+          // Fallback para ícone se a imagem não carregar
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    ),
     instructions_pt: "Instruções: Pague para o número YYYYYYYY via e-Mola. Após o pagamento, clique em 'Verificar Pagamento'.",
     instructions_en: "Instructions: Pay to number YYYYYYYY via e-Mola. After payment, click 'Verify Payment'.",
-  },
-  { 
-    key: 'card', 
-    name_pt: 'Cartão Virtual', 
-    name_en: 'Virtual Card', 
-    icon: <CreditCard className="h-5 w-5 text-blue-600" />, 
-    instructions_pt: "Em breve: Pagamento via cartão virtual.",
-    instructions_en: "Coming soon: Virtual card payment.",
   },
 ];
 
@@ -286,7 +298,99 @@ const CheckoutPage: React.FC = () => {
           throw profileError;
         }
 
-        // Se já tem plano selecionado, ir direto para pagamento, senão escolher plano
+        // Verificar se o plano selecionado é trial (gratuito)
+        const currentPlan = selectedPlanForPayment || planFromSlug;
+        
+        if (currentPlan && currentPlan.isTrial) {
+          // Se for plano trial, criar subscription automaticamente e pular pagamento
+          try {
+            // Verificar se já existe uma subscription ativa para este usuário
+            const { data: existingSubscription } = await supabase
+              .from('subscriptions')
+              .select('id, status')
+              .eq('user_id', tempUserId)
+              .in('status', ['active', 'trial'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (existingSubscription) {
+              toast.info(T("Você já possui uma assinatura ativa. Redirecionando para o dashboard...", "You already have an active subscription. Redirecting to dashboard..."));
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 2000);
+              return;
+            }
+
+            // ⚠️ VALIDAÇÃO: Verificar se o usuário JÁ teve um teste gratuito antes
+            // Buscar TODAS as subscriptions do usuário (não apenas ativas) para verificar histórico de trial
+            const { data: allSubscriptions } = await supabase
+              .from('subscriptions')
+              .select('id, is_trial, status, created_at')
+              .eq('user_id', tempUserId)
+              .order('created_at', { ascending: false });
+
+            // Verificar se já teve algum trial no histórico
+            const hasTrialHistory = allSubscriptions?.some(sub => sub.is_trial === true) || false;
+
+            if (hasTrialHistory) {
+              toast.error(T(
+                "Você já utilizou seu teste gratuito. O teste gratuito pode ser ativado apenas uma vez por conta.",
+                "You have already used your free trial. The free trial can only be activated once per account."
+              ));
+              // Redirecionar para escolher outro plano após mostrar erro
+              setTimeout(() => {
+                navigate('/choose-plan');
+              }, 3000);
+              return;
+            }
+
+            const trialEndsAt = addDays(new Date(), subscriptionConfig.trial_days).toISOString();
+            
+            // Criar subscription com status 'trial'
+            const subscriptionData = {
+              user_id: tempUserId,
+              plan_name: currentPlan.name,
+              price: 0,
+              is_trial: true,
+              trial_ends_at: trialEndsAt,
+              status: 'trial',
+              created_at: new Date().toISOString(),
+            };
+
+            const { error: subError } = await supabase
+              .from('subscriptions')
+              .insert(subscriptionData);
+
+            if (subError) {
+              console.error("Erro ao criar subscription trial:", subError);
+              throw subError;
+            }
+
+            // Atualizar tabela consolidada
+            try {
+              await refreshConsolidatedUserData(tempUserId);
+              console.log('✅ Tabela consolidada atualizada para usuário trial');
+            } catch (error) {
+              console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+            }
+
+          toast.success(T("Teste gratuito ativado com sucesso!", "Free trial activated successfully!"));
+          
+          // Redirecionar para onboarding/welcome
+          setTimeout(() => {
+            navigate('/welcome');
+          }, 1500);
+          
+          setStep('success');
+          return;
+          } catch (error: any) {
+            console.error("Erro ao criar subscription trial:", error);
+            toast.error(error.message || T("Erro ao ativar teste gratuito. Tente novamente.", "Error activating free trial. Please try again."));
+          }
+        }
+
+        // Se já tem plano selecionado (não trial), ir direto para pagamento, senão escolher plano
         if (selectedPlanForPayment || planFromSlug) {
           if (planFromSlug && !selectedPlanForPayment) {
             setSelectedPlanForPayment(planFromSlug);
@@ -391,7 +495,176 @@ const CheckoutPage: React.FC = () => {
       
       setTempUserId(userId);
 
-      // 3. Se já tem plano selecionado, ir direto para pagamento, senão escolher plano
+      // 3. Verificar se o plano selecionado é trial (gratuito)
+      const currentPlan = selectedPlanForPayment || planFromSlug;
+      
+      if (currentPlan && currentPlan.isTrial) {
+        // Se for plano trial, criar subscription automaticamente e pular pagamento
+        try {
+          // Verificar se já existe uma subscription ativa para este usuário
+          const { data: existingSubscription } = await supabase
+            .from('subscriptions')
+            .select('id, status')
+            .eq('user_id', userId)
+            .in('status', ['active', 'trial'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existingSubscription) {
+            toast.info(T("Você já possui uma assinatura ativa. Redirecionando para o dashboard...", "You already have an active subscription. Redirecting to dashboard..."));
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 2000);
+            return;
+          }
+
+          // ⚠️ VALIDAÇÃO: Verificar se o usuário JÁ teve um teste gratuito antes
+          // Buscar TODAS as subscriptions do usuário (não apenas ativas) para verificar histórico de trial
+          const { data: allSubscriptions } = await supabase
+            .from('subscriptions')
+            .select('id, is_trial, status, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+          // Verificar se já teve algum trial no histórico
+          const hasTrialHistory = allSubscriptions?.some(sub => sub.is_trial === true) || false;
+
+          if (hasTrialHistory) {
+            toast.error(T(
+              "Você já utilizou seu teste gratuito. O teste gratuito pode ser ativado apenas uma vez por conta.",
+              "You have already used your free trial. The free trial can only be activated once per account."
+            ));
+            // Redirecionar para escolher outro plano após mostrar erro
+            setTimeout(() => {
+              navigate('/choose-plan');
+            }, 3000);
+            return;
+          }
+
+          const trialEndsAt = addDays(new Date(), subscriptionConfig.trial_days).toISOString();
+          
+          // Criar subscription com status 'trial' ou 'active'
+          const subscriptionData = {
+            user_id: userId,
+            plan_name: currentPlan.name,
+            price: 0,
+            is_trial: true,
+            trial_ends_at: trialEndsAt,
+            status: 'trial', // Status trial para contas de teste
+            created_at: new Date().toISOString(),
+          };
+
+          const { error: subError } = await supabase
+            .from('subscriptions')
+            .insert(subscriptionData);
+
+          if (subError) {
+            console.error("Erro ao criar subscription trial:", subError);
+            throw subError;
+          }
+
+          // Atualizar tabela consolidada
+          try {
+            await refreshConsolidatedUserData(userId);
+            console.log('✅ Tabela consolidada atualizada para novo usuário trial');
+          } catch (error) {
+            console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+          }
+
+          // Enviar email de boas-vindas para trial
+          const userEmail = values.email;
+          if (userEmail) {
+            try {
+              const expirationDate = format(addDays(new Date(), subscriptionConfig.trial_days), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+              const userName = `${values.first_name} ${values.last_name}`;
+
+              const emailSubject = T(
+                `✅ Bem-vindo ao AgenCode - Teste Gratuito Ativado!`,
+                `✅ Welcome to AgenCode - Free Trial Activated!`
+              );
+
+              const emailBody = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .success-icon { font-size: 48px; margin-bottom: 20px; }
+                    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+                    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+                    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <div class="success-icon">🎉</div>
+                      <h1>${T('Bem-vindo ao AgenCode!', 'Welcome to AgenCode!')}</h1>
+                    </div>
+                    <div class="content">
+                      <p>${T('Olá', 'Hello')} <strong>${userName}</strong>,</p>
+                      
+                      <p>${T('Parabéns! Sua conta de teste gratuito foi criada com sucesso!', 'Congratulations! Your free trial account has been successfully created!')}</p>
+                      
+                      <div class="info-box">
+                        <h3>${T('Detalhes do Teste Gratuito', 'Free Trial Details')}</h3>
+                        <p><strong>${T('Plano:', 'Plan:')}</strong> ${currentPlan.name}</p>
+                        <p><strong>${T('Duração:', 'Duration:')}</strong> ${subscriptionConfig.trial_days} ${T('dias', 'days')}</p>
+                        <p><strong>${T('Expira em:', 'Expires on:')}</strong> ${expirationDate}</p>
+                        <p><strong>${T('Valor:', 'Price:')}</strong> ${T('Grátis', 'Free')}</p>
+                      </div>
+                      
+                      <p>${T('Você pode usar todos os recursos da plataforma durante o período de teste. Aproveite para explorar todas as funcionalidades!', 'You can use all platform features during the trial period. Enjoy exploring all the features!')}</p>
+                      
+                      <div style="text-align: center;">
+                        <a href="${window.location.origin}/dashboard" class="button">
+                          ${T('Acessar Painel de Gestão', 'Access Management Dashboard')}
+                        </a>
+                      </div>
+                      
+                      <div class="footer">
+                        <p>${T('FEITO POR AgenCode', 'MADE BY AgenCode')}</p>
+                        <p>${T('Se você tiver alguma dúvida, entre em contato conosco.', 'If you have any questions, please contact us.')}</p>
+                      </div>
+                    </div>
+                  </div>
+                </body>
+                </html>
+              `;
+
+              await sendEmail({
+                to: userEmail,
+                subject: emailSubject,
+                body: emailBody,
+              });
+
+              console.log('✅ Email de boas-vindas trial enviado com sucesso');
+            } catch (emailError) {
+              console.error('Erro ao enviar email de boas-vindas:', emailError);
+            }
+          }
+
+          toast.success(T("Conta criada com sucesso! Seu teste gratuito está ativo.", "Account created successfully! Your free trial is active."));
+          
+          // Redirecionar para dashboard após um breve delay
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
+          
+          setStep('success');
+          return;
+        } catch (error: any) {
+          console.error("Erro ao criar subscription trial:", error);
+          toast.error(error.message || T("Erro ao ativar teste gratuito. Tente novamente.", "Error activating free trial. Please try again."));
+        }
+      }
+
+      // 4. Se já tem plano selecionado (não trial), ir direto para pagamento, senão escolher plano
       if (selectedPlanForPayment || planFromSlug) {
         if (planFromSlug && !selectedPlanForPayment) {
           setSelectedPlanForPayment(planFromSlug);
@@ -441,7 +714,19 @@ const CheckoutPage: React.FC = () => {
   };
 
   // Criar subscription e registrar pagamento após sucesso
-  const createSubscriptionAndNotify = async (transactionId: string, reference: string) => {
+  const createSubscriptionAndNotify = async (
+    transactionId: string, 
+    reference: string,
+    orderId?: string,
+    customer?: { nome: string; email: string; phone: string },
+    utmData?: {
+      utm_source: string | null;
+      utm_medium: string | null;
+      utm_campaign: string | null;
+      utm_term: string | null;
+      utm_content: string | null;
+    }
+  ) => {
     if (!tempUserId || !selectedPlanForPayment || !selectedPaymentMethod) return;
 
     const amount = selectedPlanForPayment.price;
@@ -474,18 +759,19 @@ const CheckoutPage: React.FC = () => {
     let expiresAt: Date | null = null;
     let expirationDays = 0;
     
-    if (selectedPlanForPayment.planSlug === 'weekly') {
+    // Usar planKey para determinar o período (mais confiável)
+    if (selectedPlanForPayment.planKey === 'weekly' || selectedPlanForPayment.planSlug === 'weekly') {
       expiresAt = addDays(now, 7);
       expirationDays = 7;
-    } else if (selectedPlanForPayment.planSlug === 'monthly') {
+    } else if (selectedPlanForPayment.planKey === 'monthly' || selectedPlanForPayment.planSlug === 'standard') {
       expiresAt = addDays(now, 30);
       expirationDays = 30;
-    } else if (selectedPlanForPayment.planSlug === 'annual') {
+    } else if (selectedPlanForPayment.planKey === 'annual' || selectedPlanForPayment.planSlug === 'teams') {
       expiresAt = addDays(now, 365);
       expirationDays = 365;
-    } else if (isTrial) {
+    } else if (isTrial || selectedPlanForPayment.planKey === 'trial' || selectedPlanForPayment.planKey === 'free' || selectedPlanForPayment.isFree) {
       expiresAt = trialEndsAt ? new Date(trialEndsAt) : null;
-      expirationDays = subscriptionConfig.trial_days;
+      expirationDays = selectedPlanForPayment.planKey === 'free' ? 3 : subscriptionConfig.trial_days;
     }
 
     // 3. Criar subscription com status 'active' (após pagamento confirmado)
@@ -528,15 +814,7 @@ const CheckoutPage: React.FC = () => {
       console.error("Erro ao registrar pagamento:", paymentError);
     }
 
-    // 4.5. Atualizar tabela consolidada após criar subscription e pagamento
-    try {
-      await refreshConsolidatedUserData(tempUserId);
-      console.log('✅ Tabela consolidada atualizada após criar subscription e pagamento');
-    } catch (error) {
-      console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
-    }
-
-    // 5. Enviar notificações push
+    // 4.5. Enviar notificações push (antes de atualizar tabela consolidada)
     const userName = `${firstName} ${lastName}`;
     try {
       await sendPushNotifications(userName, amount, method);
@@ -636,17 +914,27 @@ const CheckoutPage: React.FC = () => {
       }
     }
 
-    // 7. Atualizar tabela consolidada
+    // 7. Enviar webhook para Utmify (APENAS UMA VEZ, após confirmação do pagamento)
+    if (orderId && customer && utmData) {
+      try {
+        await sendToUtmify('paid', orderId, customer, amount, utmData);
+        console.log('✅ Webhook enviado para Utmify (paid)');
+      } catch (err) {
+        console.warn('⚠️ Erro ao enviar webhook para Utmify (não crítico):', err);
+      }
+    }
+
+    // 8. Atualizar tabela consolidada (APENAS UMA VEZ, no final, após tudo)
     try {
       if (tempUserId) {
         await refreshConsolidatedUserData(tempUserId);
-        console.log('✅ Tabela consolidada atualizada após pagamento');
+        console.log('✅ Tabela consolidada atualizada após pagamento e todas as operações');
       }
     } catch (error) {
       console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
     }
 
-    // 8. Mostrar sucesso e redirecionar para dashboard
+    // 9. Mostrar sucesso e redirecionar para dashboard
     console.log('✅ Subscription criada com sucesso! Status: active');
     toast.success(T("Pagamento confirmado e conta ativada!", "Payment confirmed and account activated!"));
     
@@ -664,7 +952,7 @@ const CheckoutPage: React.FC = () => {
     if (!tempUserId || !selectedPlanForPayment || !selectedPaymentMethod) return;
 
     const amount = selectedPlanForPayment.price;
-    const method = selectedPaymentMethod.key === 'card' ? 'mpesa' : selectedPaymentMethod.key; // Fallback para mpesa se for card
+    const method = selectedPaymentMethod.key;
     const isTrial = selectedPlanForPayment.isTrial;
     const trialEndsAt = isTrial ? addDays(new Date(), subscriptionConfig.trial_days).toISOString() : null;
 
@@ -740,12 +1028,8 @@ const CheckoutPage: React.FC = () => {
     // Obter UTM parameters
     const utmData = getUTMParameters();
 
-    // Enviar WAITING_PAYMENT para Utmify (antes de iniciar pagamento)
-    try {
-      await sendToUtmify('waiting_payment', orderId, customer, selectedPlanForPayment.price, utmData);
-    } catch (err) {
-      console.warn('Erro ao enviar waiting_payment para Utmify (não crítico):', err);
-    }
+    // NOTA: Removido sendToUtmify('waiting_payment') para evitar duplicação
+    // O webhook será enviado apenas uma vez após confirmação do pagamento (dentro de createSubscriptionAndNotify)
 
     // Mostrar modal de processamento
     setShowProcessingModal(true);
@@ -759,13 +1043,6 @@ const CheckoutPage: React.FC = () => {
 
       console.log('Preparando requisição de pagamento:', { phoneDigits, amount, method, reference });
 
-      // Verificar se o método é válido para pagamento
-      if (method === 'card') {
-        toast.error(T("Pagamento por cartão ainda não está disponível.", "Card payment is not yet available."));
-        setShowProcessingModal(false);
-        setIsSubmitting(false);
-        return;
-      }
 
       // Chamar API de pagamento
       console.log('Chamando processPaymentApi...');
@@ -784,17 +1061,13 @@ const CheckoutPage: React.FC = () => {
         console.log('✅ Pagamento bem-sucedido! Criando subscription...');
         
         try {
-          // Enviar PAID para Utmify
-          try {
-            await sendToUtmify('paid', orderId, customer, selectedPlanForPayment.price, utmData);
-          } catch (err) {
-            console.warn('Erro ao enviar paid para Utmify (não crítico):', err);
-          }
-
-          // Criar subscription e registrar pagamento
+          // Criar subscription e registrar pagamento (dentro de createSubscriptionAndNotify será enviado o webhook)
           await createSubscriptionAndNotify(
             paymentResponse.transaction_id || '',
-            paymentResponse.reference || reference
+            paymentResponse.reference || reference,
+            orderId,
+            customer,
+            utmData
           );
           
           // Após pagamento bem-sucedido, a conta já está ativada e subscription está 'active'
@@ -1028,12 +1301,18 @@ const CheckoutPage: React.FC = () => {
             <Button
               key={method.key}
               variant={selectedPaymentMethod?.key === method.key ? 'default' : 'outline'}
-              className="w-full justify-start h-12 text-base"
+              className={cn(
+                "w-full justify-start h-14 sm:h-12 text-base transition-all",
+                selectedPaymentMethod?.key === method.key 
+                  ? "bg-black border-black text-white hover:bg-gray-900" 
+                  : "border-2 border-gray-300 hover:border-gray-400"
+              )}
               onClick={() => setSelectedPaymentMethod(method)}
-              disabled={method.key === 'card'} // Simulação de desativação
             >
-              {method.icon}
-              <span className="ml-3">{T(method.name_pt, method.name_en)}</span>
+              <div className="flex items-center justify-center h-6 w-6 flex-shrink-0">
+                {method.icon}
+              </div>
+              <span className="ml-3 font-semibold">{T(method.name_pt, method.name_en)}</span>
             </Button>
           ))}
         </div>
@@ -1049,7 +1328,7 @@ const CheckoutPage: React.FC = () => {
           </div>
         )}
         
-        {selectedPaymentMethod && selectedPaymentMethod.key !== 'card' && (
+        {selectedPaymentMethod && (
           <div className="border p-4 rounded-lg bg-gray-50 space-y-4">
             <h4 className="font-semibold text-lg">
               {T('Método selecionado:', 'Selected method:')} {T(selectedPaymentMethod.name_pt, selectedPaymentMethod.name_en)}
@@ -1228,11 +1507,64 @@ const CheckoutPage: React.FC = () => {
             </Link>
         </div>
         
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-6 sm:mb-8 text-center">
           {T('Finalizar Compra', 'Complete Purchase')}
         </h1>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Indicador de Progresso */}
+        <div className="mb-6 sm:mb-8 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between">
+            {[
+              { key: 'account', label: T('1 Conta', '1 Account'), number: 1 },
+              { key: 'plan', label: T('2 Plano', '2 Plan'), number: 2 },
+              { key: 'payment', label: T('3 Pagamento', '3 Payment'), number: 3 },
+            ].map((stepItem, index, array) => {
+              const stepKeys = ['account', 'plan', 'payment'];
+              const currentStepIndex = stepKeys.indexOf(step);
+              const isActive = step === stepItem.key;
+              const isCompleted = currentStepIndex > index;
+              
+              return (
+                <React.Fragment key={stepItem.key}>
+                  <div className="flex flex-col items-center flex-1 min-w-0">
+                    <div
+                      className={cn(
+                        "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 font-semibold transition-all duration-200 flex-shrink-0",
+                        isCompleted
+                          ? "bg-black border-black text-white"
+                          : isActive
+                          ? "bg-black border-black text-white scale-110"
+                          : "bg-white border-gray-300 text-gray-400"
+                      )}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                      ) : (
+                        <span className="text-xs sm:text-sm">{stepItem.number}</span>
+                      )}
+                    </div>
+                    <p className={cn(
+                      "text-xs sm:text-sm font-medium mt-2 text-center truncate w-full",
+                      isActive ? "text-black font-bold" : isCompleted ? "text-gray-600" : "text-gray-400"
+                    )}>
+                      {stepItem.label}
+                    </p>
+                  </div>
+                  {index < array.length - 1 && (
+                    <div className="flex-1 mx-2 sm:mx-4 h-0.5 hidden sm:block">
+                      <div className={cn(
+                        "h-full transition-all duration-300",
+                        isCompleted ? "bg-black" : "bg-gray-300"
+                      )} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Coluna Esquerda: Formulário/Pagamento */}
           <div className="lg:col-span-2 space-y-8">
             {step === 'account' && renderAccountForm()}

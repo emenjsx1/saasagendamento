@@ -10,6 +10,7 @@ export interface Subscription {
   status: 'active' | 'trial' | 'pending_payment' | 'cancelled' | string;
   is_trial: boolean;
   trial_ends_at: string | null;
+  created_at?: string;
 }
 
 interface UseSubscriptionResult {
@@ -40,7 +41,7 @@ export const useSubscription = (): UseSubscriptionResult => {
       // Busca a assinatura do usuário
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('id, plan_name, status, is_trial, trial_ends_at')
+        .select('id, plan_name, status, is_trial, trial_ends_at, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }) // Pega a mais recente
         .limit(1)

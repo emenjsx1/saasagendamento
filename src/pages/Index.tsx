@@ -30,7 +30,7 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
         </h3>
         <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">{T(description_pt, description_en)}</p>
         <Link 
-          to="/checkout/trial" 
+          to="/register" 
           className="mt-3 sm:mt-4 text-xs sm:text-sm font-semibold text-black flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2 border-b border-black/0 group-hover:border-black/30 pb-1"
         >
           {T('Saiba Mais', 'Learn More')} 
@@ -60,7 +60,7 @@ const Index = () => {
       
       <main className="flex-grow">
         {/* Hero Section - Design Futurista e Movimentado */}
-        <section className="relative py-16 sm:py-20 md:py-32 lg:py-40 bg-gradient-to-br from-white via-gray-50 to-white overflow-hidden particles-bg">
+        <section className="relative py-20 sm:py-24 md:py-32 lg:py-40 bg-gradient-to-br from-white via-gray-50 to-white overflow-hidden particles-bg">
           {/* Grid pattern animado com movimento */}
           <div className="absolute inset-0 grid-pattern opacity-30 animate-gradient"></div>
           
@@ -87,32 +87,32 @@ const Index = () => {
           
           <div className="container mx-auto px-4 sm:px-6 text-center relative z-10">
             {/* Badge minimalista com animação melhorada */}
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 mb-4 sm:mb-6 md:mb-8 rounded-full bg-black text-white border border-black animate-fade-in-up hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></span>
-              <span className="text-[10px] sm:text-xs md:text-sm font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
+            <div className="inline-flex items-center gap-2 px-5 sm:px-5 py-2.5 sm:py-2.5 mb-6 sm:mb-8 md:mb-10 rounded-full bg-black text-white border border-black animate-fade-in-up hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+              <span className="w-2.5 h-2.5 sm:w-2.5 sm:h-2.5 bg-white rounded-full animate-pulse"></span>
+              <span className="text-sm sm:text-sm md:text-base font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
             </div>
             
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-3 sm:mb-4 md:mb-6 leading-[1.15] sm:leading-[1.1] md:leading-tight animate-slide-up text-black relative px-2">
+            <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-5 sm:mb-6 md:mb-7 leading-[1.1] sm:leading-[1.1] md:leading-tight animate-slide-up text-black relative px-2">
               <span className="relative z-10 bg-gradient-to-r from-black via-gray-900 to-black bg-clip-text text-transparent animate-gradient inline-block">
                 {heroTitle}
               </span>
               <div className="absolute inset-0 blur-xl opacity-20 bg-gradient-to-r from-black via-gray-900 to-black animate-gradient"></div>
             </h1>
             
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-gray-600 mb-6 sm:mb-8 md:mb-12 max-w-4xl mx-auto leading-relaxed px-2 animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <p className="text-lg sm:text-xl md:text-xl lg:text-2xl xl:text-2xl text-gray-600 mb-10 sm:mb-12 md:mb-14 max-w-4xl mx-auto leading-relaxed px-2 animate-slide-up" style={{ animationDelay: '200ms' }}>
               {heroSubtitle}
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center animate-slide-up mb-8 sm:mb-12 md:mb-0" style={{ animationDelay: '400ms' }}>
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center items-center animate-slide-up mb-12 sm:mb-14 md:mb-0" style={{ animationDelay: '400ms' }}>
               <Button 
                 size="lg" 
                 asChild 
-                className="group relative w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-black via-gray-900 to-black hover:from-gray-900 hover:via-black hover:to-gray-900 text-white transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-black/50 overflow-hidden"
+                className="group relative w-full sm:w-auto px-8 sm:px-10 py-6 sm:py-6 md:py-7 text-lg sm:text-lg md:text-xl font-bold bg-gradient-to-r from-black via-gray-900 to-black hover:from-gray-900 hover:via-black hover:to-gray-900 text-white transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-black/50 overflow-hidden rounded-lg"
               >
-                <Link to="/checkout/trial">
+                <Link to="/register">
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {heroCta}
-                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transform group-hover:translate-x-2 transition-transform duration-300" />
+                    <ArrowRight className="h-6 w-6 sm:h-6 sm:w-6 transform group-hover:translate-x-2 transition-transform duration-300" />
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer"></div>
                   <div className="absolute inset-0 bg-white/5 animate-gradient"></div>
@@ -123,7 +123,7 @@ const Index = () => {
                 size="lg" 
                 variant="outline"
                 asChild
-                className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-semibold border-2 border-black text-black hover:bg-black hover:text-white transition-all duration-300 transform hover:scale-105"
+                className="w-full sm:w-auto px-8 sm:px-10 py-6 sm:py-6 md:py-7 text-lg sm:text-lg md:text-xl font-semibold border-2 border-black text-black hover:bg-black hover:text-white transition-all duration-300 transform hover:scale-105 rounded-lg"
               >
                 <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
               </Button>
@@ -198,6 +198,261 @@ const Index = () => {
           </div>
         </section>
         
+        {/* Business Types Section - Seção de Negócios Aumentada */}
+        <section className="py-16 sm:py-20 md:py-32 bg-white relative overflow-hidden">
+          <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
+          
+          <div className="container mx-auto px-4 sm:px-6 relative z-10">
+            <div className="text-center mb-12 sm:mb-16 md:mb-20 animate-fade-in-up">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 text-black px-2">
+                {T('Para Todos os Tipos de Negócios', 'For All Types of Businesses')}
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-2">
+                {T('Nossa plataforma se adapta perfeitamente ao seu segmento, oferecendo soluções personalizadas.', 'Our platform perfectly adapts to your segment, offering personalized solutions.')}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
+              {[
+                { 
+                  name_pt: 'Salões de Beleza', 
+                  name_en: 'Beauty Salons', 
+                  icon: '✂️',
+                  description_pt: 'Gerencie cortes, tratamentos e colorações',
+                  description_en: 'Manage cuts, treatments and colorings'
+                },
+                { 
+                  name_pt: 'Clínicas Médicas', 
+                  name_en: 'Medical Clinics', 
+                  icon: '🏥',
+                  description_pt: 'Agende consultas e exames com facilidade',
+                  description_en: 'Schedule appointments and exams easily'
+                },
+                { 
+                  name_pt: 'Barbearias', 
+                  name_en: 'Barbershops', 
+                  icon: '💈',
+                  description_pt: 'Controle horários e serviços especializados',
+                  description_en: 'Control schedules and specialized services'
+                },
+                { 
+                  name_pt: 'Estúdios de Fitness', 
+                  name_en: 'Fitness Studios', 
+                  icon: '💪',
+                  description_pt: 'Marque aulas e treinos personalizados',
+                  description_en: 'Book classes and personalized training'
+                },
+                { 
+                  name_pt: 'Consultórios', 
+                  name_en: 'Consulting Offices', 
+                  icon: '💼',
+                  description_pt: 'Organize reuniões e sessões de consultoria',
+                  description_en: 'Organize meetings and consulting sessions'
+                },
+                { 
+                  name_pt: 'Spa & Bem-estar', 
+                  name_en: 'Spa & Wellness', 
+                  icon: '🧘',
+                  description_pt: 'Administre massagens e terapias',
+                  description_en: 'Manage massages and therapies'
+                },
+                { 
+                  name_pt: 'Veterinárias', 
+                  name_en: 'Veterinary', 
+                  icon: '🐾',
+                  description_pt: 'Agende atendimentos para pets',
+                  description_en: 'Schedule pet appointments'
+                },
+                { 
+                  name_pt: 'Fisioterapia', 
+                  name_en: 'Physiotherapy', 
+                  icon: '🦴',
+                  description_pt: 'Gerencie sessões de reabilitação',
+                  description_en: 'Manage rehabilitation sessions'
+                },
+                { 
+                  name_pt: 'Odontologia', 
+                  name_en: 'Dentistry', 
+                  icon: '🦷',
+                  description_pt: 'Organize consultas e procedimentos',
+                  description_en: 'Organize consultations and procedures'
+                },
+                { 
+                  name_pt: 'Psicologia', 
+                  name_en: 'Psychology', 
+                  icon: '🧠',
+                  description_pt: 'Controle sessões terapêuticas',
+                  description_en: 'Control therapeutic sessions'
+                },
+                { 
+                  name_pt: 'Nutrição', 
+                  name_en: 'Nutrition', 
+                  icon: '🥗',
+                  description_pt: 'Marque consultas nutricionais',
+                  description_en: 'Book nutritional consultations'
+                },
+                { 
+                  name_pt: 'E Muito Mais', 
+                  name_en: 'And Much More', 
+                  icon: '🌟',
+                  description_pt: 'Adaptável a qualquer segmento',
+                  description_en: 'Adaptable to any segment'
+                }
+              ].map((business, idx) => (
+                <div
+                  key={idx}
+                  className="group relative p-4 sm:p-6 bg-white rounded-xl sm:rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <div className="text-center">
+                    <div className="text-4xl sm:text-5xl mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+                      {business.icon}
+                    </div>
+                    <h3 className="text-sm sm:text-base font-bold text-black mb-2 group-hover:text-black transition-colors">
+                      {T(business.name_pt, business.name_en)}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      {T(business.description_pt, business.description_en)}
+                    </p>
+                  </div>
+                  <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-black/0 group-hover:bg-black/5 transition-colors duration-300 -z-10"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials Section - Seção de Depoimentos */}
+        <section className="py-16 sm:py-20 md:py-32 bg-gray-50 relative overflow-hidden">
+          <div className="absolute inset-0 grid-pattern opacity-10 animate-gradient"></div>
+          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
+          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
+          
+          <div className="container mx-auto px-4 sm:px-6 relative z-10">
+            <div className="text-center mb-12 sm:mb-16 md:mb-20 animate-fade-in-up">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 text-black px-2">
+                {T('O Que Nossos Clientes Dizem', 'What Our Clients Say')}
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-2">
+                {T('Milhares de empresas já transformaram sua gestão com nossa plataforma.', 'Thousands of companies have already transformed their management with our platform.')}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10">
+              {[
+                {
+                  name_pt: 'Maria Silva',
+                  name_en: 'Maria Silva',
+                  business_pt: 'Salão Beleza & Arte',
+                  business_en: 'Beauty & Art Salon',
+                  role_pt: 'Proprietária',
+                  role_en: 'Owner',
+                  image: '👩',
+                  text_pt: 'A plataforma revolucionou meu negócio! Agora meus clientes agendam 24/7 e eu tenho controle total sobre a agenda e finanças.',
+                  text_en: 'The platform revolutionized my business! Now my clients book 24/7 and I have total control over the schedule and finances.',
+                  rating: 5
+                },
+                {
+                  name_pt: 'João Santos',
+                  name_en: 'João Santos',
+                  business_pt: 'Clínica Saúde Total',
+                  business_en: 'Total Health Clinic',
+                  role_pt: 'Médico',
+                  role_en: 'Doctor',
+                  image: '👨‍⚕️',
+                  text_pt: 'Excelente ferramenta! Reduzi em 80% o tempo gasto com agendamentos telefônicos. Minha receita aumentou significativamente.',
+                  text_en: 'Excellent tool! I reduced by 80% the time spent on phone appointments. My revenue increased significantly.',
+                  rating: 5
+                },
+                {
+                  name_pt: 'Ana Costa',
+                  name_en: 'Ana Costa',
+                  business_pt: 'Barbearia Moderna',
+                  business_en: 'Modern Barbershop',
+                  role_pt: 'Gerente',
+                  role_en: 'Manager',
+                  image: '👩‍💼',
+                  text_pt: 'Muito fácil de usar e personalizar. Meus clientes adoram a experiência de agendamento online. Recomendo 100%!',
+                  text_en: 'Very easy to use and customize. My clients love the online booking experience. I recommend 100%!',
+                  rating: 5
+                },
+                {
+                  name_pt: 'Carlos Oliveira',
+                  name_en: 'Carlos Oliveira',
+                  business_pt: 'Estúdio FitMax',
+                  business_en: 'FitMax Studio',
+                  role_pt: 'Personal Trainer',
+                  role_en: 'Personal Trainer',
+                  image: '💪',
+                  text_pt: 'Perfeito para gerenciar múltiplos clientes e horários. O sistema de pagamentos integrado é um diferencial incrível.',
+                  text_en: 'Perfect for managing multiple clients and schedules. The integrated payment system is an incredible differentiator.',
+                  rating: 5
+                },
+                {
+                  name_pt: 'Patrícia Lima',
+                  name_en: 'Patrícia Lima',
+                  business_pt: 'Spa Relax',
+                  business_en: 'Relax Spa',
+                  role_pt: 'Diretora',
+                  role_en: 'Director',
+                  image: '🧘',
+                  text_pt: 'A interface é linda e profissional. Meus clientes ficam impressionados. O controle financeiro é preciso e detalhado.',
+                  text_en: 'The interface is beautiful and professional. My clients are impressed. Financial control is accurate and detailed.',
+                  rating: 5
+                },
+                {
+                  name_pt: 'Roberto Ferreira',
+                  name_en: 'Roberto Ferreira',
+                  business_pt: 'Clínica Veterinária PetCare',
+                  business_en: 'PetCare Veterinary Clinic',
+                  role_pt: 'Veterinário',
+                  role_en: 'Veterinarian',
+                  image: '🐾',
+                  text_pt: 'Solução completa para clínicas veterinárias. Agilizou muito nosso atendimento e aumentou a satisfação dos clientes.',
+                  text_en: 'Complete solution for veterinary clinics. It greatly streamlined our service and increased customer satisfaction.',
+                  rating: 5
+                }
+              ].map((testimonial, idx) => (
+                <div
+                  key={idx}
+                  className="relative p-6 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-200 hover:border-black transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] group animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
+                  {/* Stars Rating */}
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <span key={i} className="text-yellow-500 text-lg">⭐</span>
+                    ))}
+                  </div>
+                  
+                  {/* Testimonial Text */}
+                  <p className="text-sm sm:text-base text-gray-700 mb-6 leading-relaxed italic">
+                    "{T(testimonial.text_pt, testimonial.text_en)}"
+                  </p>
+                  
+                  {/* Author Info */}
+                  <div className="flex items-center gap-3 sm:gap-4 pt-4 border-t border-gray-200">
+                    <div className="text-3xl sm:text-4xl flex-shrink-0">
+                      {testimonial.image}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-black text-sm sm:text-base">
+                        {T(testimonial.name_pt, testimonial.name_en)}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
+                        {T(testimonial.role_pt, testimonial.role_en)} • {T(testimonial.business_pt, testimonial.business_en)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Hover Effect */}
+                  <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-black/0 group-hover:bg-black/5 transition-colors duration-300 -z-10"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Pricing Section */}
         <PricingSection />
 
@@ -235,7 +490,7 @@ const Index = () => {
               className="group relative px-8 sm:px-10 py-6 sm:py-7 text-base sm:text-lg font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
               style={{ animationDelay: '400ms' }}
             >
-              <Link to="/checkout/trial">
+              <Link to="/register">
                 <span className="relative z-10 flex items-center gap-2 sm:gap-3">
                   {ctaButton}
                   <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transform group-hover:translate-x-2 transition-transform duration-300" />

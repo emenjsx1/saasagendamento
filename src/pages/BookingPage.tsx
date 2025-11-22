@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase, Lock, CreditCard, ExternalLink } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, CheckCircle, MapPin, Phone, MessageSquare, Mail, Briefcase, Lock, CreditCard, ExternalLink, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute } from 'date-fns';
+import { format, addMinutes, startOfToday, isSameDay, parseISO, setHours, setMinutes, isBefore, isAfter, isSameMinute, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -60,47 +60,158 @@ interface ClientDetails {
 }
 
 
-// Componente de Seleção de Serviço (Usando Select para melhor escalabilidade)
+// Componente de Indicador de Etapas (Step Indicator)
+const StepIndicator: React.FC<{
+  currentStep: 'service' | 'datetime' | 'details';
+  T: (pt: string, en: string) => string;
+}> = ({ currentStep, T }) => {
+  const steps = [
+    { key: 'service', label: T('Serviço', 'Service'), number: 1 },
+    { key: 'datetime', label: T('Data & Hora', 'Date & Time'), number: 2 },
+    { key: 'details', label: T('Seus Dados', 'Your Details'), number: 3 },
+  ];
+
+  const getCurrentStepIndex = () => {
+    return steps.findIndex(s => s.key === currentStep);
+  };
+
+  const currentIndex = getCurrentStepIndex();
+
+  return (
+    <div className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between max-w-2xl mx-auto px-2 sm:px-0">
+        {steps.map((step, index) => {
+          const isActive = step.key === currentStep;
+          const isCompleted = index < currentIndex;
+          const isUpcoming = index > currentIndex;
+
+          return (
+            <React.Fragment key={step.key}>
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="flex items-center w-full">
+                  {/* Circle */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 font-semibold transition-all duration-200 flex-shrink-0",
+                      isCompleted
+                        ? "bg-black border-black text-white"
+                        : isActive
+                        ? "bg-black border-black text-white scale-110"
+                        : "bg-white border-gray-300 text-gray-400"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    ) : (
+                      <span className="text-xs sm:text-sm">{step.number}</span>
+                    )}
+                  </div>
+                  {/* Label */}
+                  <div className="ml-2 sm:ml-3 flex-1 min-w-0">
+                    <p className={cn(
+                      "text-xs sm:text-sm font-medium truncate",
+                      isActive ? "text-black" : isCompleted ? "text-gray-600" : "text-gray-400"
+                    )}>
+                      {step.label}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Connector Line */}
+              {index < steps.length - 1 && (
+                <div className="flex-1 mx-2 sm:mx-4 h-0.5 hidden sm:block">
+                  <div className={cn(
+                    "h-full transition-all duration-300",
+                    isCompleted ? "bg-black" : "bg-gray-300"
+                  )} />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Componente de Seleção de Serviço (Estilo Calendly - Cards clicáveis)
 const ServiceSelector: React.FC<{ 
   services: Service[], 
   selectedService: Service | null, 
   onSelectService: (service: Service | null) => void,
+  onContinue: () => void,
   themeColor: string,
   currentCurrency: Currency,
   T: (pt: string, en: string) => string,
-}> = ({ services, selectedService, onSelectService, themeColor, currentCurrency, T }) => {
-  
-  const handleSelectChange = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId) || null;
-    onSelectService(service);
-  };
+}> = ({ services, selectedService, onSelectService, onContinue, themeColor, currentCurrency, T }) => {
 
   return (
-    <Card className="shadow-md border border-gray-200">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold">{T('1. Escolha o Serviço', '1. Choose Service')}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Select onValueChange={handleSelectChange} value={selectedService?.id || ""}>
-          <SelectTrigger className="w-full h-11">
-            <SelectValue placeholder={T('Selecione um serviço...', 'Select a service...')} />
-          </SelectTrigger>
-          <SelectContent>
-            {services.map((service) => (
-              <SelectItem key={service.id} value={service.id}>
-                <div className="flex justify-between items-center w-full gap-4">
+    <div className="space-y-4 sm:space-y-6">
                   <div>
-                    <span className="font-medium">{service.name}</span>
-                    <span className="ml-2 text-sm text-gray-500">({service.duration_minutes} {T('min', 'min')})</span>
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Selecione o serviço', 'Select service')}</h2>
+        <p className="text-gray-600 text-xs sm:text-sm">{T('Escolha o serviço que deseja agendar', 'Choose the service you want to book')}</p>
                   </div>
-                  <span className="font-semibold" style={{ color: themeColor }}>{formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}</span>
+      
+      <div className="grid grid-cols-1 gap-3">
+        {services.map((service) => {
+          const isSelected = selectedService?.id === service.id;
+          return (
+            <button
+              key={service.id}
+              onClick={() => onSelectService(isSelected ? null : service)}
+              className={cn(
+                "w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200",
+                isSelected
+                  ? "border-black bg-black text-white shadow-lg"
+                  : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                    <h3 className={cn(
+                      "text-base sm:text-lg font-semibold truncate",
+                      isSelected ? "text-white" : "text-gray-900"
+                    )}>
+                      {service.name}
+                    </h3>
+                    {isSelected && (
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
+                    )}
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </CardContent>
-    </Card>
+                  <p className={cn(
+                    "text-xs sm:text-sm",
+                    isSelected ? "text-gray-200" : "text-gray-500"
+                  )}>
+                    {service.duration_minutes} {T('minutos', 'minutes')}
+                  </p>
+                </div>
+                <div className={cn(
+                  "text-base sm:text-lg font-bold flex-shrink-0",
+                  isSelected ? "text-white" : "text-gray-900"
+                )}>
+                  {formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Botão Continuar */}
+      {selectedService && (
+        <div className="flex justify-end pt-3 sm:pt-4">
+          <Button
+            onClick={onContinue}
+            className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base h-auto"
+            size="lg"
+          >
+            {T('Continuar', 'Continue')}
+            <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -112,9 +223,11 @@ const AppointmentScheduler: React.FC<{
   setSelectedDate: (date: Date | undefined) => void;
   selectedTime: string | null;
   setSelectedTime: (time: string | null) => void;
+  onBack: () => void;
+  onContinue: () => void;
   themeColor: string;
   T: (pt: string, en: string) => string;
-}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, themeColor, T }) => {
+}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, onBack, onContinue, themeColor, T }) => {
   
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isTimesLoading, setIsTimesLoading] = useState(false);
@@ -229,26 +342,36 @@ const AppointmentScheduler: React.FC<{
   };
 
   return (
-    <Card className="shadow-md border border-gray-200">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold">{T('2. Escolha Data e Hora', '2. Choose Date and Time')}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Escolha data e hora', 'Choose date and time')}</h2>
+        <p className="text-gray-600 text-xs sm:text-sm">{T('Selecione quando deseja ser atendido', 'Select when you want to be served')}</p>
+      </div>
+
+      <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6">
         {/* Seleção de Data */}
+        <div className="mb-4 sm:mb-6">
+          <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 block">
+            {T('Data', 'Date')}
+          </label>
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant={"outline"}
               className={cn(
-                "w-full justify-start text-left font-normal h-11",
-                !selectedDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>{T('Selecione uma data', 'Select a date')}</span>}
+                  "w-full justify-start text-left font-normal h-10 sm:h-12 text-sm sm:text-base border-2",
+                  !selectedDate && "text-gray-400 border-gray-300"
+                )}
+              >
+                <CalendarIcon className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                {selectedDate ? (
+                  <span className="font-medium text-xs sm:text-base">{format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                ) : (
+                  <span className="text-xs sm:text-base">{T('Selecione uma data', 'Select a date')}</span>
+                )}
             </Button>
           </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0" align="start">
           <ShadcnCalendar
             mode="single"
             selected={selectedDate}
@@ -269,24 +392,32 @@ const AppointmentScheduler: React.FC<{
           />
         </PopoverContent>
       </Popover>
+        </div>
 
         {/* Seleção de Hora */}
         {selectedDate && (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700">{T('Horários disponíveis', 'Available times')}</p>
+            <label className="text-xs sm:text-sm font-medium text-gray-700 block">
+              {T('Horários disponíveis', 'Available times')}
+            </label>
             {isTimesLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin" style={{ color: themeColor }} />
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" style={{ color: themeColor }} />
               </div>
             ) : availableTimes.length > 0 ? (
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-3">
                 {availableTimes.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
-                    size="sm"
-                    className={cn("h-10 font-medium")}
-                    style={selectedTime === time ? { backgroundColor: themeColor, borderColor: themeColor } : {}}
+                    size="lg"
+                    className={cn(
+                      "h-10 sm:h-12 font-medium text-xs sm:text-base border-2 transition-all",
+                      selectedTime === time
+                        ? "border-black shadow-md"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    )}
+                    style={selectedTime === time ? { backgroundColor: 'black', borderColor: 'black', color: 'white' } : {}}
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -294,39 +425,72 @@ const AppointmentScheduler: React.FC<{
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">{T('Nenhum horário disponível.', 'No available times.')}</p>
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-500">{T('Nenhum horário disponível para esta data.', 'No available times for this date.')}</p>
+              </div>
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* Botões de Navegação */}
+        <div className="flex items-center justify-between pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-gray-200">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm h-auto"
+          >
+            <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            {T('Voltar', 'Back')}
+          </Button>
+          
+          {selectedDate && selectedTime && (
+            <Button
+              onClick={onContinue}
+              className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-xs sm:text-base h-auto"
+            >
+              {T('Continuar', 'Continue')}
+              <ArrowRight className="ml-2 h-3 w-3 sm:h-5 sm:w-5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
-// Componente de Detalhes do Cliente
-const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetails: (details: ClientDetails) => void, T: (pt: string, en: string) => string }> = ({ clientDetails, setClientDetails, T }) => (
-  <Card className="shadow-md border border-gray-200">
-    <CardHeader className="pb-3">
-      <CardTitle className="text-lg font-semibold">{T('3. Seus Dados', '3. Your Details')}</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-4">
+// Componente de Detalhes do Cliente (Estilo Calendly - mais limpo e espaçado)
+const ClientDetailsForm: React.FC<{ 
+  clientDetails: ClientDetails, 
+  setClientDetails: (details: ClientDetails) => void,
+  onBack: () => void,
+  onSubmit: () => void,
+  isSubmitting: boolean,
+  T: (pt: string, en: string) => string 
+}> = ({ clientDetails, setClientDetails, onBack, onSubmit, isSubmitting, T }) => (
+  <div className="space-y-4 sm:space-y-6">
       <div>
-        <Label htmlFor="client_name" className="text-sm font-medium">
-          {T('Nome Completo', 'Full Name')} *
+      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Informe seus dados', 'Enter your details')}</h2>
+      <p className="text-gray-600 text-xs sm:text-sm">{T('Preencha as informações abaixo para finalizar o agendamento', 'Fill in the information below to complete the booking')}</p>
+    </div>
+    
+    <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div>
+        <Label htmlFor="client_name" className="text-sm sm:text-base font-semibold text-gray-900 mb-2 block">
+          {T('Nome Completo', 'Full Name')} <span className="text-red-500">*</span>
         </Label>
         <Input 
           id="client_name" 
           value={clientDetails.client_name} 
           onChange={(e) => setClientDetails({ ...clientDetails, client_name: e.target.value })} 
           required 
-          className="mt-1 h-11"
+          className="h-10 sm:h-12 text-sm sm:text-base border-2 border-gray-300 focus:border-black"
           placeholder={T('Digite seu nome completo', 'Enter your full name')}
         />
       </div>
       
       <div>
-        <Label htmlFor="client_whatsapp" className="text-sm font-medium">
-          WhatsApp *
+        <Label htmlFor="client_whatsapp" className="text-sm sm:text-base font-semibold text-gray-900 mb-2 block">
+          WhatsApp <span className="text-red-500">*</span>
         </Label>
         <Input 
           id="client_whatsapp" 
@@ -334,27 +498,57 @@ const ClientDetailsForm: React.FC<{ clientDetails: ClientDetails, setClientDetai
           onChange={(e) => setClientDetails({ ...clientDetails, client_whatsapp: e.target.value })} 
           placeholder="841234567"
           required 
-          className="mt-1 h-11"
+          className="h-10 sm:h-12 text-sm sm:text-base border-2 border-gray-300 focus:border-black"
         />
-        <p className="text-xs text-gray-500 mt-1">{T('Digite apenas números (9 dígitos)', 'Enter numbers only (9 digits)')}</p>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">{T('Digite apenas números (9 dígitos)', 'Enter numbers only (9 digits)')}</p>
       </div>
       
       <div>
-        <Label htmlFor="client_email" className="text-sm font-medium">
-          {T('E-mail (Opcional)', 'Email (Optional)')}
+        <Label htmlFor="client_email" className="text-sm sm:text-base font-semibold text-gray-900 mb-2 block">
+          {T('E-mail', 'Email')} <span className="text-gray-400 text-xs sm:text-sm font-normal">({T('Opcional', 'Optional')})</span>
         </Label>
         <Input 
           id="client_email" 
           type="email"
           value={clientDetails.client_email} 
           onChange={(e) => setClientDetails({ ...clientDetails, client_email: e.target.value })} 
-          className="mt-1 h-11"
+          className="h-10 sm:h-12 text-sm sm:text-base border-2 border-gray-300 focus:border-black"
           placeholder="seu@email.com"
         />
-        <p className="text-xs text-gray-500 mt-1">{T('Recomendado para receber confirmações', 'Recommended to receive confirmations')}</p>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">{T('Recomendado para receber confirmações por e-mail', 'Recommended to receive email confirmations')}</p>
       </div>
-    </CardContent>
-  </Card>
+
+      {/* Botões de Navegação */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-gray-200">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm h-auto w-full sm:w-auto"
+        >
+          <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          {T('Voltar', 'Back')}
+        </Button>
+        
+        <Button
+          onClick={onSubmit}
+          disabled={!clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
+          className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-xs sm:text-base h-auto disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+              {T('Confirmando...', 'Confirming...')}
+            </>
+          ) : (
+            <>
+              {T('Confirmar Agendamento', 'Confirm Appointment')}
+              <CheckCircle className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  </div>
 );
 
 
@@ -372,6 +566,7 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado do Agendamento
+  const [currentStep, setCurrentStep] = useState<'service' | 'datetime' | 'details'>('service');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -544,43 +739,66 @@ const BookingPage = () => {
 
     if (!business || !templates) return;
 
-    // Verificar limite de agendamentos diários para contas de teste grátis
+    // Verificar limite de agendamentos mensais para plano Free (30/mês)
     try {
+      if (business?.owner_id) {
+        // Buscar plano do dono do negócio
       const { data: subscriptionData } = await supabase
         .from('subscriptions')
-        .select('status, is_trial')
+          .select('plan_name, status, is_trial')
         .eq('user_id', business.owner_id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      // Se for conta de teste grátis, verificar limite de 10 agendamentos diários
-      if (subscriptionData?.status === 'trial' || subscriptionData?.is_trial) {
-        const today = startOfToday();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const { data: paymentData } = await supabase
+          .from('payments')
+          .select('plan_name, status')
+          .eq('user_id', business.owner_id)
+          .eq('status', 'paid')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        // Contar agendamentos criados hoje para este negócio
-        const { count: appointmentsToday, error: countError } = await supabase
+        // Determinar plano ativo
+        let currentPlan: string | null = null;
+        if (paymentData?.plan_name) {
+          currentPlan = paymentData.plan_name.toLowerCase();
+        } else if (subscriptionData?.plan_name) {
+          currentPlan = subscriptionData.plan_name.toLowerCase();
+        } else if (subscriptionData?.status === 'trial' || subscriptionData?.is_trial) {
+          currentPlan = 'free'; // Trial = Free
+        }
+
+        // Se for plano Free, verificar limite mensal de 30 agendamentos
+        if (currentPlan && (currentPlan.includes('free') || currentPlan.includes('teste') || currentPlan.includes('trial'))) {
+          const now = new Date();
+          const monthStart = startOfMonth(now);
+          const monthEnd = endOfMonth(now);
+
+          // Contar agendamentos do mês atual para este negócio
+          const { count: appointmentsThisMonth, error: countError } = await supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
           .eq('business_id', business.id)
-          .gte('created_at', today.toISOString())
-          .lt('created_at', tomorrow.toISOString());
+            .gte('start_time', monthStart.toISOString())
+            .lte('start_time', monthEnd.toISOString())
+            .neq('status', 'cancelled');
 
         if (countError) {
           console.error('[BOOKING] Erro ao contar agendamentos:', countError);
         } else {
-          const MAX_DAILY_APPOINTMENTS = 10;
-          if ((appointmentsToday || 0) >= MAX_DAILY_APPOINTMENTS) {
+            const MAX_MONTHLY_APPOINTMENTS = 30;
+            if ((appointmentsThisMonth || 0) >= MAX_MONTHLY_APPOINTMENTS) {
             toast.error(
               T(
-                "Atingiu o número máximo de agendamento. Só vai retornar depois das 24h.",
-                "Reached maximum number of appointments. Will return after 24 hours."
+                  "Este negócio atingiu o limite de 30 agendamentos por mês. Tente novamente no próximo mês ou entre em contato com o estabelecimento.",
+                  "This business has reached the 30 appointments per month limit. Try again next month or contact the establishment."
               ),
-              { duration: 5000 }
+                { duration: 7000 }
             );
             return;
+            }
           }
         }
       }
@@ -947,10 +1165,14 @@ const BookingPage = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna de Seleção */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Indicador de Etapas */}
+        <StepIndicator currentStep={currentStep} T={T} />
             
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Coluna de Seleção - Sistema de Etapas */}
+          <div className="lg:col-span-2">
+            {/* Etapa 1: Seleção de Serviço */}
+            {currentStep === 'service' && (
             <ServiceSelector 
               services={services} 
               selectedService={selectedService} 
@@ -958,13 +1180,24 @@ const BookingPage = () => {
                 setSelectedService(service);
                 setSelectedDate(undefined);
                 setSelectedTime(null); 
+                  // Reset para etapa 1 se deselecionar
+                  if (!service) {
+                    setCurrentStep('service');
+                  }
+                }} 
+                onContinue={() => {
+                  if (selectedService) {
+                    setCurrentStep('datetime');
+                  }
               }} 
               themeColor={themeColor}
               currentCurrency={currentCurrency}
               T={T}
             />
+            )}
 
-            {selectedService && business.working_hours && (
+            {/* Etapa 2: Data e Hora */}
+            {currentStep === 'datetime' && selectedService && business.working_hours && (
               <AppointmentScheduler 
                 business={business}
                 selectedService={selectedService}
@@ -972,15 +1205,25 @@ const BookingPage = () => {
                 setSelectedDate={setSelectedDate}
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
+                onBack={() => setCurrentStep('service')}
+                onContinue={() => {
+                  if (selectedDate && selectedTime) {
+                    setCurrentStep('details');
+                  }
+                }}
                 themeColor={themeColor}
                 T={T}
               />
             )}
 
-            {selectedService && selectedDate && selectedTime && (
+            {/* Etapa 3: Dados do Cliente */}
+            {currentStep === 'details' && selectedService && selectedDate && selectedTime && (
               <ClientDetailsForm 
                 clientDetails={clientDetails}
                 setClientDetails={setClientDetails}
+                onBack={() => setCurrentStep('datetime')}
+                onSubmit={handleBooking}
+                isSubmitting={isSubmitting}
                 T={T}
               />
             )}

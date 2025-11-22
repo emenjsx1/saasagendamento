@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Zap, Loader2, ArrowRight } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
+import { Check, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn, formatCurrency } from '@/lib/utils';
 import { generatePricingPlans } from '@/utils/pricing-plans';
@@ -11,6 +12,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 const PricingSection: React.FC = () => {
   const { subscriptionConfig, isLoading } = usePublicSettings();
   const { currentCurrency, T } = useCurrency();
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   
   if (isLoading) {
     return (
@@ -26,162 +28,268 @@ const PricingSection: React.FC = () => {
 
   const pricingPlans = generatePricingPlans(subscriptionConfig, currentCurrency);
   
-  const displayPlans = pricingPlans.filter(p => !p.isTrial);
-  const trialPlan = pricingPlans.find(p => p.isTrial);
+  // Mostrar planos: Free, Standard, Teams
+  const freePlan = pricingPlans.find(p => p.planKey === 'free');
+  const standardPlan = pricingPlans.find(p => p.planSlug === 'standard');
+  const teamsPlan = pricingPlans.find(p => p.planSlug === 'teams');
+  const allDisplayPlans = [freePlan, standardPlan, teamsPlan].filter(Boolean);
   
   const translateFeature = (ptText: string) => {
-      if (!T('', '')) return ptText;
-      
       const translations: Record<string, string> = {
-        'Agendamentos Ilimitados': 'Unlimited Appointments',
-        'Página de Agendamento Personalizada': 'Custom Booking Page',
-        'Gestão de Serviços': 'Service Management',
-        'Gestão Financeira Completa': 'Full Financial Management',
-        'Relatórios Básicos': 'Basic Reports',
-        'Notificações por E-mail': 'Email Notifications',
-        'Suporte Padrão': 'Standard Support',
-        'Sem expiração': 'No expiration',
-        'Suporte Prioritário': 'Priority Support',
-        'Relatórios Avançados': 'Advanced Reports',
-        'Integração WhatsApp (Futuro)': 'WhatsApp Integration (Future)',
-        'Consultoria de Setup': 'Setup Consulting',
-        'Desconto de 10%': '10% Discount',
-        'Desconto de 40% (Melhor Valor)': '40% Discount (Best Value)',
+        '30 agendamentos por mês': '30 appointments per month',
+        'Página de agendamento personalizável': 'Customizable booking page',
+        'Gestão de serviços básica': 'Basic service management',
+        'Relatórios básicos': 'Basic reports',
+        'Notificações no WhatsApp': 'WhatsApp notifications',
+        'Suporte padrão': 'Standard support',
+        '1 negócio apenas': '1 business only',
+        'Sem gestão financeira': 'No financial management',
+        'Agendamentos ilimitados': 'Unlimited appointments',
+        'Página de agendamento totalmente personalizável': 'Fully customizable booking page',
+        'Gestão de serviços completa': 'Complete service management',
+        'Gestão financeira completa': 'Complete financial management',
+        'Suporte prioritário': 'Priority support',
+        'Máximo 1 negócio criado': 'Maximum 1 business created',
+        'Tudo do plano Standard': 'Everything from Standard plan',
+        'Múltiplos negócios (sem limite)': 'Multiple businesses (unlimited)',
+        'Relatórios avançados': 'Advanced reports',
+        'Integração com WhatsApp (futuro)': 'WhatsApp integration (future)',
+        'Consultoria de setup': 'Setup consulting',
+        'Melhor custo-benefício': 'Best value',
       };
       
       return T(ptText, translations[ptText] || ptText);
   };
 
+  const renderPlanCard = (plan: any, index: number) => {
+    if (!plan) return null;
+    
+    const isRecommended = plan.planSlug === 'standard';
+    const isFree = plan.isFree;
+    
+    // Determinar preço baseado no ciclo de cobrança
+    let displayPrice = plan.price;
+    let displayPeriod = plan.billingPeriod;
+    let showOriginalPrice = false;
+    let originalPrice = 0;
+    
+    if (!isFree && plan.monthlyPrice && plan.annualPrice) {
+      if (billingCycle === 'monthly') {
+        displayPrice = plan.monthlyPrice;
+        displayPeriod = T('por mês', 'per month');
+      } else {
+        displayPrice = plan.annualPrice;
+        displayPeriod = T('por ano', 'per year');
+        if (plan.annualBasePrice) {
+          originalPrice = plan.annualBasePrice;
+          showOriginalPrice = true;
+        }
+      }
+    }
+    
+    // Extrair valor numérico do preço
+    const priceText = formatCurrency(displayPrice, currentCurrency.key, currentCurrency.locale);
+    const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+    const priceValue = priceMatch ? priceMatch[0] : '';
+    const currencySymbol = priceText.replace(priceValue, '').trim();
+    
+    return (
+      <Card 
+        key={plan.name} 
+        className={cn(
+          "relative flex flex-col transition-all duration-300 hover:shadow-xl rounded-xl overflow-hidden bg-white h-full",
+          isRecommended 
+            ? "border-2 border-black shadow-lg" 
+            : "border border-gray-200 shadow-sm"
+        )}
+      >
+        {/* Badge "Plano recomendado" */}
+        {isRecommended && (
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1 rounded-full bg-black text-white px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold z-10">
+            {T('Plano recomendado', 'Recommended plan')}
+          </div>
+        )}
+        
+        <CardHeader className="text-left pb-3 pt-5 sm:pt-6 px-5 sm:px-6 md:px-8">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold text-black mb-1 sm:mb-2">
+            {plan.name === 'Free' ? T('Free', 'Free') : 
+             plan.name === 'Standard' ? T('Standard', 'Standard') : 
+             plan.name === 'Teams' ? T('Teams', 'Teams') : plan.name}
+          </CardTitle>
+          {plan.planKey === 'free' && (
+            <CardDescription className="text-xs sm:text-sm text-gray-600">
+              {T('Para uso pessoal', 'For personal use')}
+            </CardDescription>
+          )}
+          {plan.planSlug === 'standard' && (
+            <CardDescription className="text-xs sm:text-sm text-gray-600">
+              {T('Para profissionais e pequenas equipes', 'For professionals and small teams')}
+            </CardDescription>
+          )}
+          {plan.planSlug === 'teams' && (
+            <CardDescription className="text-xs sm:text-sm text-gray-600">
+              {T('Para empresas em crescimento', 'For growing businesses')}
+            </CardDescription>
+          )}
+        </CardHeader>
+        
+        <CardContent className="flex-grow space-y-4 sm:space-y-6 px-5 sm:px-6 md:px-8 pb-4 sm:pb-6">
+          {/* Preço */}
+          <div className="text-left">
+            {showOriginalPrice && originalPrice > 0 && (
+              <p className="text-sm sm:text-base text-gray-400 line-through mb-1">
+                {formatCurrency(originalPrice, currentCurrency.key, currentCurrency.locale)}
+              </p>
+            )}
+            <div className="flex items-baseline gap-1 sm:gap-2 mb-2">
+              {isFree ? (
+                <>
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-bold text-black">
+                    {T('Grátis', 'Free')}
+                  </span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    {plan.billingPeriod}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-bold text-black">
+                    {currencySymbol}{priceValue.split(',')[0]}
+                  </span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    {displayPeriod}
+                  </span>
+                </>
+              )}
+            </div>
+            {!isFree && plan.discount && billingCycle === 'annual' && (
+              <p className="text-xs sm:text-sm text-black font-semibold">
+                {T(`Economize ${plan.discount}%`, `Save ${plan.discount}%`)}
+              </p>
+            )}
+          </div>
+
+          {/* Lista de features */}
+          <ul className="space-y-2.5 sm:space-y-3 text-left">
+            {plan.features.map((feature: string, idx: number) => (
+              <li key={idx} className="flex items-start text-gray-700">
+                <Check className="h-4 w-4 sm:h-5 sm:w-5 text-black mr-2.5 sm:mr-3 flex-shrink-0 mt-0.5" />
+                <span className="text-xs sm:text-sm leading-relaxed">{translateFeature(feature)}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+        
+        <CardFooter className="px-5 sm:px-6 md:px-8 pb-5 sm:pb-6 md:pb-8 pt-0">
+          <Button 
+            size="lg" 
+            className={cn(
+              "w-full transition-all duration-300 h-10 sm:h-11 md:h-12 text-sm sm:text-base font-semibold rounded-lg",
+              'bg-black hover:bg-black/90 text-white'
+            )}
+            asChild
+          >
+            <Link to={`/checkout/${plan.planSlug}`}>
+              {plan.planKey === 'free' 
+                ? T('Começar', 'Get Started')
+                : plan.planSlug === 'teams'
+                ? T('Experimente grátis', 'Try for free')
+                : T('Começar', 'Get Started')
+              }
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  };
 
   return (
-    <section id="pricing" className="relative py-12 sm:py-16 md:py-24 lg:py-32 bg-white overflow-hidden">
-      {/* Grid pattern sutil */}
-      <div className="absolute inset-0 grid-pattern opacity-20"></div>
-      
+    <section id="pricing" className="relative py-12 sm:py-16 md:py-24 lg:py-32 bg-gray-50 overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6 text-center relative z-10">
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-2 sm:mb-4 text-black px-2">
-            {T('Plano único com tudo o que você precisa!', 'Single plan with everything you need!')}
-          </h2>
+        {/* Título principal */}
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 sm:mb-8 md:mb-12 text-black px-2">
+          {T('Escolha o plano perfeito para sua equipe', 'Choose the perfect plan for your team')}
+        </h2>
+
+        {/* Toggle de billing cycle */}
+        <div className="flex items-center justify-center gap-4 mb-8 sm:mb-12 md:mb-16">
+          <button
+            type="button"
+            onClick={() => setBillingCycle('annual')}
+            className={cn(
+              "relative px-4 py-2 text-sm sm:text-base font-medium transition-colors",
+              billingCycle === 'annual' 
+                ? "text-black" 
+                : "text-gray-600 hover:text-black"
+            )}
+          >
+            {T('Cobrança anual', 'Annual billing')}
+            {billingCycle === 'annual' && (
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black"></span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingCycle('monthly')}
+            className={cn(
+              "relative px-4 py-2 text-sm sm:text-base font-medium transition-colors",
+              billingCycle === 'monthly' 
+                ? "text-black" 
+                : "text-gray-600 hover:text-black"
+            )}
+          >
+            {T('Cobrança mensal', 'Monthly billing')}
+            {billingCycle === 'monthly' && (
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black"></span>
+            )}
+          </button>
         </div>
-        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mb-8 sm:mb-12 md:mb-16 max-w-2xl mx-auto px-2">
-          {T('Escolha a frequência de pagamento que melhor se adapta ao seu fluxo de caixa.', 'Choose the payment frequency that best suits your cash flow.')}
-        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-7xl mx-auto">
-          {displayPlans.map((plan) => (
-            <Card 
-              key={plan.name} 
-              className={cn(
-                "relative flex flex-col transition-all duration-500 hover:shadow-2xl hover:translate-y-[-8px] rounded-2xl overflow-hidden group",
-                plan.isPopular 
-                  ? "border-2 border-black shadow-2xl bg-white" 
-                  : "border border-black/10 shadow-lg bg-white"
-              )}
-            >
-              {/* Borda destacada para planos populares */}
-              {plan.isPopular && (
-                <div className="absolute inset-0 rounded-2xl border-2 border-black animate-border-glow"></div>
-              )}
-              
-              <CardHeader className="text-center pb-3 sm:pb-4 relative z-10 px-4 sm:px-5 md:px-6">
-                {plan.isPopular && (
-                  <div className="mx-auto mb-2 sm:mb-3 md:mb-4 inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black text-white px-2.5 sm:px-3 md:px-5 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm font-bold shadow-lg">
-                    <Zap className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4" /> {T('Mais Popular', 'Most Popular')}
-                  </div>
-                )}
-                <CardTitle className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black transition-all duration-300">
-                  {plan.name}
-                </CardTitle>
-                <CardDescription className="text-gray-600 text-[10px] sm:text-xs md:text-sm">
-                  {plan.discount && (
-                    <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full bg-black/5 text-black font-semibold text-[10px] sm:text-xs md:text-sm border border-black/20">
-                      {T(`Economize ${plan.discount}%`, `Save ${plan.discount}%`)}
-                    </span>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="flex-grow space-y-3 sm:space-y-4 md:space-y-6 p-4 sm:p-5 md:p-6 relative z-10">
-                <div className="text-center">
-                  {plan.originalPrice && (
-                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 line-through mb-1 sm:mb-1.5 md:mb-2">
-                      {formatCurrency(plan.originalPrice, currentCurrency.key, currentCurrency.locale)}
-                    </p>
-                  )}
-                  <p className={cn(
-                    "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-1 sm:mb-1.5 md:mb-2 break-words",
-                    plan.isPopular 
-                      ? "text-black" 
-                      : "text-black"
-                  )}>
-                    {formatCurrency(plan.price, currentCurrency.key, currentCurrency.locale)}
-                  </p>
-                  <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium">{plan.billingPeriod}</p>
-                </div>
+        {/* Desktop: Grid */}
+        <div className="hidden md:grid grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto mb-8 sm:mb-12">
+          {allDisplayPlans.map((plan, index) => renderPlanCard(plan, index))}
+        </div>
 
-                <ul className="space-y-2 sm:space-y-2.5 md:space-y-3 text-left">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start text-gray-700 group/item">
-                      <div className="relative mr-2 sm:mr-2.5 md:mr-3 flex-shrink-0 mt-0.5">
-                        <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-black relative z-10" />
-                      </div>
-                      <span className="text-[11px] sm:text-xs md:text-sm leading-relaxed">{translateFeature(feature)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              
-              <CardFooter className="p-4 sm:p-5 md:p-6 pt-0 relative z-10">
-                <Button 
-                  size="lg" 
-                  className={cn(
-                    "w-full transition-all duration-300 h-9 sm:h-10 md:h-12 text-xs sm:text-sm md:text-base lg:text-lg rounded-xl transform hover:scale-105 relative overflow-hidden group/btn",
-                    plan.isPopular 
-                      ? 'bg-black hover:bg-black/90 text-white shadow-xl hover:shadow-2xl' 
-                      : 'bg-black hover:bg-black/90 text-white shadow-lg hover:shadow-xl'
-                  )}
-                  asChild
-                >
-                  <Link to={`/checkout/${plan.planSlug}`}>
-                    <span className="relative z-10 flex items-center justify-center gap-1.5 sm:gap-2">
-                      <span className="text-[11px] sm:text-xs md:text-sm lg:text-base">{plan.ctaText}</span>
-                      <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 transform group-hover/btn:translate-x-1 transition-transform" />
-                    </span>
-                    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300 animate-shimmer"></div>
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+        {/* Mobile: Carousel */}
+        <div className="md:hidden mb-8 sm:mb-12">
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            className="w-full max-w-sm mx-auto"
+          >
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {allDisplayPlans.map((plan, index) => (
+                <CarouselItem key={plan?.planKey || index} className="pl-2 md:pl-4 basis-full">
+                  {renderPlanCard(plan, index)}
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+          
+          {/* Dots indicator */}
+          <div className="flex justify-center gap-2 mt-4">
+            {allDisplayPlans.map((_, index) => (
+              <div
+                key={index}
+                className="h-2 w-2 rounded-full bg-gray-300 transition-colors"
+                aria-label={`Slide ${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
         
-        {trialPlan && (
-            <div className="mt-12 md:mt-20 relative">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-full max-w-md h-px bg-black/10"></div>
-              </div>
-              <div className="relative bg-white rounded-2xl p-6 md:p-8 border border-black/10 shadow-xl text-center">
-                <p className="text-lg md:text-xl font-bold text-black mb-4 md:mb-6">
-                  {T('Novo por aqui? Experimente grátis!', 'New here? Try it for free!')}
-                </p>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  asChild 
-                  className="group relative overflow-hidden border-2 border-black text-black hover:text-white hover:bg-black transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl px-6 md:px-8 py-4 md:py-6 text-sm md:text-lg font-semibold"
-                >
-                  <Link to="/checkout/trial">
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <span className="text-xs md:text-base">{trialPlan.ctaText}</span>
-                      <span className="hidden md:inline">({trialPlan.billingPeriod})</span>
-                      <ArrowRight className="h-4 w-4 md:h-5 md:w-5 transform group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </Link>
-                </Button>
-              </div>
-            </div>
-        )}
+        {/* Link para página de preços */}
+        <div className="mt-8 sm:mt-12">
+          <Link 
+            to="/pricing" 
+            className="text-sm sm:text-base text-gray-600 hover:text-black transition-colors font-medium inline-flex items-center gap-1"
+          >
+            {T('Saiba mais na nossa página de preços', 'Learn more on our pricing page')}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </section>
   );

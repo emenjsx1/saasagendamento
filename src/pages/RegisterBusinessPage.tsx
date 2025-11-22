@@ -18,6 +18,8 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useNavigate } from 'react-router-dom';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
+import PlanLimitModal from '@/components/PlanLimitModal';
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -61,8 +63,10 @@ const RegisterBusinessPage = () => {
   const { T } = useCurrency();
   const navigate = useNavigate();
   const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
+  const { limits, isLoading: isLimitsLoading, refresh: refreshLimits } = usePlanLimits();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(BusinessSchema),
@@ -139,6 +143,12 @@ const RegisterBusinessPage = () => {
     if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trial')) {
       toast.error(T("Sua conta precisa estar ativa para criar um negócio. Complete o pagamento primeiro.", "Your account needs to be active to create a business. Complete payment first."));
       navigate('/choose-plan');
+      return;
+    }
+
+    // Verificar limites de negócios (só bloqueia se for criar um novo negócio)
+    if (!businessId && !limits.canCreateBusiness) {
+      setShowLimitModal(true);
       return;
     }
     
@@ -460,6 +470,14 @@ const RegisterBusinessPage = () => {
           </Button>
         </form>
       </Form>
+
+      {/* Modal de Limite de Negócios */}
+      <PlanLimitModal
+        open={showLimitModal}
+        onOpenChange={setShowLimitModal}
+        limitType="businesses"
+        currentPlan={limits.planName}
+      />
     </div>
   );
 };

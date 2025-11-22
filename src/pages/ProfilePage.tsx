@@ -9,17 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
-import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp, Camera } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Briefcase, Clock, ArrowRight, ChevronDown, ChevronUp, Camera, Calendar } from 'lucide-react';
 import { useSubscription } from '@/hooks/use-subscription';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import SubscriptionManagementSection from '@/components/SubscriptionManagementSection';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import SupabaseImageUpload from '@/components/SupabaseImageUpload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { usePublicSettings } from '@/hooks/use-public-settings';
+import { generatePricingPlans, calculateRenewalDate, getPlanBySlug } from '@/utils/pricing-plans';
 
 // Esquema de validação para o perfil
 const ProfileSchema = z.object({
@@ -34,7 +36,8 @@ type ProfileFormValues = z.infer<typeof ProfileSchema>;
 const ProfilePage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const { subscription, daysLeft, isLoading: isSubscriptionLoading } = useSubscription();
-  const { T } = useCurrency();
+  const { T, currentCurrency } = useCurrency();
+  const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPlanManagement, setShowPlanManagement] = useState(false);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
@@ -105,7 +108,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  if (isSessionLoading || isSubscriptionLoading) {
+  if (isSessionLoading || isSubscriptionLoading || isConfigLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -125,6 +128,50 @@ const ProfilePage: React.FC = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  // Calcular próxima renovação baseada na data de criação da subscription
+  const getNextRenewalDate = (): string | null => {
+    if (!subscription || !subscriptionConfig) return null;
+
+    // Se for trial, usar trial_ends_at
+    if (subscription.is_trial && subscription.trial_ends_at) {
+      return format(parseISO(subscription.trial_ends_at), 'dd/MM/yyyy', { locale: ptBR });
+    }
+
+    // Buscar o plano correspondente
+    const pricingPlans = generatePricingPlans(subscriptionConfig, currentCurrency);
+    
+    // Tentar encontrar pelo plan_name
+    let currentPlan = pricingPlans.find(p => 
+      p.name.toLowerCase() === subscription.plan_name?.toLowerCase()
+    );
+
+    // Se não encontrar pelo nome, tentar pelo slug
+    if (!currentPlan) {
+      const planSlug = subscription.plan_name?.toLowerCase().replace(/\s+/g, '-');
+      currentPlan = getPlanBySlug(planSlug || '', pricingPlans);
+    }
+
+    if (!currentPlan || !subscription.created_at) return null;
+
+    // Calcular data de renovação baseada na data de criação + período do plano
+    const subscriptionDate = parseISO(subscription.created_at);
+    let renewalDate: Date;
+
+    if (currentPlan.planKey === 'weekly' || currentPlan.planSlug === 'weekly') {
+      renewalDate = addDays(subscriptionDate, 7);
+    } else if (currentPlan.planKey === 'monthly' || currentPlan.planSlug === 'standard' || currentPlan.planSlug === 'monthly') {
+      renewalDate = addDays(subscriptionDate, 30);
+    } else if (currentPlan.planKey === 'annual' || currentPlan.planSlug === 'teams' || currentPlan.planSlug === 'annual') {
+      renewalDate = addDays(subscriptionDate, 365);
+    } else {
+      return null;
+    }
+
+    return format(renewalDate, 'dd/MM/yyyy', { locale: ptBR });
+  };
+
+  const nextRenewalDate = getNextRenewalDate();
 
   return (
     <div className="space-y-10 pb-16 max-w-4xl mx-auto">
@@ -275,6 +322,22 @@ const ProfilePage: React.FC = () => {
                   <div className="mt-3">{getStatusBadge(subscription.status)}</div>
                 </div>
               </div>
+
+              {/* Seção de Próxima Renovação */}
+              {nextRenewalDate && !subscription.is_trial && (
+                <div className="rounded-2xl border border-blue-200 p-4 bg-gradient-to-r from-blue-50 to-blue-100">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+                      <Calendar className="h-4 w-4" />
+                      {T('Próxima Renovação', 'Next Renewal')}
+                    </span>
+                    <span className="text-lg font-bold text-blue-700">{nextRenewalDate}</span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-2">
+                    {T('Sua assinatura será renovada automaticamente nesta data.', 'Your subscription will be automatically renewed on this date.')}
+                  </p>
+                </div>
+              )}
 
               {subscription.is_trial && subscription.trial_ends_at && (
                 <div

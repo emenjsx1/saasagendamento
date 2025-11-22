@@ -9,6 +9,9 @@ import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { generatePricingPlans, PricingPlan } from '@/utils/pricing-plans';
 import { formatCurrency } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { addDays } from 'date-fns';
+import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 
 const ChoosePlanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +19,7 @@ const ChoosePlanPage: React.FC = () => {
   const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
   const { currentCurrency, T } = useCurrency();
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const pricingPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig, currentCurrency) : [];
 
@@ -38,9 +42,99 @@ const ChoosePlanPage: React.FC = () => {
     return null;
   }
 
-  const handleSelectPlan = (plan: PricingPlan) => {
-    // Redirecionar diretamente para checkout com o plano selecionado
-    navigate(`/checkout/${plan.slug}`);
+  const handleSelectPlan = async (plan: PricingPlan) => {
+    if (!user) {
+      toast.error(T("Você precisa estar logado para escolher um plano.", "You need to be logged in to choose a plan."));
+      navigate('/register');
+      return;
+    }
+
+    // Se for o plano FREE (3 dias), criar subscription direto e ir para dashboard
+    if (plan.planKey === 'free' || plan.planSlug === 'free') {
+      setIsProcessing(true);
+      
+      try {
+        // Verificar se já tem subscription ativa
+        const { data: existingSubscription } = await supabase
+          .from('subscriptions')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingSubscription && (existingSubscription.status === 'active' || existingSubscription.status === 'trial')) {
+          toast.info(T("Você já possui uma assinatura ativa. Redirecionando...", "You already have an active subscription. Redirecting..."));
+          navigate('/dashboard');
+          return;
+        }
+
+        // ⚠️ VALIDAÇÃO: Verificar se o usuário JÁ teve um teste gratuito antes
+        // Buscar TODAS as subscriptions do usuário (não apenas ativas) para verificar histórico de trial
+        const { data: allSubscriptions } = await supabase
+          .from('subscriptions')
+          .select('id, is_trial, status, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        // Verificar se já teve algum trial no histórico
+        const hasTrialHistory = allSubscriptions?.some(sub => sub.is_trial === true) || false;
+
+        if (hasTrialHistory) {
+          toast.error(T(
+            "Você já utilizou seu teste gratuito. O teste gratuito pode ser ativado apenas uma vez por conta.",
+            "You have already used your free trial. The free trial can only be activated once per account."
+          ));
+          setIsProcessing(false);
+          // Redirecionar para escolher outro plano
+          return;
+        }
+
+        // Criar subscription FREE com trial de 3 dias
+        const trialEndsAt = addDays(new Date(), 3).toISOString();
+        
+        const subscriptionData = {
+          user_id: user.id,
+          plan_name: plan.name,
+          price: 0,
+          is_trial: true,
+          trial_ends_at: trialEndsAt,
+          status: 'trial',
+          created_at: new Date().toISOString(),
+        };
+
+        const { error: subError } = await supabase
+          .from('subscriptions')
+          .insert(subscriptionData);
+
+        if (subError) {
+          console.error("Erro ao criar subscription FREE:", subError);
+          throw subError;
+        }
+
+        // Atualizar tabela consolidada
+        try {
+          await refreshConsolidatedUserData(user.id);
+        } catch (error) {
+          console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+        }
+
+        toast.success(T("Conta ativada com sucesso! Redirecionando para o dashboard...", "Account activated successfully! Redirecting to dashboard..."));
+        
+        // Redirecionar para dashboard
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1500);
+
+      } catch (error: any) {
+        console.error("Erro ao ativar plano FREE:", error);
+        toast.error(error.message || T("Erro ao ativar plano. Tente novamente.", "Error activating plan. Please try again."));
+        setIsProcessing(false);
+      }
+    } else {
+      // Para outros planos, ir para checkout
+      navigate(`/checkout/${plan.slug}`);
+    }
   };
 
   return (
@@ -98,9 +192,19 @@ const ChoosePlanPage: React.FC = () => {
                   className="w-full mt-6" 
                   variant={plan.isPopular ? "default" : "outline"}
                   onClick={() => handleSelectPlan(plan)}
+                  disabled={isProcessing}
                 >
-                  {T('Escolher Plano', 'Choose Plan')}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {isProcessing && (plan.planKey === 'free' || plan.planSlug === 'free') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {T('Ativando...', 'Activating...')}
+                    </>
+                  ) : (
+                    <>
+                      {T('Escolher Plano', 'Choose Plan')}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>

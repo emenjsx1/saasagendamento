@@ -16,6 +16,8 @@ export interface PaymentResponse {
   transaction_id?: string;
   reference?: string;
   status?: number;
+  response?: any; // Resposta completa da API para debug
+  details?: any; // Detalhes do erro se houver
 }
 
 /**
@@ -29,7 +31,8 @@ export const validatePhoneNumber = (phone: string): boolean => {
 };
 
 /**
- * Processes payment via M-Pesa/e-Mola Tech API
+ * Processes payment via Supabase Edge Function (que chama a API do e-Mola/M-Pesa)
+ * Isso evita problemas de CORS ao chamar a API diretamente do navegador
  */
 export const processPaymentApi = async (request: PaymentRequest): Promise<PaymentResponse> => {
   try {
@@ -42,58 +45,11 @@ export const processPaymentApi = async (request: PaymentRequest): Promise<Paymen
       };
     }
 
-    // Get credentials - usar valores padrão se não estiverem nas env vars
-    // Token atualizado: expira em 2026
-    const defaultToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5ZjkwMzg2Mi1hNzgwLTQ0MGQtOGVkNS1iOGQ4MDkwYjE4MGUiLCJqdGkiOiIzMjI0ZTdiZWJmOTY3MDc4OWE4MWUyZWUwMDg2ZTY2MmM4NTYxYjlkY2UxNzVjZGQzNTk2ODBjYTU2NTU0OGNlY2Q2YTIxZjJiMWJjMTQ0YiIsImlhdCI6MTc1NTYwNzI2Ni41MjcyNzgsIm5iZiI6MTc1NTYwNzI2Ni41MjcyODEsImV4cCI6MTc4NzE0MzI2Ni41MjM2Nywic3ViIjoiIiwic2NvcGVzIjpbXX0.NEJzqLOaMnaI4iq3OMhhXAYLHDFY_JAq45JiQVfrJDoXQVcrVR0hD0tGslRUfyn-UA6gst5CXDBbeJc4l7C8FDxJYKQffbl_w12AwLQMj0wOoV9zp_dLSsgjwbwwyoyOWaP0WXMfLZOglZI2uW1tlN00uk17gZzLjtyE2M5TWPdwsaFyMkb6PpquQNB7hAnoOYWLYza66ME7F7rP7uv0qJ1w-PIj6MsjHy8ar5Dm67ISicu0sSi1WS_8XIxVAOX1zlHUQweQTvlOQILN9W1tc2-F0mRMPxAoNwOLd641puUikL33-f5Dt0hPFceKXIM6E4hCqQX4Vgq1KMYtFNdCahqFqbjupTbQPESCXEK1coGtS76p7ArsyOZALreo18xZqvJ0wQF4XYl0qab7rvbFmypDQU19R3bEsW4rAH84g9WspdF86TNZeqefqQ3JqGgqis7FekC-wdWhS3qnM5CElzLmGNpnyqHJ7lHMDuup9ejWHjNtG64E2QqCnj6UA_ACCo14LFdReT2RAySXi58Mvv8bb47XpT1xPNFBzRGQq6u9WZCHFyO07tCPmBBeinS4oElkG1upXRvE8pO7U3plzmkBOTByMDmSnBXcFDOadwym8LYfk7SYqWSSN9-0k0kFdt8gsQpAmtKCrs_hbfihhccfbHhf4HHis23W7-kTCUs';
-    
-    const accessToken = request.method === 'mpesa'
-      ? (import.meta.env.VITE_MPESA_ACCESS_TOKEN || defaultToken)
-      : (import.meta.env.VITE_EMOLA_ACCESS_TOKEN || defaultToken);
-
-    const clientId = import.meta.env.VITE_MPESA_CLIENT_ID || '9f903862-a780-440d-8ed5-b8d8090b180e';
-
-    const walletId = request.method === 'mpesa'
-      ? (import.meta.env.VITE_MPESA_WALLET_ID || '993607')
-      : (import.meta.env.VITE_EMOLA_WALLET_ID || '993606');
-
-    // Log para debug (remover em produção)
-    console.log('Credenciais de pagamento:', {
-      method: request.method,
-      hasAccessToken: !!accessToken,
-      hasWalletId: !!walletId,
-      walletId,
-      clientId,
-    });
-
-    // Clean phone number - formato correto: 9 dígitos SEM código do país
-    // Exemplo: 84XXXXXXX ou 85XXXXXXX (sem +258, sem 00258)
-    let phoneDigits = request.phone.replace(/\D/g, '');
-    
-    // Remover código do país se presente (258 ou 00258)
-    if (phoneDigits.startsWith('258')) {
-      phoneDigits = phoneDigits.substring(3);
-    } else if (phoneDigits.startsWith('00258')) {
-      phoneDigits = phoneDigits.substring(5);
-    }
-    
-    // Garantir que tem exatamente 9 dígitos
-    if (phoneDigits.length !== 9) {
-      return {
-        success: false,
-        message: 'Número de telefone deve ter 9 dígitos (ex: 84XXXXXXX).',
-        status: 400,
-      };
-    }
-
-    // Call payment API
-    const apiUrl = `https://mpesaemolatech.com/v1/c2b/${request.method}-payment/${walletId}`;
-
-    // Garantir que amount é um NÚMERO (não string)
+    // Validar valor mínimo
     const amount = typeof request.amount === 'number' 
       ? request.amount 
-      : parseFloat(request.amount.toString());
+      : parseFloat(String(request.amount));
     
-    // Validar valor mínimo
     if (amount < 1 || isNaN(amount)) {
       return {
         success: false,
@@ -101,125 +57,119 @@ export const processPaymentApi = async (request: PaymentRequest): Promise<Paymen
         status: 400,
       };
     }
-    
-    // Limpar reference - sem espaços, sem caracteres especiais, máximo 20 caracteres
+
+    // Limpar reference
     let cleanReference = request.reference
-      .replace(/[^a-zA-Z0-9_]/g, '') // Remove caracteres especiais
-      .substring(0, 20); // Máximo 20 caracteres
+      .replace(/[^a-zA-Z0-9_]/g, '')
+      .substring(0, 20);
     
     if (!cleanReference) {
-      cleanReference = `order_${Date.now()}`;
+      cleanReference = `AgenCode-${Date.now()}`;
     }
+
+    // Limpar número de telefone
+    let phoneDigits = request.phone.replace(/\D/g, '');
+    if (phoneDigits.startsWith('258')) {
+      phoneDigits = phoneDigits.substring(3);
+    } else if (phoneDigits.startsWith('00258')) {
+      phoneDigits = phoneDigits.substring(5);
+    }
+
+    // Chamar Edge Function do Supabase (evita problemas de CORS)
+    const { supabase } = await import('@/integrations/supabase/client');
     
-    // Payload no formato exato que a API espera
-    const requestBody = {
-      client_id: clientId,
-      amount: Number(amount), // Garantir que é número
-      phone: phoneDigits, // 9 dígitos sem código do país
-      reference: cleanReference, // Limpo e sem espaços
-    };
-
-    console.log('📤 Enviando requisição de pagamento:', {
-      url: apiUrl,
-      method: 'POST',
-      payload: requestBody,
-      payloadStringified: JSON.stringify(requestBody),
-      payloadType: {
-        amount: typeof requestBody.amount,
-        phone: typeof requestBody.phone,
-        phoneLength: requestBody.phone.length,
-        reference: typeof requestBody.reference,
-        referenceLength: requestBody.reference.length,
-      },
-      hasAccessToken: !!accessToken,
-    });
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    let responseData: any = {};
-    const responseText = await response.text();
-    
+    // Tentar obter sessão para autenticação
+    let accessToken: string | null = null;
     try {
-      responseData = JSON.parse(responseText);
+      const { data: { session } } = await supabase.auth.getSession();
+      accessToken = session?.access_token || null;
     } catch (e) {
-      console.error('Erro ao parsear resposta JSON:', responseText);
-      responseData = { message: responseText || 'Resposta inválida da API' };
+      console.warn('Não foi possível obter sessão, continuando sem autenticação...');
     }
 
-    console.log('📥 Resposta da API de pagamento:', {
-      status: response.status,
-      statusText: response.statusText,
-      data: responseData,
-      mpesa_server_response: responseData.mpesa_server_response,
-      error: responseData.error,
-      message: responseData.message,
-      details: responseData.details || responseData,
-    });
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ihozrsfnfmwmrkbzpqlj.supabase.co';
+    const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/process-payment`;
     
-    // Log completo dos details para debug do erro 422
-    if (response.status === 422) {
-      console.error('❌ ERRO 422 - Detalhes completos:', {
-        fullResponse: responseData,
-        errors: responseData.errors,
-        validation: responseData.validation,
-        mpesa_response: responseData.mpesa_server_response,
-      });
+    // Preparar headers (Supabase Edge Functions requerem apikey)
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlob3pyc2ZuZm13bXJrYnpwcWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5NDM0NDcsImV4cCI6MjA3ODUxOTQ0N30.k60F5T-nkbTDXdlWa85ogk_xTtAB35b9ZIsIvCnDgOE';
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+    };
+    
+    // Adicionar Authorization se tiver sessão (melhor para segurança)
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Tratar sucesso (200 ou 201)
-    if (response.status === 200 || response.status === 201) {
-      console.log('✅ Pagamento aprovado pela API!', responseData);
+    console.log('📤 Chamando Edge Function de pagamento:', {
+      url: edgeFunctionUrl,
+      method: request.method,
+      amount,
+      phone: phoneDigits,
+      reference: cleanReference,
+    });
+
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        amount: Number(amount),
+        phone: phoneDigits,
+        method: request.method,
+        reference: cleanReference,
+      }),
+    });
+
+    const responseData = await response.json();
+
+    console.log('📥 Resposta da Edge Function:', {
+      status: response.status,
+      data: responseData,
+    });
+
+    // A Edge Function já retorna o formato correto
+    if (response.ok && responseData.success) {
       return {
         success: true,
-        transaction_id: responseData.transaction_id 
-          || responseData.reference 
-          || responseData.id
-          || responseData.transactionId
-          || responseData.order_id,
-        reference: responseData.reference || request.reference,
-        response: responseData, // Incluir resposta completa para debug
-      };
-    } else {
-      // Melhorar mensagem de erro com detalhes da API
-      let errorMessage = responseData.message 
-        || responseData.error 
-        || responseData.detail;
-      
-      // Se houver resposta do servidor M-Pesa, usar essa mensagem
-      if (responseData.mpesa_server_response) {
-        const mpesaResponse = responseData.mpesa_server_response;
-        errorMessage = mpesaResponse.message 
-          || mpesaResponse.error 
-          || mpesaResponse.ResponseDescription
-          || mpesaResponse.responseDescription
-          || errorMessage;
-      }
-      
-      if (!errorMessage) {
-        errorMessage = `Erro ${response.status}: ${response.statusText}`;
-      }
-      
-      return {
-        success: false,
-        message: errorMessage || 'Erro ao processar pagamento. Tente novamente.',
-        status: response.status,
-        details: responseData,
+        transaction_id: responseData.transaction_id,
+        reference: responseData.reference || cleanReference,
+        response: responseData.response,
       };
     }
-  } catch (error: any) {
-    console.error('Payment API Error:', error);
+
+    // Erro retornado pela Edge Function
     return {
       success: false,
-      message: error.message || 'Erro de conexão. Verifique sua internet e tente novamente.',
+      message: responseData.message || 'Erro ao processar pagamento. Tente novamente.',
+      status: responseData.status || response.status,
+      details: responseData.details,
+    };
+
+  } catch (error: any) {
+    console.error('Payment API Error:', error);
+    
+    const isConnectionError = 
+      error.message === 'Failed to fetch' || 
+      error.message?.includes('timeout') ||
+      error.message?.includes('network') ||
+      error.type === 'network';
+    
+    if (isConnectionError) {
+      return {
+        success: false,
+        message: 'Erro de conexão com o servidor. Verifique sua conexão com a internet e tente novamente.',
+        status: 0,
+        details: { error: 'Network error', connectionError: true },
+      };
+    }
+    
+    return {
+      success: false,
+      message: error.message || 'Erro ao processar pagamento. Tente novamente.',
       status: 0,
+      details: error,
     };
   }
 };

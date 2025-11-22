@@ -101,6 +101,17 @@
 }
 
 @layer utilities {
+  /* Suporte para reduzir animações (acessibilidade) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   /* Animações Futuristas Minimalistas - Preto e Branco */
   @keyframes float {
     0%, 100% {
@@ -108,6 +119,16 @@
     }
     50% {
       transform: translateY(-20px);
+    }
+  }
+
+  /* Versão mobile otimizada para float */
+  @keyframes float-mobile {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
     }
   }
 
@@ -295,6 +316,23 @@
 
   .animate-float {
     animation: float 6s ease-in-out infinite;
+  }
+
+  /* Versão mobile otimizada */
+  @media (max-width: 768px) {
+    .animate-float {
+      animation: float-mobile 4s ease-in-out infinite;
+      will-change: transform;
+    }
+    
+    /* Reduzir complexidade de animações no mobile para melhor performance */
+    .animate-gradient {
+      animation-duration: 8s;
+    }
+    
+    .animate-shimmer {
+      animation-duration: 4s;
+    }
   }
 
   .animate-glow {
