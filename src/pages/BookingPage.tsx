@@ -109,7 +109,7 @@ const StepIndicator: React.FC<{
                   {/* Label */}
                   <div className="ml-2 sm:ml-3 flex-1 min-w-0">
                     <p className={cn(
-                      "text-xs sm:text-sm font-medium truncate",
+                      "text-sm sm:text-sm font-medium truncate",
                       isActive ? "text-black" : isCompleted ? "text-gray-600" : "text-gray-400"
                     )}>
                       {step.label}
@@ -149,7 +149,7 @@ const ServiceSelector: React.FC<{
     <div className="space-y-4 sm:space-y-6">
                   <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Selecione o serviço', 'Select service')}</h2>
-        <p className="text-gray-600 text-xs sm:text-sm">{T('Escolha o serviço que deseja agendar', 'Choose the service you want to book')}</p>
+        <p className="text-gray-600 text-sm sm:text-sm">{T('Escolha o serviço que deseja agendar', 'Choose the service you want to book')}</p>
                   </div>
       
       <div className="grid grid-cols-1 gap-3">
@@ -180,7 +180,7 @@ const ServiceSelector: React.FC<{
                     )}
                 </div>
                   <p className={cn(
-                    "text-xs sm:text-sm",
+                    "text-sm sm:text-sm",
                     isSelected ? "text-gray-200" : "text-gray-500"
                   )}>
                     {service.duration_minutes} {T('minutos', 'minutes')}
@@ -345,13 +345,13 @@ const AppointmentScheduler: React.FC<{
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Escolha data e hora', 'Choose date and time')}</h2>
-        <p className="text-gray-600 text-xs sm:text-sm">{T('Selecione quando deseja ser atendido', 'Select when you want to be served')}</p>
+        <p className="text-gray-600 text-sm sm:text-sm">{T('Selecione quando deseja ser atendido', 'Select when you want to be served')}</p>
       </div>
 
       <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6">
         {/* Seleção de Data */}
         <div className="mb-4 sm:mb-6">
-          <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 block">
+          <label className="text-sm sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 block">
             {T('Data', 'Date')}
           </label>
         <Popover>
@@ -397,7 +397,7 @@ const AppointmentScheduler: React.FC<{
         {/* Seleção de Hora */}
         {selectedDate && (
           <div className="space-y-3">
-            <label className="text-xs sm:text-sm font-medium text-gray-700 block">
+            <label className="text-sm sm:text-sm font-medium text-gray-700 block">
               {T('Horários disponíveis', 'Available times')}
             </label>
             {isTimesLoading ? (
@@ -470,7 +470,7 @@ const ClientDetailsForm: React.FC<{
   <div className="space-y-4 sm:space-y-6">
       <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Informe seus dados', 'Enter your details')}</h2>
-      <p className="text-gray-600 text-xs sm:text-sm">{T('Preencha as informações abaixo para finalizar o agendamento', 'Fill in the information below to complete the booking')}</p>
+      <p className="text-gray-600 text-sm sm:text-sm">{T('Preencha as informações abaixo para finalizar o agendamento', 'Fill in the information below to complete the booking')}</p>
     </div>
     
     <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6 space-y-4 sm:space-y-6">
