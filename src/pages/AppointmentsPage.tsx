@@ -508,18 +508,18 @@ const AppointmentsPage: React.FC = () => {
                 <CardTitle className="text-2xl font-semibold">{T('Fluxo diário', 'Daily Flow')}</CardTitle>
                 <p className="text-sm text-gray-500 mt-1">{T('Configure a data e o status para focar no que importa agora.', 'Set date and status to focus on what matters now.')}</p>
               </div>
-              <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 flex-shrink-0">
                   <CalendarIcon className="h-4 w-4 text-gray-500" />
                   <DateFilter date={filterDate} setDate={setFilterDate} />
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-2 py-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
+                  <Filter className="h-4 w-4 text-gray-500 flex-shrink-0" />
                   <ToggleGroup
                     type="single"
                     value={filterStatus}
                     onValueChange={(value: AppointmentStatus | 'all') => value && setFilterStatus(value)}
-                    className="flex gap-1"
+                    className="flex gap-1 flex-shrink-0"
                   >
                     {[
                       { label: T('Pendente', 'Pending'), value: 'pending' },
@@ -530,7 +530,7 @@ const AppointmentsPage: React.FC = () => {
                       <ToggleGroupItem
                         key={item.value}
                         value={item.value as AppointmentStatus | 'all'}
-                        className="rounded-xl px-3 py-1 text-xs font-semibold data-[state=on]:bg-black data-[state=on]:text-white"
+                        className="rounded-xl px-2 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap flex-shrink-0 data-[state=on]:bg-black data-[state=on]:text-white"
                       >
                         {item.label}
                       </ToggleGroupItem>
