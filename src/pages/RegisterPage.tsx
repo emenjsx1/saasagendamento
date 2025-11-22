@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Mail, ArrowRight, Check } from 'lucide-react';
+import { Loader2, Mail, ArrowRight, Check, Phone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
@@ -18,6 +18,8 @@ const RegisterSchema = z.object({
   firstName: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
   lastName: z.string().min(2, "O sobrenome deve ter pelo menos 2 caracteres."),
   email: z.string().email("E-mail inválido."),
+  phone: z.string().min(9, "O telefone deve ter pelo menos 9 dígitos."),
+  city: z.string().min(2, "A Província/Cidade é obrigatória."),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -40,6 +42,8 @@ const RegisterPage: React.FC = () => {
       firstName: "",
       lastName: "",
       email: searchParams.get('email') || "",
+      phone: "",
+      city: "",
       password: "",
       confirmPassword: "",
     },
@@ -68,12 +72,14 @@ const RegisterPage: React.FC = () => {
         throw new Error("Falha ao criar usuário.");
       }
 
-      // Atualizar perfil com nome e sobrenome
+      // Atualizar perfil com nome, sobrenome, telefone e cidade
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: values.firstName,
           last_name: values.lastName,
+          phone: values.phone,
+          address: values.city, // Usando o campo address para armazenar cidade/província
         })
         .eq('id', authData.user.id);
 
@@ -196,6 +202,44 @@ const RegisterPage: React.FC = () => {
                       <Input 
                         type="email" 
                         placeholder={T('Digite seu e-mail', 'Enter your email')}
+                        className="h-12 border-gray-300 dark:border-gray-600 focus:border-black focus:ring-black"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700 dark:text-gray-300">{T('Telefone', 'Phone')}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel" 
+                        placeholder={T('Digite seu telefone (ex: 841234567)', 'Enter your phone (e.g. 841234567)')}
+                        className="h-12 border-gray-300 dark:border-gray-600 focus:border-black focus:ring-black"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700 dark:text-gray-300">{T('Província/Cidade', 'Province/City')}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="text" 
+                        placeholder={T('Digite sua Província/Cidade', 'Enter your Province/City')}
                         className="h-12 border-gray-300 dark:border-gray-600 focus:border-black focus:ring-black"
                         {...field} 
                       />
