@@ -12,6 +12,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import ProfileWarningBanner from '@/components/ProfileWarningBanner';
 
 const Sidebar: React.FC = () => {
   const { user } = useSession();
@@ -418,6 +419,8 @@ const DashboardLayout: React.FC = () => {
       {/* Main Content */}
       <div className="flex-grow w-full overflow-auto pt-16 md:pt-4 min-h-screen bg-gray-100">
         <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+          {/* Banner de atenção para perfil incompleto */}
+          <ProfileWarningBanner />
           <Outlet />
         </div>
       </div>

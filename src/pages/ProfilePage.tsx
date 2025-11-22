@@ -28,6 +28,7 @@ const ProfileSchema = z.object({
   first_name: z.string().min(1, "O primeiro nome é obrigatório."),
   last_name: z.string().min(1, "O sobrenome é obrigatório."),
   phone: z.string().optional(),
+  address: z.string().optional(), // Província/Cidade
   avatar_url: z.string().optional(),
 });
 
@@ -48,6 +49,7 @@ const ProfilePage: React.FC = () => {
       first_name: "",
       last_name: "",
       phone: "",
+      address: "",
       avatar_url: "",
     },
   });
@@ -59,7 +61,7 @@ const ProfilePage: React.FC = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone, avatar_url')
+        .select('first_name, last_name, phone, address, avatar_url')
         .eq('id', user.id)
         .single();
 
@@ -75,6 +77,7 @@ const ProfilePage: React.FC = () => {
           first_name: data.first_name || "",
           last_name: data.last_name || "",
           phone: data.phone || "",
+          address: data.address || "",
           avatar_url: data.avatar_url || "",
         });
       }
@@ -93,6 +96,7 @@ const ProfilePage: React.FC = () => {
         first_name: values.first_name,
         last_name: values.last_name,
         phone: values.phone,
+        address: values.address || null,
         avatar_url: values.avatar_url || null,
         updated_at: new Date().toISOString(),
       })
@@ -105,6 +109,8 @@ const ProfilePage: React.FC = () => {
       console.error(error);
     } else {
       toast.success("Perfil atualizado com sucesso!");
+      // Disparar evento para atualizar o banner de alerta
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
     }
   };
 
@@ -288,6 +294,20 @@ const ProfilePage: React.FC = () => {
                     <FormLabel>{T('Telefone / WhatsApp', 'Phone / WhatsApp')}</FormLabel>
                     <FormControl>
                       <Input placeholder="(99) 99999-9999" {...field} className="rounded-2xl" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{T('Província/Cidade', 'Province/City')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={T('Digite sua Província/Cidade', 'Enter your Province/City')} {...field} className="rounded-2xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
