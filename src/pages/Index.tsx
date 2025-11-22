@@ -60,28 +60,32 @@ const Index = () => {
       
       <main className="flex-grow">
         {/* Hero Section - Design Futurista e Movimentado */}
-        <section className="relative py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-hidden">
-          {/* Grid pattern de pontos claros */}
-          <div className="absolute inset-0 opacity-20" style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
-            backgroundSize: '20px 20px'
-          }}></div>
+        <section className="relative py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-gradient-to-br from-white via-gray-50 to-white overflow-hidden">
+          {/* Grid pattern animado com movimento */}
+          <div className="absolute inset-0 grid-pattern opacity-30 animate-gradient"></div>
+          
+          {/* Linhas de energia animadas */}
+          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer"></div>
+          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
               {/* Badge "Plataforma de Nova Geração" */}
               <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 mb-5 md:mb-6 lg:mb-8 rounded-full bg-black text-white animate-fade-in-up">
-                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-gray-300 rounded-full"></span>
+                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-white rounded-full animate-pulse"></span>
                 <span className="text-xs sm:text-sm md:text-base font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
               </div>
               
               {/* Título Principal */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-5 md:mb-6 lg:mb-7 leading-tight animate-slide-up text-white">
-                {heroTitle}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-5 md:mb-6 lg:mb-7 leading-tight animate-slide-up text-black relative">
+                <span className="relative z-10 bg-gradient-to-r from-black via-gray-900 to-black bg-clip-text text-transparent animate-gradient inline-block">
+                  {heroTitle}
+                </span>
+                <div className="absolute inset-0 blur-xl opacity-20 bg-gradient-to-r from-black via-gray-900 to-black animate-gradient"></div>
               </h1>
               
               {/* Descrição */}
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-6 sm:mb-7 md:mb-8 lg:mb-10 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mb-6 sm:mb-7 md:mb-8 lg:mb-10 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '200ms' }}>
                 {heroSubtitle}
               </p>
               
@@ -100,7 +104,7 @@ const Index = () => {
                 <Button 
                   variant="outline"
                   asChild
-                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-white bg-white/0 hover:bg-white hover:text-black text-white transition-all duration-300 rounded-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-black bg-white/0 hover:bg-black hover:text-white text-black transition-all duration-300 rounded-lg"
                 >
                   <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
                 </Button>
@@ -110,9 +114,9 @@ const Index = () => {
         </section>
         
         {/* Cards de Estatísticas - Imediatamente após o hero */}
-        <section className="py-4 sm:py-5 md:py-6 lg:py-8 bg-white">
+        <section className="py-3 sm:py-4 md:py-5 bg-white">
           <div className="container mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 max-w-4xl mx-auto">
               {[
                 { value: '24/7', label_pt: 'Disponível', label_en: 'Available' },
                 { value: '100%', label_pt: 'Seguro', label_en: 'Secure' },
@@ -120,12 +124,12 @@ const Index = () => {
               ].map((stat, idx) => (
                 <div 
                   key={idx} 
-                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 text-center"
+                  className="rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 text-center"
                 >
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-black mb-1 md:mb-2">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black mb-0.5 sm:mb-1">
                     {stat.value}
                   </div>
-                  <div className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600">{T(stat.label_pt, stat.label_en)}</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-600">{T(stat.label_pt, stat.label_en)}</div>
                 </div>
               ))}
             </div>
