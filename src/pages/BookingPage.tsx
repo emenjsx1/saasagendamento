@@ -160,7 +160,7 @@ const ServiceSelector: React.FC<{
               key={service.id}
               onClick={() => onSelectService(isSelected ? null : service)}
               className={cn(
-                "w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200",
+                "w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200",
                 isSelected
                   ? "border-black bg-black text-white shadow-lg"
                   : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
@@ -348,9 +348,9 @@ const AppointmentScheduler: React.FC<{
         <p className="text-gray-600 text-sm sm:text-sm">{T('Selecione quando deseja ser atendido', 'Select when you want to be served')}</p>
       </div>
 
-      <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+      <div className="bg-white rounded-xl border-2 border-gray-200 p-3 sm:p-4">
         {/* Seleção de Data */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-3 sm:mb-4">
           <label className="text-sm sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 block">
             {T('Data', 'Date')}
           </label>
@@ -473,7 +473,7 @@ const ClientDetailsForm: React.FC<{
       <p className="text-gray-600 text-sm sm:text-sm">{T('Preencha as informações abaixo para finalizar o agendamento', 'Fill in the information below to complete the booking')}</p>
     </div>
     
-    <div className="bg-white rounded-xl border-2 border-gray-200 p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="bg-white rounded-xl border-2 border-gray-200 p-3 sm:p-4 space-y-3 sm:space-y-4">
       <div>
         <Label htmlFor="client_name" className="text-sm sm:text-base font-semibold text-gray-900 mb-2 block">
           {T('Nome Completo', 'Full Name')} <span className="text-red-500">*</span>
@@ -1079,8 +1079,8 @@ const BookingPage = () => {
       <div className="max-w-5xl mx-auto p-4 md:p-8 -mt-8 relative z-10">
         {/* Business Header Card */}
         <Card className="mb-6 shadow-lg border border-gray-200">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+          <CardContent className="p-3">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-3">
               {business.logo_url && (
                 <img 
                   src={business.logo_url} 
@@ -1232,10 +1232,10 @@ const BookingPage = () => {
           {/* Coluna de Resumo */}
           <div className="lg:col-span-1">
             <Card className="sticky top-8 shadow-md border border-gray-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">{T('Resumo', 'Summary')}</CardTitle>
+              <CardHeader className="pb-2 px-3 pt-3">
+                <CardTitle className="text-base font-semibold">{T('Resumo', 'Summary')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 px-3 pb-3">
                 {selectedService ? (
                   <>
                     <div className="space-y-2 pb-4 border-b">
