@@ -189,13 +189,8 @@ const PricingSection: React.FC = () => {
             )}
             asChild
           >
-            <Link to={`/checkout/${plan.planSlug}`}>
-              {plan.planKey === 'free' 
-                ? T('Começar', 'Get Started')
-                : plan.planSlug === 'teams'
-                ? T('Experimente grátis', 'Try for free')
-                : T('Começar', 'Get Started')
-              }
+            <Link to="/register">
+              {T('Criar conta', 'Create account')}
             </Link>
           </Button>
         </CardFooter>

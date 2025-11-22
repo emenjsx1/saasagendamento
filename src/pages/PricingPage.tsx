@@ -194,13 +194,8 @@ const PricingPage: React.FC = () => {
             )}
             asChild
           >
-            <Link to={`/checkout/${plan.planSlug}${!isFree && billingCycle === 'annual' ? '-annual' : ''}`}>
-              {plan.planKey === 'free' 
-                ? T('Começar', 'Get Started')
-                : plan.planSlug === 'teams'
-                ? T('Experimente grátis', 'Try for free')
-                : T('Começar', 'Get Started')
-              }
+            <Link to="/register">
+              {T('Criar conta', 'Create account')}
             </Link>
           </Button>
         </CardFooter>
@@ -325,8 +320,8 @@ const PricingPage: React.FC = () => {
                 asChild 
                 className="bg-black hover:bg-black/90 text-white px-8 py-6 text-base font-semibold rounded-lg"
               >
-                <Link to="/checkout/free">
-                  {T('Começar gratuitamente', 'Start for free')}
+                <Link to="/register">
+                  {T('Criar conta', 'Create account')}
                 </Link>
               </Button>
               <Button 
