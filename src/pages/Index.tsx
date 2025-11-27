@@ -13,28 +13,31 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
   const { T } = useCurrency();
   return (
     <div 
-      className="relative flex flex-col items-start text-left p-4 sm:p-5 md:p-6 lg:p-8 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden"
+      className="relative flex flex-col items-start text-left p-4 sm:p-5 md:p-6 lg:p-8 bg-white rounded-xl sm:rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] border border-black/10 group overflow-hidden animate-slide-in-bottom"
       style={{ animationDelay: `${delay}ms` }}
     >
+      {/* Efeito de brilho animado no hover */}
+      <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%]"></div>
+      
       {/* Borda sutil no hover */}
       <div className="absolute inset-0 rounded-xl sm:rounded-2xl border-2 border-black/0 group-hover:border-black/20 transition-all duration-500"></div>
       
       <div className="relative z-10 w-full">
-        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-black/5 transition-all duration-300 group-hover:bg-black/10 group-hover:scale-105">
-          <div className="text-black">
+        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-black/5 transition-all duration-300 group-hover:bg-black/10 group-hover:scale-110 group-hover:rotate-3">
+          <div className="text-black animate-float-y">
             {icon}
           </div>
         </div>
-        <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-1.5 sm:mb-2 md:mb-3 text-black transition-all duration-300">
+        <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-1.5 sm:mb-2 md:mb-3 text-black transition-all duration-300 group-hover:scale-105">
           {T(title_pt, title_en)}
         </h3>
-        <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed mb-2 sm:mb-3 md:mb-4">{T(description_pt, description_en)}</p>
+        <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed mb-2 sm:mb-3 md:mb-4 group-hover:text-gray-800 transition-colors">{T(description_pt, description_en)}</p>
         <Link 
           to="/register" 
           className="mt-2 sm:mt-3 text-xs font-semibold text-black flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2 border-b border-black/0 group-hover:border-black/30 pb-1"
         >
           {T('Saiba Mais', 'Learn More')} 
-          <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2 transform group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2 transform group-hover:translate-x-1 transition-transform group-hover:scale-110" />
         </Link>
       </div>
     </div>
@@ -62,26 +65,49 @@ const Index = () => {
         {/* Hero Section - Design Futurista e Movimentado */}
         <section className="relative py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-gradient-to-br from-white via-gray-50 to-white overflow-hidden">
           {/* Grid pattern animado com movimento */}
-          <div className="absolute inset-0 grid-pattern opacity-30 animate-gradient"></div>
+          <div className="absolute inset-0 grid-pattern opacity-30 animate-gradient-move"></div>
+          
+          {/* Partículas flutuantes animadas */}
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-black/10 rounded-full animate-particle-float"
+              style={{
+                left: `${15 + i * 15}%`,
+                bottom: '-20px',
+                animationDelay: `${i * 0.5}s`,
+                animationDuration: `${10 + i * 2}s`,
+              }}
+            />
+          ))}
+          
+          {/* Círculos flutuantes decorativos */}
+          <div className="absolute top-20 left-10 w-32 h-32 bg-black/5 rounded-full blur-xl animate-float-y"></div>
+          <div className="absolute bottom-20 right-10 w-40 h-40 bg-black/5 rounded-full blur-xl animate-float-x" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-black/5 rounded-full blur-lg animate-rotate-slow"></div>
           
           {/* Linhas de energia animadas */}
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer"></div>
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
           
+          {/* Ondas decorativas */}
+          <div className="absolute top-1/4 right-0 w-64 h-64 border-2 border-black/5 rounded-full animate-pulse-scale"></div>
+          <div className="absolute bottom-1/4 left-0 w-48 h-48 border-2 border-black/5 rounded-full animate-pulse-scale" style={{ animationDelay: '0.5s' }}></div>
+          
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
               {/* Badge "Plataforma de Nova Geração" */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 mb-5 md:mb-6 lg:mb-8 rounded-full bg-black text-white animate-fade-in-up">
-                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-white rounded-full animate-pulse"></span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 mb-5 md:mb-6 lg:mb-8 rounded-full bg-black text-white animate-slide-in-bottom hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-white rounded-full animate-pulse-scale"></span>
                 <span className="text-xs sm:text-sm md:text-base font-medium">{T('Plataforma de Nova Geração', 'Next-Gen Platform')}</span>
               </div>
               
               {/* Título Principal */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-5 md:mb-6 lg:mb-7 leading-tight animate-slide-up text-black relative">
-                <span className="relative z-10 bg-gradient-to-r from-black via-gray-900 to-black bg-clip-text text-transparent animate-gradient inline-block">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-5 md:mb-6 lg:mb-7 leading-tight animate-slide-up text-black relative group">
+                <span className="relative z-10 bg-gradient-to-r from-black via-gray-900 to-black bg-clip-text text-transparent animate-gradient-move inline-block hover:scale-105 transition-transform duration-500">
                   {heroTitle}
                 </span>
-                <div className="absolute inset-0 blur-xl opacity-20 bg-gradient-to-r from-black via-gray-900 to-black animate-gradient"></div>
+                <div className="absolute inset-0 blur-xl opacity-20 bg-gradient-to-r from-black via-gray-900 to-black animate-gradient-move group-hover:opacity-30 transition-opacity duration-500"></div>
               </h1>
               
               {/* Descrição */}
@@ -93,18 +119,18 @@ const Index = () => {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center animate-slide-up mb-6 sm:mb-8 md:mb-10" style={{ animationDelay: '400ms' }}>
                 <Button 
                   asChild 
-                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 animate-bounce-slow group"
                 >
                   <Link to="/register" className="flex items-center justify-center gap-2">
                     {heroCta}
-                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
                 
                 <Button 
                   variant="outline"
                   asChild
-                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-black bg-white/0 hover:bg-black hover:text-white text-black transition-all duration-300 rounded-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-black bg-white/0 hover:bg-black hover:text-white text-black transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-lg"
                 >
                   <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
                 </Button>
@@ -114,8 +140,11 @@ const Index = () => {
         </section>
         
         {/* Cards de Estatísticas - Imediatamente após o hero */}
-        <section className="py-3 sm:py-4 md:py-5 bg-white">
-          <div className="container mx-auto px-4 sm:px-6">
+        <section className="py-3 sm:py-4 md:py-5 bg-white relative overflow-hidden">
+          {/* Efeitos de fundo animados */}
+          <div className="absolute inset-0 grid-pattern opacity-5 animate-gradient-move"></div>
+          
+          <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 max-w-4xl mx-auto">
               {[
                 { value: '24/7', label_pt: 'Disponível', label_en: 'Available' },
@@ -124,12 +153,13 @@ const Index = () => {
               ].map((stat, idx) => (
                 <div 
                   key={idx} 
-                  className="rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 text-center"
+                  className="rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-gray-200 bg-white hover:border-black hover:shadow-lg transition-all duration-300 text-center animate-slide-in-bottom hover:scale-105 group"
+                  style={{ animationDelay: `${idx * 100}ms` }}
                 >
-                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black mb-0.5 sm:mb-1">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black mb-0.5 sm:mb-1 group-hover:scale-110 transition-transform duration-300">
                     {stat.value}
                   </div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-600">{T(stat.label_pt, stat.label_en)}</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-600 group-hover:text-black transition-colors">{T(stat.label_pt, stat.label_en)}</div>
                 </div>
               ))}
             </div>
@@ -139,11 +169,29 @@ const Index = () => {
         {/* Benefits Section - Cards Minimalistas */}
         <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-gray-50 relative overflow-hidden">
           {/* Grid pattern sutil com movimento */}
-          <div className="absolute inset-0 grid-pattern opacity-20 animate-gradient"></div>
+          <div className="absolute inset-0 grid-pattern opacity-20 animate-gradient-move"></div>
+          
+          {/* Partículas flutuantes */}
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1.5 h-1.5 bg-black/10 rounded-full animate-particle-float"
+              style={{
+                left: `${20 + i * 20}%`,
+                top: `${10 + i * 25}%`,
+                animationDelay: `${i * 0.8}s`,
+                animationDuration: `${12 + i * 3}s`,
+              }}
+            />
+          ))}
+          
+          {/* Círculos decorativos flutuantes */}
+          <div className="absolute top-10 right-20 w-20 h-20 bg-black/5 rounded-full blur-md animate-float-y"></div>
+          <div className="absolute bottom-20 left-20 w-16 h-16 bg-black/5 rounded-full blur-md animate-float-x" style={{ animationDelay: '1.5s' }}></div>
           
           {/* Efeitos de movimento sutis */}
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
-          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent"></div>
+          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent animate-shimmer"></div>
+          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-black/5 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
           
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <div className="text-center mb-6 sm:mb-8 md:mb-12 animate-fade-in-up">

@@ -152,7 +152,7 @@ const ServiceSelector: React.FC<{
         <p className="text-gray-600 text-sm sm:text-sm">{T('Escolha o serviço que deseja agendar', 'Choose the service you want to book')}</p>
                   </div>
       
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
         {services.map((service) => {
           const isSelected = selectedService?.id === service.id;
           return (
@@ -160,34 +160,34 @@ const ServiceSelector: React.FC<{
               key={service.id}
               onClick={() => onSelectService(isSelected ? null : service)}
               className={cn(
-                "w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200",
+                "w-full text-left p-3 sm:p-4 rounded-lg border transition-all duration-200",
                 isSelected
                   ? "border-black bg-black text-white shadow-lg"
-                  : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
+                  : "border-gray-200 bg-white hover:border-gray-300 hover:shadow"
               )}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 sm:gap-3 mb-1">
                     <h3 className={cn(
-                      "text-base sm:text-lg font-semibold truncate",
+                      "text-sm sm:text-base font-semibold truncate",
                       isSelected ? "text-white" : "text-gray-900"
                     )}>
                       {service.name}
                     </h3>
                     {isSelected && (
-                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-white flex-shrink-0" />
                     )}
                 </div>
                   <p className={cn(
-                    "text-sm sm:text-sm",
+                    "text-xs sm:text-sm",
                     isSelected ? "text-gray-200" : "text-gray-500"
                   )}>
                     {service.duration_minutes} {T('minutos', 'minutes')}
                   </p>
                 </div>
                 <div className={cn(
-                  "text-base sm:text-lg font-bold flex-shrink-0",
+                  "text-sm sm:text-base font-bold flex-shrink-0",
                   isSelected ? "text-white" : "text-gray-900"
                 )}>
                   {formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}
@@ -203,7 +203,7 @@ const ServiceSelector: React.FC<{
         <div className="flex justify-end pt-3 sm:pt-4">
           <Button
             onClick={onContinue}
-            className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base h-auto"
+            className="bg-black hover:bg-gray-900 text-white font-semibold px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base h-auto"
             size="lg"
           >
             {T('Continuar', 'Continue')}

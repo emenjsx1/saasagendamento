@@ -109,12 +109,9 @@ const Footer: React.FC = () => {
       </div>
 
       <div className="container mx-auto px-4 mt-8 border-t border-white/10 pt-6 pb-4 relative z-10">
-        <div className="text-center space-y-3">
+        <div className="text-center">
           <p className="text-sm text-gray-400">
             &copy; {currentYear} <span className="text-white font-semibold">AgenCode</span>. Todos os direitos reservados.
-          </p>
-          <p className="text-base text-white font-semibold">
-            FEITO POR AgenCode
           </p>
         </div>
       </div>
