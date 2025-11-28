@@ -216,39 +216,23 @@ const MobileProfileArea: React.FC<{ user: any; business: any; onLogout: () => vo
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-4 pb-5 rounded-b-3xl shadow-2xl">
-      <div className="flex items-center gap-3 mb-3">
-        <Avatar className="h-12 w-12 border-2 border-white/30 shadow-lg">
+    <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-4 rounded-b-3xl shadow-2xl">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10 border-2 border-white/30 shadow-lg">
           <AvatarImage src={profileData?.avatar_url || undefined} alt={getUserName()} />
-          <AvatarFallback className="bg-white/20 text-white text-base font-bold">
+          <AvatarFallback className="bg-white/20 text-white text-sm font-bold">
             {getUserInitials()}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold text-white truncate">{getUserName()}</h3>
-          <p className="text-xs text-gray-300 truncate">{user?.email}</p>
+          <h3 className="text-sm font-semibold text-white truncate">{getUserName()}</h3>
           {business?.name && (
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-gray-400 truncate mt-0.5">
               {business.name}
             </p>
           )}
         </div>
       </div>
-      {profileData?.phone && (
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 mb-3">
-          <p className="text-xs text-white/90">
-            <span className="font-semibold">{T('Telefone', 'Phone')}:</span> {profileData.phone}
-          </p>
-        </div>
-      )}
-      <Button
-        variant="ghost"
-        className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30 py-2 text-sm"
-        onClick={onLogout}
-      >
-        <LogOut className="h-3 w-3 mr-2" />
-        {T('Sair', 'Logout')}
-      </Button>
     </div>
   );
 };
