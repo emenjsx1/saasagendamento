@@ -236,16 +236,16 @@ const MobileSidebar: React.FC<{
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
         side="left" 
-        className="w-[75vw] sm:w-80 p-0 h-full max-w-sm z-[100]"
+        className="w-[85vw] sm:w-80 p-0 h-screen max-w-sm z-[100] overflow-hidden"
       >
         <div className="flex flex-col h-full relative">
           {/* Botão de fechar visível no topo */}
           <button
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 z-50 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            className="absolute top-4 right-4 z-[101] h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm flex items-center justify-center transition-colors shadow-lg"
             aria-label="Fechar menu"
           >
-            <X className="h-5 w-5 text-white" />
+            <X className="h-6 w-6 text-white" />
           </button>
           <div className="flex-shrink-0">
             <MobileProfileArea user={user} business={business} onLogout={onLogout} T={T} />
@@ -280,7 +280,7 @@ const MobileSidebar: React.FC<{
                   <Link
                     key={item.name}
                     to={item.href}
-                    onClick={() => setIsOpen(false)}
+                    onClick={() => onOpenChange(false)}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                       isActive 
