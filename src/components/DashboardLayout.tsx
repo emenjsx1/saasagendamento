@@ -335,8 +335,10 @@ const DashboardLayout: React.FC = () => {
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
       
-      {/* Desktop Sidebar - Spacer */}
-      <div className="hidden md:block w-72 flex-shrink-0"></div>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
       
       {/* Mobile Sidebar */}
       <MobileSidebar 
