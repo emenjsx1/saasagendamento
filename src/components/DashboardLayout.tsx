@@ -174,54 +174,22 @@ const Sidebar: React.FC = () => {
 };
 
 const MobileProfileArea: React.FC<{ user: any; business: any; onLogout: () => void; T: (pt: string, en: string) => string }> = ({ user, business, onLogout, T }) => {
-  const [profileData, setProfileData] = useState<{ first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.id) return;
-      setIsLoading(true);
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, phone, avatar_url')
-        .eq('id', user.id)
-        .single();
-      setProfileData(data);
-      setIsLoading(false);
-    };
-    fetchProfile();
-  }, [user?.id]);
-
-  const getUserInitials = () => {
-    if (profileData?.first_name && profileData?.last_name) {
-      return `${profileData.first_name[0]}${profileData.last_name[0]}`.toUpperCase();
-    }
-    if (profileData?.first_name) {
-      return profileData.first_name[0].toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U';
-  };
-
-  const getUserName = () => {
-    if (profileData?.first_name && profileData?.last_name) {
-      return `${profileData.first_name} ${profileData.last_name}`;
-    }
-    if (profileData?.first_name) {
-      return profileData.first_name;
-    }
-    return user?.email?.split('@')[0] || 'Usuário';
+  const getBusinessInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
     <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-4 rounded-b-3xl shadow-2xl">
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10 border-2 border-white/30 shadow-lg">
-          <AvatarImage src={profileData?.avatar_url || undefined} alt={getUserName()} />
+          <AvatarImage src={business?.logo_url || undefined} alt={business?.name || 'Business'} />
           <AvatarFallback className="bg-white/20 text-white text-sm font-bold">
-            {getUserInitials()}
+            {business?.name ? getBusinessInitials(business.name) : 'BN'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">

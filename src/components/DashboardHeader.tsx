@@ -102,7 +102,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuToggle, isMenuO
         <div className="h-full flex items-center justify-between px-6 md:px-8">
           {/* Left Section: Logo + Hamburger */}
           <div className="flex items-center gap-3 md:gap-4">
-            {/* Hamburger Button - Mobile */}
+            {/* Hamburger Button - Mobile Only */}
             <Button
               variant="ghost"
               size="icon"
@@ -120,6 +120,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuToggle, isMenuO
                 <Menu className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               )}
             </Button>
+            
+            {/* Desktop: Sidebar sempre visível, sem botão hambúrguer */}
 
             {/* Logo */}
             <Link 
