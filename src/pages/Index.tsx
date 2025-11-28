@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import VirtualAssistant from "@/components/VirtualAssistant";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useSession } from "@/integrations/supabase/session-context";
 import { cn } from "@/lib/utils";
 
 // Componente de Card de Benefício Minimalista Preto e Branco
@@ -46,16 +47,19 @@ const BenefitCard: React.FC<{ icon: React.ReactNode; title_pt: string; title_en:
 
 const Index = () => {
   const { T } = useCurrency();
+  const { user } = useSession();
   
   const heroTitle = T('A Próxima Geração em Agendamentos Inteligentes', 'The Next Generation in Smart Scheduling');
   const heroSubtitle = T('Organize sua agenda, gerencie finanças e cresça seu negócio com nossa plataforma futurista e intuitiva.', 'Organize your schedule, manage finances, and grow your business with our futuristic and intuitive platform.');
-  const heroCta = T('Começar Teste Gratuito', 'Start Free Trial');
+  const heroCta = user ? T('Ir para Dashboard', 'Go to Dashboard') : T('Começar Teste Gratuito', 'Start Free Trial');
+  const heroCtaLink = user ? '/dashboard' : '/register';
   
   const benefitsTitle = T('Funcionalidades Essenciais', 'Essential Features');
   const benefitsSubtitle = T('Ferramentas poderosas para otimizar cada aspecto do seu serviço.', 'Powerful tools to optimize every aspect of your service.');
   
   const ctaTitle = T('Pronto para o futuro da gestão?', 'Ready for the future of management?');
-  const ctaButton = T('Criar Minha Conta Grátis', 'Create My Free Account');
+  const ctaButton = user ? T('Ir para Dashboard', 'Go to Dashboard') : T('Criar Minha Conta Grátis', 'Create My Free Account');
+  const ctaButtonLink = user ? '/dashboard' : '/register';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -121,19 +125,21 @@ const Index = () => {
                   asChild 
                   className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-bold bg-black hover:bg-gray-900 text-white transition-all duration-300 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 animate-bounce-slow group"
                 >
-                  <Link to="/register" className="flex items-center justify-center gap-2">
+                  <Link to={heroCtaLink} className="flex items-center justify-center gap-2">
                     {heroCta}
                     <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
                 
-                <Button 
-                  variant="outline"
-                  asChild
-                  className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-black bg-white/0 hover:bg-black hover:text-white text-black transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-lg"
-                >
-                  <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
-                </Button>
+                {!user && (
+                  <Button 
+                    variant="outline"
+                    asChild
+                    className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-semibold border-2 border-black bg-white/0 hover:bg-black hover:text-white text-black transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-lg"
+                  >
+                    <Link to="/about">{T('Saiba Mais', 'Learn More')}</Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -522,7 +528,7 @@ const Index = () => {
               className="group relative px-8 sm:px-10 md:px-12 py-5 sm:py-6 md:py-7 text-base sm:text-lg md:text-xl font-bold bg-white text-black hover:bg-white/90 transition-all duration-300 transform hover:scale-110 shadow-xl hover:shadow-2xl overflow-hidden animate-fade-in-up"
               style={{ animationDelay: '400ms' }}
             >
-              <Link to="/register">
+              <Link to={ctaButtonLink}>
                 <span className="relative z-10 flex items-center gap-2 sm:gap-3">
                   {ctaButton}
                   <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 transform group-hover:translate-x-2 transition-transform duration-300" />

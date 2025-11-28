@@ -5,6 +5,7 @@ import { Menu, Globe, ChevronDown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import CurrencySelector from './CurrencySelector';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useSession } from '@/integrations/supabase/session-context';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +23,11 @@ const navItems = [
 
 const Header: React.FC = () => {
   const { T } = useCurrency();
+  const { user } = useSession();
   
   const loginText = T('Log In', 'Log In');
-  const startText = T('Começar Agora', 'Get Started');
+  const startText = user ? T('Dashboard', 'Dashboard') : T('Começar Agora', 'Get Started');
+  const startLink = user ? '/dashboard' : '/register';
   const talkToSales = T('Falar com Vendas', 'Talk to Sales');
 
   return (
@@ -95,17 +98,19 @@ const Header: React.FC = () => {
 
         {/* Desktop Navigation - Actions */}
         <div className="hidden lg:flex items-center gap-4 ml-auto flex-shrink-0">
-          <Link 
-            to="/login" 
-            className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors whitespace-nowrap"
-          >
-            {loginText}
-          </Link>
+          {!user && (
+            <Link 
+              to="/login" 
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors whitespace-nowrap"
+            >
+              {loginText}
+            </Link>
+          )}
           <Button 
             asChild 
             className="bg-black hover:bg-gray-900 text-white px-6 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all whitespace-nowrap"
           >
-            <Link to="/register">
+            <Link to={startLink}>
               {startText}
             </Link>
           </Button>
@@ -117,7 +122,7 @@ const Header: React.FC = () => {
             asChild 
             className="bg-black hover:bg-gray-900 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-sm whitespace-nowrap"
           >
-            <Link to="/register">
+            <Link to={startLink}>
               {startText}
             </Link>
           </Button>
@@ -151,14 +156,16 @@ const Header: React.FC = () => {
                   )
                 ))}
                 
-                <div className="border-t border-gray-200 pt-6 space-y-4">
-                  <Link 
-                    to="/login" 
-                    className="block text-base font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                  >
-                    {loginText}
-                  </Link>
-                </div>
+                {!user && (
+                  <div className="border-t border-gray-200 pt-6 space-y-4">
+                    <Link 
+                      to="/login" 
+                      className="block text-base font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                    >
+                      {loginText}
+                    </Link>
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>

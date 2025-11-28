@@ -59,9 +59,9 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 shadow-xl">
+    <div className="fixed top-0 left-0 h-screen w-72 flex flex-col bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 shadow-xl z-50">
       {/* Header com Logo e Nome do Negócio */}
-      <div className="p-6 border-b border-gray-200 bg-white">
+      <div className="p-6 border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center gap-3 mb-2">
           <Avatar className="h-12 w-12 border-2 border-gray-200 shadow-sm">
             <AvatarImage src={business?.logo_url || undefined} alt={business?.name || 'Business'} />
@@ -81,7 +81,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Navegação Principal */}
-      <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href || 
                            (location.pathname.startsWith(item.href) && item.href !== '/dashboard');
@@ -162,7 +162,7 @@ const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer com Botão Criar Ticket e Logout */}
-      <div className="p-4 border-t border-gray-200 bg-white space-y-3">
+      <div className="p-4 border-t border-gray-200 bg-white space-y-3 flex-shrink-0">
         {/* Botão Destacado: Criar Ticket */}
         <Button
           onClick={() => navigate('/dashboard/tickets/create')}
@@ -310,10 +310,12 @@ const MobileSidebar: React.FC<{
           <Menu className="h-6 w-6" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 p-0">
+      <SheetContent side="left" className="w-80 p-0 h-screen">
         <div className="flex flex-col h-full">
-          <MobileProfileArea user={user} business={business} onLogout={onLogout} T={T} />
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-shrink-0">
+            <MobileProfileArea user={user} business={business} onLogout={onLogout} T={T} />
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
             {navItems.map((item) => {
               const isActive = location.pathname === item.href || 
                               (location.pathname.startsWith(item.href) && item.href !== '/dashboard');
@@ -417,7 +419,7 @@ const DashboardLayout: React.FC = () => {
       />
       
       {/* Main Content */}
-      <div className="flex-grow w-full overflow-auto pt-16 md:pt-4 min-h-screen bg-gray-100">
+      <div className="flex-grow w-full overflow-auto pt-16 md:pt-4 min-h-screen bg-gray-100 md:ml-72">
         <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
           {/* Banner de atenção para perfil incompleto */}
           <ProfileWarningBanner />
