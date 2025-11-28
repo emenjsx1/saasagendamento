@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode } from 'lucide-react';
+import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
@@ -234,8 +234,19 @@ const MobileSidebar: React.FC<{
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-80 p-0 h-screen">
-        <div className="flex flex-col h-full">
+      <SheetContent 
+        side="left" 
+        className="w-[85vw] sm:w-80 p-0 h-full max-w-sm z-[100]"
+      >
+        <div className="flex flex-col h-full relative">
+          {/* Botão de fechar visível no topo */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 z-50 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
           <div className="flex-shrink-0">
             <MobileProfileArea user={user} business={business} onLogout={onLogout} T={T} />
           </div>
@@ -354,7 +365,7 @@ const DashboardLayout: React.FC = () => {
       
       {/* Main Content */}
       <div className="flex-grow w-full overflow-auto pt-16 md:pt-[72px] min-h-screen bg-gray-100 dark:bg-gray-900 md:ml-72">
-        <div className="w-full max-w-[85%] mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+        <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
           {/* Banner de atenção para perfil incompleto */}
           <ProfileWarningBanner />
           <Outlet />
