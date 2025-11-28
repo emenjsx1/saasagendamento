@@ -225,9 +225,8 @@ const MobileProfileArea: React.FC<{ user: any; business: any; onLogout: () => vo
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-white truncate">{getUserName()}</h3>
           {business?.name && (
-            <p className="text-xs text-gray-400 truncate mt-0.5">
+            <p className="text-sm font-semibold text-white truncate">
               {business.name}
             </p>
           )}
@@ -385,7 +384,7 @@ const DashboardLayout: React.FC = () => {
       
       {/* Main Content */}
       <div className="flex-grow w-full overflow-auto pt-16 md:pt-[72px] min-h-screen bg-gray-100 dark:bg-gray-900 md:ml-72">
-        <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+        <div className="w-full max-w-[85%] mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
           {/* Banner de atenção para perfil incompleto */}
           <ProfileWarningBanner />
           <Outlet />
