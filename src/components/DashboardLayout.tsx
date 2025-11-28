@@ -60,7 +60,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-[72px] left-0 h-[calc(100vh-72px)] w-72 flex flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-r border-gray-200 dark:border-gray-800 shadow-xl z-30">
+    <div className="hidden md:flex fixed top-[72px] left-0 h-[calc(100vh-72px)] w-72 flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-r border-gray-200 dark:border-gray-800 shadow-xl z-30">
       {/* Navegação Principal */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
         {navItems.map((item) => {
@@ -236,7 +236,7 @@ const MobileSidebar: React.FC<{
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
         side="left" 
-        className="w-[85vw] sm:w-80 p-0 h-full max-w-sm z-[100]"
+        className="w-[75vw] sm:w-80 p-0 h-full max-w-sm z-[100]"
       >
         <div className="flex flex-col h-full relative">
           {/* Botão de fechar visível no topo */}
@@ -258,7 +258,7 @@ const MobileSidebar: React.FC<{
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => onOpenChange(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                     isActive 
@@ -299,7 +299,7 @@ const MobileSidebar: React.FC<{
                 <Separator className="my-3" />
                 <Link
                   to={adminItem.href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => onOpenChange(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                     location.pathname.startsWith(adminItem.href)
