@@ -235,37 +235,37 @@ const MobileProfileArea: React.FC<{ user: any; business: any; onLogout: () => vo
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-6 pb-8 rounded-b-3xl shadow-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Avatar className="h-16 w-16 border-4 border-white/30 shadow-xl">
+    <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-4 pb-5 rounded-b-3xl shadow-2xl">
+      <div className="flex items-center gap-3 mb-3">
+        <Avatar className="h-12 w-12 border-2 border-white/30 shadow-lg">
           <AvatarImage src={profileData?.avatar_url || undefined} alt={getUserName()} />
-          <AvatarFallback className="bg-white/20 text-white text-xl font-bold">
+          <AvatarFallback className="bg-white/20 text-white text-base font-bold">
             {getUserInitials()}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h3 className="text-xl font-bold text-white truncate mb-1">{getUserName()}</h3>
-          <p className="text-sm text-gray-300 truncate mb-1">{user?.email}</p>
+          <h3 className="text-base font-bold text-white truncate">{getUserName()}</h3>
+          <p className="text-xs text-gray-300 truncate">{user?.email}</p>
           {business?.name && (
-            <p className="text-xs text-gray-400 mt-1 truncate">
-              {T('Negócio', 'Business')}: {business.name}
+            <p className="text-xs text-gray-400 truncate">
+              {business.name}
             </p>
           )}
         </div>
       </div>
       {profileData?.phone && (
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-4">
-          <p className="text-sm text-white/90">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 mb-3">
+          <p className="text-xs text-white/90">
             <span className="font-semibold">{T('Telefone', 'Phone')}:</span> {profileData.phone}
           </p>
         </div>
       )}
       <Button
         variant="ghost"
-        className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30 py-3"
+        className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30 py-2 text-sm"
         onClick={onLogout}
       >
-        <LogOut className="h-4 w-4 mr-2" />
+        <LogOut className="h-3 w-3 mr-2" />
         {T('Sair', 'Logout')}
       </Button>
     </div>
@@ -315,7 +315,7 @@ const MobileSidebar: React.FC<{
           <div className="flex-shrink-0">
             <MobileProfileArea user={user} business={business} onLogout={onLogout} T={T} />
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-3 min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
             {navItems.map((item) => {
               const isActive = location.pathname === item.href || 
                               (location.pathname.startsWith(item.href) && item.href !== '/dashboard');
@@ -325,7 +325,7 @@ const MobileSidebar: React.FC<{
                   to={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                     isActive 
                       ? 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg' 
                       : 'text-gray-700 hover:bg-gray-100'
@@ -336,8 +336,8 @@ const MobileSidebar: React.FC<{
                 </Link>
               );
             })}
-            <Separator className="my-5" />
-            <div className="space-y-3">
+            <Separator className="my-3" />
+            <div className="space-y-2">
               {ticketItems.map((item) => {
                 const isActive = location.pathname === item.href || 
                                 location.pathname.startsWith('/dashboard/tickets');
@@ -347,7 +347,7 @@ const MobileSidebar: React.FC<{
                     to={item.href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-medium transition-all duration-200",
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                       isActive 
                         ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white shadow-lg' 
                         : 'text-gray-700 hover:bg-gray-100'
@@ -361,12 +361,12 @@ const MobileSidebar: React.FC<{
             </div>
             {isAdmin && (
               <>
-                <Separator className="my-5" />
+                <Separator className="my-3" />
                 <Link
                   to={adminItem.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                     location.pathname.startsWith(adminItem.href)
                       ? 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg' 
                       : 'text-gray-700 hover:bg-gray-100'
