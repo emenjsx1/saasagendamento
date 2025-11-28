@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import ProfileWarningBanner from '@/components/ProfileWarningBanner';
+import DashboardHeader from '@/components/DashboardHeader';
 
 const Sidebar: React.FC = () => {
   const { user } = useSession();
@@ -59,27 +60,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-72 flex flex-col bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 shadow-xl z-50">
-      {/* Header com Logo e Nome do Negócio */}
-      <div className="p-6 border-b border-gray-200 bg-white flex-shrink-0">
-        <div className="flex items-center gap-3 mb-2">
-          <Avatar className="h-12 w-12 border-2 border-gray-200 shadow-sm">
-            <AvatarImage src={business?.logo_url || undefined} alt={business?.name || 'Business'} />
-          <AvatarFallback className="bg-gradient-to-br from-gray-800 to-gray-900 text-white font-semibold text-sm">
-            {business?.name ? getBusinessInitials(business.name) : 'BN'}
-          </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-gray-900 truncate">
-              {T('Painel do Negócio', 'Business Panel')}
-            </h2>
-            <p className="text-sm text-gray-600 truncate">
-              @{business?.name || T('Carregando...', 'Loading...')}
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="fixed top-[72px] left-0 h-[calc(100vh-72px)] w-72 flex flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-r border-gray-200 dark:border-gray-800 shadow-xl z-30">
       {/* Navegação Principal */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
         {navItems.map((item) => {
@@ -279,8 +260,9 @@ const MobileSidebar: React.FC<{
   isAdmin: boolean; 
   onLogout: () => void;
   T: (pt: string, en: string) => string;
-}> = ({ user, business, location, isAdmin, onLogout, T }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}> = ({ user, business, location, isAdmin, onLogout, T, isOpen, onOpenChange }) => {
   const navItems = [
     { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
     { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
@@ -300,16 +282,7 @@ const MobileSidebar: React.FC<{
   const adminItem = { name: T('Área Admin', 'Admin Area'), href: '/admin', icon: Shield };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="fixed top-4 left-4 z-40 bg-white shadow-lg md:hidden"
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-80 p-0 h-screen">
         <div className="flex flex-col h-full">
           <div className="flex-shrink-0">
@@ -401,12 +374,18 @@ const DashboardLayout: React.FC = () => {
     }
   };
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block w-72 flex-shrink-0">
-        <Sidebar />
-      </div>
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+      {/* Dashboard Header */}
+      <DashboardHeader 
+        isMenuOpen={isMobileMenuOpen}
+        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      />
+      
+      {/* Desktop Sidebar - Spacer */}
+      <div className="hidden md:block w-72 flex-shrink-0"></div>
       
       {/* Mobile Sidebar */}
       <MobileSidebar 
@@ -416,10 +395,12 @@ const DashboardLayout: React.FC = () => {
         isAdmin={isAdmin} 
         onLogout={handleLogout}
         T={T}
+        isOpen={isMobileMenuOpen}
+        onOpenChange={setIsMobileMenuOpen}
       />
       
       {/* Main Content */}
-      <div className="flex-grow w-full overflow-auto pt-16 md:pt-4 min-h-screen bg-gray-100 md:ml-72">
+      <div className="flex-grow w-full overflow-auto pt-16 md:pt-[72px] min-h-screen bg-gray-100 dark:bg-gray-900 md:ml-72">
         <div className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
           {/* Banner de atenção para perfil incompleto */}
           <ProfileWarningBanner />

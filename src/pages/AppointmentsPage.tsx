@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw, Clock, User, Briefcase, Tag, Repeat, LogOut, MessageSquare, Settings } from 'lucide-react';
+import { Loader2, MoreHorizontal, CheckCircle, XCircle, Filter, Calendar as CalendarIcon, RotateCcw, Clock, User, Briefcase, Tag, Repeat } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,6 @@ import { useEmailTemplates } from '@/hooks/use-email-templates';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBusiness } from '@/hooks/use-business'; // Importar useBusiness para pegar theme_color
 import { replaceEmailTemplate } from '@/utils/email-template-replacer';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useNavigate } from 'react-router-dom';
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
 
@@ -60,7 +57,6 @@ const AppointmentsPage: React.FC = () => {
   const { sendEmail } = useEmailNotifications(); 
   const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const { currentCurrency, T } = useCurrency();
-  const navigate = useNavigate();
   
   // Usar business.id se disponível, senão usar businessId do hook
   const businessId = business?.id || businessIdFromHook || businessIdFromSchedule;
@@ -75,55 +71,7 @@ const AppointmentsPage: React.FC = () => {
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   
-  const [profileData, setProfileData] = useState<{ first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null } | null>(null);
-  
   const themeColor = business?.theme_color || '#2563eb'; // Cor do tema
-  
-  // Buscar dados do perfil
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, phone, avatar_url')
-        .eq('id', user.id)
-        .single();
-      setProfileData(data);
-    };
-    fetchProfile();
-  }, [user?.id]);
-  
-  const getUserInitials = () => {
-    if (profileData?.first_name && profileData?.last_name) {
-      return `${profileData.first_name[0]}${profileData.last_name[0]}`.toUpperCase();
-    }
-    if (profileData?.first_name) {
-      return profileData.first_name[0].toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U';
-  };
-  
-  const getUserName = () => {
-    if (profileData?.first_name && profileData?.last_name) {
-      return `${profileData.first_name} ${profileData.last_name}`;
-    }
-    if (profileData?.first_name) {
-      return profileData.first_name;
-    }
-    return user?.email?.split('@')[0] || 'Usuário';
-  };
-  
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Erro ao sair: " + error.message);
-    } else {
-      toast.success("Sessão encerrada com sucesso.");
-    }
-  };
   
   // Log para debug
   useEffect(() => {
@@ -504,48 +452,6 @@ const AppointmentsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header com Toggle de Tema e Menu de Perfil */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex-1"></div>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={profileData?.avatar_url || undefined} alt={getUserName()} />
-                  <AvatarFallback className="bg-gradient-to-br from-gray-800 to-gray-900 text-white">
-                    {getUserInitials()}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{getUserName()}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
-                <User className="mr-2 h-4 w-4" />
-                <span>{T('Meu Perfil', 'My Profile')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/dashboard/tickets/create')}>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                <span>{T('Criar Ticket', 'Create Ticket')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>{T('Sair', 'Logout')}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      
       <section className="rounded-3xl bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white p-3 md:p-5 shadow-2xl flex flex-col gap-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
