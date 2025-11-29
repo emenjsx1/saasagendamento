@@ -22,6 +22,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { Currency } from '@/utils/currency';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { replaceEmailTemplate } from '@/utils/email-template-replacer';
+import { useSession } from '@/integrations/supabase/session-context';
 
 // Tipos de dados
 interface DaySchedule {
@@ -555,6 +556,7 @@ const ClientDetailsForm: React.FC<{
 const BookingPage = () => {
   const { businessId: businessSlug } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
+  const { user } = useSession();
   const { sendEmail } = useEmailNotifications(); 
   const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const { currentCurrency, T } = useCurrency();
@@ -832,6 +834,7 @@ const BookingPage = () => {
       end_time: endTime.toISOString(),
       status: 'pending',
       client_code: clientCode,
+      user_id: user?.id || null, // Vincular ao usuário se estiver logado
     };
 
     console.log('[BOOKING] 📝 Criando agendamento com dados:', {

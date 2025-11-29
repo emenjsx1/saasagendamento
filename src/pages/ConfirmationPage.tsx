@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, Calendar, Clock, User, DollarSign, ArrowLeft, RefreshCw, Tag } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, User, DollarSign, ArrowLeft, RefreshCw, Tag, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useSession } from '@/integrations/supabase/session-context';
 
 interface AppointmentDetails {
   id: string;
@@ -30,6 +31,7 @@ interface AppointmentDetails {
 
 const ConfirmationPage = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
+  const { user } = useSession();
   const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { currentCurrency, T } = useCurrency();
@@ -159,6 +161,14 @@ const ConfirmationPage = () => {
                 </div>
 
                 <div className="flex flex-col space-y-3 pt-6 mt-6 border-t">
+                  {user && (
+                    <Button variant="outline" asChild className="w-full h-11 border-gray-300">
+                      <Link to="/client/history">
+                        <History className="h-4 w-4 mr-2" />
+                        {T('Ver Meu Histórico', 'View My History')}
+                      </Link>
+                    </Button>
+                  )}
                   <Button asChild className="w-full h-11 bg-black hover:bg-black/90 text-white">
                     <Link to={`/book/${businessId}`}>
                       <RefreshCw className="h-4 w-4 mr-2" />

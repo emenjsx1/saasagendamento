@@ -96,6 +96,28 @@ const RegisterPage: React.FC = () => {
         console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
       }
 
+      // Vincular agendamentos existentes por email
+      try {
+        const { data: linkData, error: linkError } = await supabase.rpc('link_appointments_to_user', {
+          p_user_id: authData.user.id,
+          p_email: values.email,
+        });
+
+        if (linkError) {
+          console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', linkError);
+        } else if (linkData && linkData > 0) {
+          toast.success(
+            T(
+              `${linkData} agendamento(s) foram vinculados à sua conta.`,
+              `${linkData} appointment(s) were linked to your account.`
+            ),
+            { duration: 5000 }
+          );
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', error);
+      }
+
       toast.success(T("Conta criada com sucesso! Escolha seu plano.", "Account created successfully! Choose your plan."));
       
       // Redirecionar para escolher plano (não mais para checkout)

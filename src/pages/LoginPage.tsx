@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Navigate } from 'react-router-dom';
+import { useUserType } from '@/hooks/use-user-type';
 
 const LoginSchema = z.object({
   email: z.string().email("E-mail inválido."),
@@ -23,6 +24,7 @@ type LoginFormValues = z.infer<typeof LoginSchema>;
 const LoginPage = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
+  const { userType } = useUserType();
   const { T } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,12 +36,20 @@ const LoginPage = () => {
     },
   });
 
-  // Se já estiver logado, redirecionar
+  // Se já estiver logado, redirecionar baseado no tipo de usuário
   useEffect(() => {
-    if (user && !isSessionLoading) {
-      navigate('/dashboard', { replace: true });
+    if (user && !isSessionLoading && userType !== 'loading') {
+      if (userType === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (userType === 'owner') {
+        navigate('/dashboard', { replace: true });
+      } else if (userType === 'client') {
+        navigate('/client/history', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [user, isSessionLoading, navigate]);
+  }, [user, isSessionLoading, userType, navigate]);
 
   const handleLogin = async (values: LoginFormValues) => {
     setIsSubmitting(true);
@@ -53,7 +63,36 @@ const LoginPage = () => {
       if (signInError) throw signInError;
 
       toast.success(T("Login realizado com sucesso!", "Login successful!"));
-      navigate('/dashboard', { replace: true });
+      
+      // Aguardar um pouco para o usuário estar disponível e então vincular agendamentos
+      setTimeout(async () => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          try {
+            const { data: linkData, error: linkError } = await supabase.rpc('link_appointments_to_user', {
+              p_user_id: currentUser.id,
+              p_email: values.email,
+            });
+
+            if (linkError) {
+              console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', linkError);
+            } else if (linkData && linkData > 0) {
+              toast.success(
+                T(
+                  `${linkData} agendamento(s) foram vinculados à sua conta.`,
+                  `${linkData} appointment(s) were linked to your account.`
+                ),
+                { duration: 5000 }
+              );
+            }
+          } catch (error) {
+            console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', error);
+          }
+        }
+      }, 500);
+      
+      // Redirecionar baseado no tipo de usuário
+      // A lógica de redirecionamento será feita no useEffect abaixo
 
     } catch (error: any) {
       toast.error(error.message || T("Erro ao fazer login. Verifique suas credenciais.", "Login error. Please check your credentials."));

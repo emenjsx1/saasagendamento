@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import OwnerRoute from "./components/OwnerRoute";
 import DashboardLayout from "./components/DashboardLayout"; 
 import AdminLayout from "./components/AdminLayout"; // Importar AdminLayout
 import { SessionContextProvider } from "./integrations/supabase/session-context";
@@ -44,6 +45,12 @@ import TicketDetailPage from "./pages/TicketDetailPage";
 import WelcomePage from "./pages/WelcomePage";
 import TrialStartedPage from "./pages/TrialStartedPage";
 import QRCodePage from "./pages/QRCodePage";
+import MarketplacePage from "./pages/MarketplacePage";
+import MarketplaceBusinessDetailsPage from "./pages/MarketplaceBusinessDetailsPage";
+import ClientLayout from "./components/ClientLayout";
+import ClientHistoryPage from "./pages/ClientHistoryPage";
+import ClientLandingPage from "./pages/ClientLandingPage";
+import ClientProfilePage from "./pages/ClientProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -68,9 +75,12 @@ const App = () => (
             <Route path="/trial-started" element={<TrialStartedPage />} /> 
             <Route path="/book/:businessId" element={<BookingPage />} />
             <Route path="/confirmation/:appointmentId" element={<ConfirmationPage />} />
+            <Route path="/marketplace" element={<MarketplacePage />} />
+            <Route path="/marketplace/business/:businessId" element={<MarketplaceBusinessDetailsPage />} />
+            <Route path="/client/landing" element={<ClientLandingPage />} />
 
             {/* Rotas Protegidas para o Dono do Negócio */}
-            <Route element={<ProtectedRoute />}>
+            <Route element={<OwnerRoute />}>
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/register-business" element={<RegisterBusinessPage />} />
@@ -83,6 +93,14 @@ const App = () => (
                 <Route path="/dashboard/tickets" element={<TicketsPage />} />
                 <Route path="/dashboard/tickets/create" element={<CreateTicketPage />} />
                 <Route path="/dashboard/tickets/:ticketId" element={<TicketDetailPage />} />
+              </Route>
+            </Route>
+            
+            {/* Rotas Protegidas para Clientes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/client" element={<ClientLayout />}>
+                <Route path="history" element={<ClientHistoryPage />} />
+                <Route path="profile" element={<ClientProfilePage />} />
               </Route>
             </Route>
             

@@ -349,7 +349,7 @@ const ServicesPage: React.FC = () => {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 rounded-3xl border border-gray-200 shadow-xl">
           <CardHeader>
-            <CardTitle className="text-2xl font-semibold">{T('Catálogo cadastrado', 'Registered Catalog')} ({services.length})</CardTitle>
+            <CardTitle className="text-xl md:text-2xl font-semibold">{T('Catálogo cadastrado', 'Registered Catalog')} ({services.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {services.length === 0 ? (
@@ -392,25 +392,25 @@ const ServicesPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-gray-200 shadow-xl bg-white">
+        <Card className="lg:col-span-1 rounded-3xl border border-gray-200 shadow-xl bg-white">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">{T('Boas práticas de catálogo', 'Catalog Best Practices')}</CardTitle>
-            <p className="text-sm text-gray-500">{T('Mantenha seu portfólio atrativo e fácil de contratar.', 'Keep your portfolio attractive and easy to hire.')}</p>
+            <CardTitle className="text-lg md:text-xl font-semibold">{T('Boas práticas de catálogo', 'Catalog Best Practices')}</CardTitle>
+            <p className="text-xs md:text-sm text-gray-500">{T('Mantenha seu portfólio atrativo e fácil de contratar.', 'Keep your portfolio attractive and easy to hire.')}</p>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-gray-600">
+          <CardContent className="space-y-4 text-xs md:text-sm text-gray-600">
             <div className="flex gap-3">
-              <span className="h-2 w-2 rounded-full bg-black mt-2" />
-              {T('Use descrições curtas e orientadas ao benefício do cliente.', 'Use short descriptions focused on client benefits.')}
+              <span className="h-2 w-2 rounded-full bg-black mt-2 flex-shrink-0" />
+              <span className="break-words">{T('Use descrições curtas e orientadas ao benefício do cliente.', 'Use short descriptions focused on client benefits.')}</span>
             </div>
             <div className="flex gap-3">
-              <span className="h-2 w-2 rounded-full bg-black mt-2" />
-              {T('Defina durações coerentes para facilitar o encaixe de agenda.', 'Set consistent durations to facilitate schedule fitting.')}
+              <span className="h-2 w-2 rounded-full bg-black mt-2 flex-shrink-0" />
+              <span className="break-words">{T('Defina durações coerentes para facilitar o encaixe de agenda.', 'Set consistent durations to facilitate schedule fitting.')}</span>
             </div>
             <div className="flex gap-3">
-              <span className="h-2 w-2 rounded-full bg-black mt-2" />
-              {T('Atualize valores sempre que ajustar seus custos ou valor percebido.', 'Update prices whenever you adjust your costs or perceived value.')}
+              <span className="h-2 w-2 rounded-full bg-black mt-2 flex-shrink-0" />
+              <span className="break-words">{T('Atualize valores sempre que ajustar seus custos ou valor percebido.', 'Update prices whenever you adjust your costs or perceived value.')}</span>
             </div>
-            <div className="rounded-2xl border border-dashed border-gray-300 p-4 text-center text-gray-500">
+            <div className="rounded-2xl border border-dashed border-gray-300 p-4 text-center text-gray-500 text-xs md:text-sm">
               {T('Dica: destaque serviços premium com opções adicionais no checkout.', 'Tip: highlight premium services with additional options at checkout.')}
             </div>
           </CardContent>

@@ -14,4 +14,8 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Configuração para permitir Google Maps
+  define: {
+    'process.env': {},
+  },
 }));

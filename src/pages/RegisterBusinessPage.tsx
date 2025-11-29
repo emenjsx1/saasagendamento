@@ -20,6 +20,9 @@ import { useNavigate } from 'react-router-dom';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 import { usePlanLimits } from '@/hooks/use-plan-limits';
 import PlanLimitModal from '@/components/PlanLimitModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { businessCategories, mozambiqueProvinces, getCitiesByProvince, BusinessCategory } from '@/utils/mozambique-locations';
 
 // Define the structure for a single day's schedule
 const DayScheduleSchema = z.object({
@@ -42,6 +45,10 @@ const BusinessSchema = z.object({
   instagram_url: z.string().url("URL do Instagram inválida.").optional().or(z.literal('')),
   facebook_url: z.string().url("URL do Facebook inválida.").optional().or(z.literal('')),
   slug: z.string().optional(), // Adicionar slug ao esquema
+  category: z.string().optional(),
+  province: z.string().optional(),
+  city: z.string().optional(),
+  is_public: z.boolean().optional(),
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -67,6 +74,8 @@ const RegisterBusinessPage = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [selectedProvince, setSelectedProvince] = useState<string>('');
+  const availableCities = selectedProvince ? getCitiesByProvince(selectedProvince) : [];
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(BusinessSchema),
@@ -82,6 +91,10 @@ const RegisterBusinessPage = () => {
       instagram_url: "",
       facebook_url: "",
       slug: "", // Inicializa o slug
+      category: "",
+      province: "",
+      city: "",
+      is_public: true,
     },
   });
 
@@ -92,7 +105,7 @@ const RegisterBusinessPage = () => {
 
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url, slug')
+        .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url, slug, category, province, city, is_public')
         .eq('owner_id', user.id)
         .single();
 
@@ -116,7 +129,12 @@ const RegisterBusinessPage = () => {
           instagram_url: data.instagram_url || "",
           facebook_url: data.facebook_url || "",
           slug: data.slug || "", // Carrega o slug existente
+          category: data.category || "",
+          province: data.province || "",
+          city: data.city || "",
+          is_public: data.is_public !== undefined ? data.is_public : true,
         });
+        setSelectedProvince(data.province || "");
       }
     };
     fetchBusiness();
@@ -196,6 +214,10 @@ const RegisterBusinessPage = () => {
       instagram_url: values.instagram_url || null,
       facebook_url: values.facebook_url || null,
       slug: finalSlug, // Salva o slug
+      category: values.category || null,
+      province: values.province || null,
+      city: values.city || null,
+      is_public: values.is_public !== undefined ? values.is_public : true,
     };
 
     let result;
@@ -329,6 +351,117 @@ const RegisterBusinessPage = () => {
                       </div>
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Category */}
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-semibold">{T('Categoria', 'Category')}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-2xl h-12">
+                          <SelectValue placeholder={T('Selecione a categoria', 'Select category')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {businessCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Province */}
+              <FormField
+                control={form.control}
+                name="province"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-semibold">{T('Província', 'Province')}</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedProvince(value);
+                        form.setValue('city', ''); // Reset city when province changes
+                      }} 
+                      value={field.value || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="rounded-2xl h-12">
+                          <SelectValue placeholder={T('Selecione a província', 'Select province')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {mozambiqueProvinces.map((province) => (
+                          <SelectItem key={province.name} value={province.name}>
+                            {province.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* City */}
+              {selectedProvince && availableCities.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold">{T('Cidade', 'City')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-2xl h-12">
+                            <SelectValue placeholder={T('Selecione a cidade', 'Select city')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableCities.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Is Public */}
+              <FormField
+                control={form.control}
+                name="is_public"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-semibold">
+                        {T('Exibir no Marketplace', 'Show in Marketplace')}
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        {T('Permitir que seu negócio apareça no marketplace público', 'Allow your business to appear in the public marketplace')}
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

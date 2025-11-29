@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import CurrencySelector from './CurrencySelector';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useSession } from '@/integrations/supabase/session-context';
+import { useUserType } from '@/hooks/use-user-type';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
 
 const navItems = [
   { name_pt: 'Home', name_en: 'Home', href: '/' },
+  { name_pt: 'Marketplace', name_en: 'Marketplace', href: '/marketplace', isAnchor: false },
   { name_pt: 'Sobre', name_en: 'About', href: '/about', isAnchor: false },
   { name_pt: 'Preços', name_en: 'Pricing', href: '/#pricing', isAnchor: true },
   { name_pt: 'Suporte', name_en: 'Support', href: '/support', isAnchor: false },
@@ -24,10 +26,23 @@ const navItems = [
 const Header: React.FC = () => {
   const { T } = useCurrency();
   const { user } = useSession();
+  const { userType } = useUserType();
   
   const loginText = T('Log In', 'Log In');
-  const startText = user ? T('Dashboard', 'Dashboard') : T('Começar Agora', 'Get Started');
-  const startLink = user ? '/dashboard' : '/register';
+  const getStartText = () => {
+    if (!user) return T('Começar Agora', 'Get Started');
+    if (userType === 'client') return T('Meu Histórico', 'My History');
+    if (userType === 'admin') return T('Admin', 'Admin');
+    return T('Dashboard', 'Dashboard');
+  };
+  const getStartLink = () => {
+    if (!user) return '/register';
+    if (userType === 'client') return '/client/history';
+    if (userType === 'admin') return '/admin';
+    return '/dashboard';
+  };
+  const startText = getStartText();
+  const startLink = getStartLink();
   const talkToSales = T('Falar com Vendas', 'Talk to Sales');
 
   return (
