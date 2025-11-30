@@ -20,9 +20,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { processPaymentApi, validatePhoneNumber, sendPushNotifications, sendToUtmify } from '@/utils/paymentApi';
 import { captureUTMParameters, getUTMParameters } from '@/utils/utm';
 import { useEmailNotifications } from '@/hooks/use-email-notifications';
+import { useEmailTemplates } from '@/hooks/use-email-templates';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ensureBusinessAccount } from '@/utils/business-helpers';
 
 // --- Schemas ---
 const AccountSchema = z.object({
@@ -111,7 +113,8 @@ const CheckoutPage: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const { subscriptionConfig, isLoading: isConfigLoading } = usePublicSettings();
   const { currentCurrency, T } = useCurrency();
-  const { sendEmail } = useEmailNotifications(); // Use currency context
+  const { sendEmail } = useEmailNotifications();
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   
   const [step, setStep] = useState<'account' | 'plan' | 'payment' | 'success'>('account');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -207,8 +210,9 @@ const CheckoutPage: React.FC = () => {
         // Se já tem plano selecionado, ir para pagamento
         setStep('payment');
       } else if (!planFromSlug) {
-        // Se não tem plano, mostrar seleção de planos
-        setStep('plan');
+        // Se não tem plano na URL, redirecionar para choose-plan
+        navigate('/choose-plan', { replace: true });
+        return;
       }
     } else if (!user && !isSessionLoading) {
       // Se não está logado
@@ -217,8 +221,9 @@ const CheckoutPage: React.FC = () => {
         setSelectedPlanForPayment(planFromSlug);
         setStep('account');
       } else if (!planFromSlug) {
-        // Se não tem plano, começar criando conta
-        setStep('account');
+        // Se não tem plano na URL, redirecionar para choose-plan
+        navigate('/choose-plan', { replace: true });
+        return;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -390,14 +395,15 @@ const CheckoutPage: React.FC = () => {
           }
         }
 
-        // Se já tem plano selecionado (não trial), ir direto para pagamento, senão escolher plano
+        // Se já tem plano selecionado (não trial), ir direto para pagamento
         if (selectedPlanForPayment || planFromSlug) {
           if (planFromSlug && !selectedPlanForPayment) {
             setSelectedPlanForPayment(planFromSlug);
           }
           setStep('payment');
         } else {
-          setStep('plan');
+          // Se não tem plano, redirecionar para choose-plan
+          navigate('/choose-plan', { replace: true });
         }
       } catch (error: any) {
         toast.error(error.message || T("Erro ao atualizar dados.", "Error updating data."));
@@ -494,6 +500,38 @@ const CheckoutPage: React.FC = () => {
       }
       
       setTempUserId(userId);
+
+      // Enviar notificação para admin sobre novo registro (CheckoutPage é SEMPRE para Dono de Negócio)
+      if (templates?.admin_new_registration) {
+        try {
+          const adminTemplate = templates.admin_new_registration;
+          const userName = `${values.first_name} ${values.last_name}`;
+          const registrationDate = new Date().toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          let adminSubject = adminTemplate.subject;
+          let adminBody = adminTemplate.body
+            .replace(/\{\{user_name\}\}/g, userName)
+            .replace(/\{\{user_email\}\}/g, values.email)
+            .replace(/\{\{user_phone\}\}/g, values.phone || 'N/A')
+            .replace(/\{\{user_type\}\}/g, 'Dono de Negócio') // SEMPRE Dono de Negócio no CheckoutPage
+            .replace(/\{\{registration_date\}\}/g, registrationDate);
+          
+          sendEmail({
+            to: 'emenjoseph7@gmail.com',
+            subject: adminSubject,
+            body: adminBody,
+          });
+        } catch (adminEmailError) {
+          console.warn('Erro ao enviar email de notificação para admin:', adminEmailError);
+        }
+      }
 
       // 3. Verificar se o plano selecionado é trial (gratuito)
       const currentPlan = selectedPlanForPayment || planFromSlug;
@@ -664,15 +702,16 @@ const CheckoutPage: React.FC = () => {
         }
       }
 
-      // 4. Se já tem plano selecionado (não trial), ir direto para pagamento, senão escolher plano
+      // 4. Se já tem plano selecionado (não trial), ir direto para pagamento
       if (selectedPlanForPayment || planFromSlug) {
         if (planFromSlug && !selectedPlanForPayment) {
           setSelectedPlanForPayment(planFromSlug);
         }
         setStep('payment');
       } else {
+        // Se não tem plano, redirecionar para choose-plan
         toast.success(T("Conta criada com sucesso! Escolha seu plano.", "Account created successfully! Choose your plan."));
-        setStep('plan');
+        navigate('/choose-plan', { replace: true });
       }
 
     } catch (error: any) {
@@ -795,21 +834,21 @@ const CheckoutPage: React.FC = () => {
     }
 
     // 4. Registrar pagamento
-      const paymentRecord = {
-        user_id: tempUserId,
+    const paymentRecord = {
+      user_id: tempUserId,
       amount: amount,
-        status: 'confirmed',
-        payment_type: 'subscription',
+      status: 'confirmed',
+      payment_type: 'subscription',
       method: method,
       transaction_id: transactionId || reference,
       notes: T(`Pagamento da assinatura ${selectedPlanForPayment.name}`, `Subscription payment for ${selectedPlanForPayment.name}`),
       payment_date: new Date().toISOString(),
-      };
+    };
+    
+    const { error: paymentError } = await supabase
+      .from('payments')
+      .insert(paymentRecord);
       
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert(paymentRecord);
-        
     if (paymentError) {
       console.error("Erro ao registrar pagamento:", paymentError);
     }
@@ -927,81 +966,103 @@ const CheckoutPage: React.FC = () => {
       const userFullName = `${firstName} ${lastName}`;
       const userPhone = phone || 'N/A';
       const userEmailForAdmin = form.getValues('email') || 'N/A';
+      const paymentDate = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      const paymentAmount = formatCurrency(amount, currentCurrency.key, currentCurrency.locale);
+      const paymentMethod = method === 'mpesa' ? 'M-Pesa' : method === 'emola' ? 'e-Mola' : 'Cartão';
 
-      const adminEmailSubject = `🆕 Novo Negócio - Pagamento Confirmado`;
-      const adminEmailBody = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #000000 0%, #333333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #000000; }
-            .info-row { padding: 10px 0; border-bottom: 1px solid #eee; }
-            .info-row:last-child { border-bottom: none; }
-            .info-label { font-weight: bold; color: #333; }
-            .info-value { color: #666; margin-top: 5px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🆕 Novo Negócio</h1>
-              <p>Pagamento Confirmado</p>
-            </div>
-            <div class="content">
-              <div class="info-box">
-                <div class="info-row">
-                  <div class="info-label">Usuário:</div>
-                  <div class="info-value">${userFullName}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Email:</div>
-                  <div class="info-value">${userEmailForAdmin}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Telefone/Número:</div>
-                  <div class="info-value">${userPhone}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Negócio:</div>
-                  <div class="info-value">${businessName}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Valor Pago:</div>
-                  <div class="info-value">${formatCurrency(amount, currentCurrency.key, currentCurrency.locale)}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Plano:</div>
-                  <div class="info-value">${selectedPlanForPayment.name}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Método de Pagamento:</div>
-                  <div class="info-value">${method === 'mpesa' ? 'M-Pesa' : 'e-Mola'}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">ID da Transação:</div>
-                  <div class="info-value">${transactionId || reference}</div>
-                </div>
-                <div class="info-row">
-                  <div class="info-label">Data:</div>
-                  <div class="info-value">${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</div>
+      // Usar template se disponível, senão usar fallback
+      if (templates?.admin_new_payment) {
+        const template = templates.admin_new_payment;
+        let subject = template.subject
+          .replace(/\{\{user_name\}\}/g, userFullName)
+          .replace(/\{\{plan_name\}\}/g, selectedPlanForPayment.name);
+        
+        let body = template.body
+          .replace(/\{\{user_name\}\}/g, userFullName)
+          .replace(/\{\{user_email\}\}/g, userEmailForAdmin)
+          .replace(/\{\{user_phone\}\}/g, userPhone)
+          .replace(/\{\{plan_name\}\}/g, selectedPlanForPayment.name)
+          .replace(/\{\{payment_amount\}\}/g, paymentAmount)
+          .replace(/\{\{payment_method\}\}/g, paymentMethod)
+          .replace(/\{\{payment_date\}\}/g, paymentDate);
+
+        await sendEmail({
+          to: 'emenjoseph7@gmail.com',
+          subject: subject,
+          body: body,
+        });
+      } else {
+        // Fallback simples
+        const adminEmailSubject = `💳 Novo Pagamento - ${userFullName} - ${selectedPlanForPayment.name}`;
+        const adminEmailBody = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+              .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+              .info-row { padding: 10px 0; border-bottom: 1px solid #eee; }
+              .info-row:last-child { border-bottom: none; }
+              .info-label { font-weight: bold; color: #333; }
+              .info-value { color: #666; margin-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>💳 Novo Pagamento Recebido</h1>
+              </div>
+              <div class="content">
+                <div class="info-box">
+                  <div class="info-row">
+                    <div class="info-label">Cliente:</div>
+                    <div class="info-value">${userFullName}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Email:</div>
+                    <div class="info-value">${userEmailForAdmin}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Telefone:</div>
+                    <div class="info-value">${userPhone}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Negócio:</div>
+                    <div class="info-value">${businessName}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Plano:</div>
+                    <div class="info-value">${selectedPlanForPayment.name}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Valor:</div>
+                    <div class="info-value">${paymentAmount}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Método:</div>
+                    <div class="info-value">${paymentMethod}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">Data:</div>
+                    <div class="info-value">${paymentDate}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </body>
-        </html>
-      `;
+          </body>
+          </html>
+        `;
 
-      await sendEmail({
-        to: 'emenjoseph7@gmail.com',
-        subject: adminEmailSubject,
-        body: adminEmailBody,
-      });
+        await sendEmail({
+          to: 'emenjoseph7@gmail.com',
+          subject: adminEmailSubject,
+          body: adminEmailBody,
+        });
+      }
 
       console.log('✅ Email de notificação enviado para admin');
     } catch (adminEmailError) {
@@ -1019,7 +1080,21 @@ const CheckoutPage: React.FC = () => {
       }
     }
 
-    // 8. Atualizar tabela consolidada (APENAS UMA VEZ, no final, após tudo)
+    // 8. Garantir que conta seja marcada como BUSINESS (verificação final após pagamento)
+    try {
+      const userId = tempUserId || user?.id;
+      if (userId) {
+        const businessId = await ensureBusinessAccount(userId);
+        if (businessId) {
+          console.log('✅ Business account confirmado após pagamento bem-sucedido');
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao garantir business account após pagamento (não crítico):', error);
+      // Continuar mesmo se falhar, pois já deve ter sido criado antes
+    }
+
+    // 9. Atualizar tabela consolidada (APENAS UMA VEZ, no final, após tudo)
     try {
       if (tempUserId) {
         await refreshConsolidatedUserData(tempUserId);
@@ -1029,17 +1104,20 @@ const CheckoutPage: React.FC = () => {
       console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
     }
 
-    // 9. Mostrar sucesso e redirecionar para dashboard
+    // 10. Mostrar sucesso e redirecionar para configuração de negócio
     console.log('✅ Subscription criada com sucesso! Status: active');
-    toast.success(T("Pagamento confirmado e conta ativada!", "Payment confirmed and account activated!"));
+    toast.success(T("Pagamento confirmado e conta ativada! Configure seu negócio.", "Payment confirmed and account activated! Set up your business."));
     
     // Fechar modal de processamento
     setShowProcessingModal(false);
     
-    // Aguardar um momento para mostrar a mensagem de sucesso e então redirecionar
+    // Atualizar step para success para mostrar mensagem apropriada
+    setStep('success');
+    
+    // Aguardar um momento para mostrar a mensagem de sucesso e então redirecionar para configurar negócio
     setTimeout(() => {
-      navigate('/dashboard');
-    }, 1500);
+      navigate('/register-business');
+    }, 2000);
   };
 
   // Criar subscription pendente (para reportar pagamento)
@@ -1086,7 +1164,7 @@ const CheckoutPage: React.FC = () => {
 
     toast.success(T("Pedido criado como pendente. Um administrador revisará seu pagamento.", "Order created as pending. An administrator will review your payment."));
     setShowErrorModal(false);
-      setStep('success');
+    setStep('success');
   };
 
   // --- Lógica de Pagamento (Step 3) - API Real ---
@@ -1125,6 +1203,24 @@ const CheckoutPage: React.FC = () => {
 
     // NOTA: Removido sendToUtmify('waiting_payment') para evitar duplicação
     // O webhook será enviado apenas uma vez após confirmação do pagamento (dentro de createSubscriptionAndNotify)
+
+    // Garantir que conta seja marcada como BUSINESS antes de processar pagamento
+    try {
+      const userId = tempUserId || user?.id;
+      if (userId) {
+        const businessId = await ensureBusinessAccount(userId);
+        if (!businessId) {
+          toast.error(T("Erro ao ativar conta BUSINESS. Tente novamente.", "Error activating BUSINESS account. Please try again."));
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao garantir business account:', error);
+      toast.error(T("Erro ao verificar conta. Tente novamente.", "Error checking account. Please try again."));
+      setIsSubmitting(false);
+      return;
+    }
 
     // Mostrar modal de processamento
     setShowProcessingModal(true);
@@ -1168,8 +1264,7 @@ const CheckoutPage: React.FC = () => {
           // Após pagamento bem-sucedido, a conta já está ativada e subscription está 'active'
           // O usuário pode usar a plataforma durante o período do pacote selecionado
           // O step será atualizado para 'success' dentro de createSubscriptionAndNotify
-
-    } catch (error: any) {
+        } catch (error: any) {
           console.error('Erro ao criar subscription após pagamento:', error);
           toast.error(T("Pagamento confirmado, mas houve erro ao ativar conta. Entre em contato com o suporte.", "Payment confirmed, but error activating account. Please contact support."));
           setShowErrorModal(true);
@@ -1342,14 +1437,18 @@ const CheckoutPage: React.FC = () => {
     );
   };
 
-  const renderPlanSelectionStep = () => (
+  const renderPlanSelectionStep = () => {
+    // Filtrar plano Free da lista - apenas mostrar planos pagos no checkout
+    const paidPlans = pricingPlans.filter(p => p.planKey !== 'free' && p.planSlug !== 'free');
+    
+    return (
     <Card className="shadow-xl h-full">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center"><CreditCard className="h-5 w-5 mr-2" /> {T('2. Escolha seu Plano', '2. Choose Your Plan')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {pricingPlans.map((planOption) => (
+          {paidPlans.map((planOption) => (
             <Card 
               key={planOption.planSlug}
               className={`cursor-pointer transition-all hover:shadow-lg ${
@@ -1384,11 +1483,15 @@ const CheckoutPage: React.FC = () => {
       </CardContent>
     </Card>
   );
+  };
 
-  const renderPaymentStep = () => (
+  const renderPaymentStep = () => {
+    // Se tem plano na URL, não mostrar "2." já que não passou pela seleção de plano
+    const stepNumber = planFromSlug ? '' : '2. ';
+    return (
     <Card className="shadow-xl h-full">
       <CardHeader>
-        <CardTitle className="text-2xl flex items-center"><Phone className="h-5 w-5 mr-2" /> {T('2. Escolha o Método de Pagamento', '2. Choose Payment Method')}</CardTitle>
+        <CardTitle className="text-2xl flex items-center"><Phone className="h-5 w-5 mr-2" /> {T(`${stepNumber}Escolha o Método de Pagamento`, `${stepNumber}Choose Payment Method`)}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
@@ -1503,23 +1606,20 @@ const CheckoutPage: React.FC = () => {
       <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
       <CardTitle className="text-3xl mb-2">{T('Conta Ativada!', 'Account Activated!')}</CardTitle>
       <p className="text-lg text-gray-600 mb-6">
-        {user 
-          ? T('Redirecionando para o dashboard...', 'Redirecting to dashboard...')
-          : T('Seu pagamento foi confirmado e sua conta está ativa. Faça login para começar.', 'Your payment has been confirmed and your account is active. Log in to access the dashboard.')
-        }
+        {T('Seu pagamento foi confirmado e sua conta está ativa. Agora configure seu negócio para começar.', 'Your payment has been confirmed and your account is active. Now set up your business to get started.')}
       </p>
-      {user ? (
-        <div className="space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <Button asChild size="lg" className="mt-4">
-            <Link to="/dashboard">{T('Ir para Dashboard', 'Go to Dashboard')}</Link>
-          </Button>
-        </div>
-      ) : (
-        <Button asChild size="lg">
-          <Link to="/login">{T('Acessar Painel de Gestão', 'Access Management Dashboard')}</Link>
+      <div className="space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+        <p className="text-sm text-gray-500">
+          {T('Redirecionando para configuração do negócio...', 'Redirecting to business setup...')}
+        </p>
+        <Button asChild size="lg" className="mt-4">
+          <Link to="/register-business">{T('Configurar Meu Negócio', 'Set Up My Business')}</Link>
         </Button>
-      )}
+        <Button asChild variant="outline" size="lg">
+          <Link to="/dashboard">{T('Ir para Dashboard', 'Go to Dashboard')}</Link>
+        </Button>
+      </div>
     </Card>
   );
 
@@ -1609,53 +1709,62 @@ const CheckoutPage: React.FC = () => {
         {/* Indicador de Progresso */}
         <div className="mb-6 sm:mb-8 max-w-2xl mx-auto">
           <div className="flex items-center justify-between">
-            {[
-              { key: 'account', label: T('1 Conta', '1 Account'), number: 1 },
-              { key: 'plan', label: T('2 Plano', '2 Plan'), number: 2 },
-              { key: 'payment', label: T('3 Pagamento', '3 Payment'), number: 3 },
-            ].map((stepItem, index, array) => {
-              const stepKeys = ['account', 'plan', 'payment'];
-              const currentStepIndex = stepKeys.indexOf(step);
-              const isActive = step === stepItem.key;
-              const isCompleted = currentStepIndex > index;
-              
-              return (
-                <React.Fragment key={stepItem.key}>
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <div
-                      className={cn(
-                        "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 font-semibold transition-all duration-200 flex-shrink-0",
-                        isCompleted
-                          ? "bg-black border-black text-white"
-                          : isActive
-                          ? "bg-black border-black text-white scale-110"
-                          : "bg-white border-gray-300 text-gray-400"
-                      )}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                      ) : (
-                        <span className="text-xs sm:text-sm">{stepItem.number}</span>
-                      )}
+            {(() => {
+              // Se tem plano na URL, não mostrar step 'plan'
+              const steps = planFromSlug 
+                ? [
+                    { key: 'account' as const, label: T('1 Conta', '1 Account'), number: 1 },
+                    { key: 'payment' as const, label: T('2 Pagamento', '2 Payment'), number: 2 },
+                  ]
+                : [
+                    { key: 'account' as const, label: T('1 Conta', '1 Account'), number: 1 },
+                    { key: 'plan' as const, label: T('2 Plano', '2 Plan'), number: 2 },
+                    { key: 'payment' as const, label: T('3 Pagamento', '3 Payment'), number: 3 },
+                  ];
+              const stepKeys = planFromSlug ? ['account', 'payment'] : ['account', 'plan', 'payment'];
+              return steps.map((stepItem, index, array) => {
+                const currentStepIndex = stepKeys.indexOf(step);
+                const isActive = step === stepItem.key;
+                const isCompleted = currentStepIndex > index;
+                
+                return (
+                  <React.Fragment key={stepItem.key}>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <div
+                        className={cn(
+                          "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 font-semibold transition-all duration-200 flex-shrink-0",
+                          isCompleted
+                            ? "bg-black border-black text-white"
+                            : isActive
+                            ? "bg-black border-black text-white scale-110"
+                            : "bg-white border-gray-300 text-gray-400"
+                        )}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                        ) : (
+                          <span className="text-xs sm:text-sm">{stepItem.number}</span>
+                        )}
+                      </div>
+                      <p className={cn(
+                        "text-xs sm:text-sm font-medium mt-2 text-center truncate w-full",
+                        isActive ? "text-black font-bold" : isCompleted ? "text-gray-600" : "text-gray-400"
+                      )}>
+                        {stepItem.label}
+                      </p>
                     </div>
-                    <p className={cn(
-                      "text-xs sm:text-sm font-medium mt-2 text-center truncate w-full",
-                      isActive ? "text-black font-bold" : isCompleted ? "text-gray-600" : "text-gray-400"
-                    )}>
-                      {stepItem.label}
-                    </p>
-                  </div>
-                  {index < array.length - 1 && (
-                    <div className="flex-1 mx-2 sm:mx-4 h-0.5 hidden sm:block">
-                      <div className={cn(
-                        "h-full transition-all duration-300",
-                        isCompleted ? "bg-black" : "bg-gray-300"
-                      )} />
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
+                    {index < array.length - 1 && (
+                      <div className="flex-1 mx-2 sm:mx-4 h-0.5 hidden sm:block">
+                        <div className={cn(
+                          "h-full transition-all duration-300",
+                          isCompleted ? "bg-black" : "bg-gray-300"
+                        )} />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              });
+            })()}
           </div>
         </div>
         
@@ -1747,6 +1856,7 @@ const CheckoutPage: React.FC = () => {
       </Dialog>
     </div>
   );
+  }
 };
 
 export default CheckoutPage;

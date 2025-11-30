@@ -698,17 +698,25 @@ const BookingPage = () => {
   
   // Função para buscar o email do proprietário
   const fetchOwnerEmail = useCallback(async (ownerId: string): Promise<string | null> => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', ownerId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', ownerId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('[BOOKING] ❌ Erro ao buscar email do proprietário:', error);
+        return null;
+      }
       
-    if (error) {
-      console.error('[BOOKING] Erro ao buscar email do proprietário:', error);
+      const email = data?.email || null;
+      console.log('[BOOKING] 📧 Email do proprietário encontrado:', { ownerId, email: email ? 'encontrado' : 'não encontrado' });
+      return email;
+    } catch (error) {
+      console.error('[BOOKING] ❌ Erro ao buscar email do proprietário:', error);
       return null;
     }
-    return data?.email || null;
   }, []);
 
 
@@ -959,63 +967,171 @@ const BookingPage = () => {
       const formattedTime = format(startTime, 'HH:mm', { locale: ptBR });
       
       // Enviar notificação para o cliente (se tiver e-mail)
-      if (clientDetails.client_email) {
-        const template = templates.appointment_pending;
-        
-        const appointmentData = {
-          client_name: clientDetails.client_name,
-          client_code: clientCode,
-          service_name: selectedService.name,
-          service_duration: selectedService.duration_minutes,
-          service_price: selectedService.price,
-          formatted_date: format(startTime, 'dd/MM/yyyy', { locale: ptBR }),
-          formatted_time: formattedTime,
-          appointment_status: 'pending' as const,
-          appointment_id: createdAppointment.id,
-          appointment_link: `${window.location.origin}/confirmation/${createdAppointment.id}`,
-        };
+      try {
+        if (clientDetails.client_email) {
+          console.log('[BOOKING] 📧 Tentando enviar email para cliente:', { 
+            clientEmail: clientDetails.client_email,
+            hasTemplate: !!templates?.appointment_pending 
+          });
+          
+          if (templates?.appointment_pending) {
+            const template = templates.appointment_pending;
+            
+            const appointmentData = {
+              client_name: clientDetails.client_name,
+              client_code: clientCode,
+              service_name: selectedService.name,
+              service_duration: selectedService.duration_minutes,
+              service_price: selectedService.price,
+              formatted_date: formattedDate, // Já inclui dia da semana: "EEEE, dd/MM/yyyy"
+              formatted_time: formattedTime,
+              appointment_status: 'pending' as const,
+              appointment_id: createdAppointment.id,
+              appointment_link: `${window.location.origin}/confirmation/${createdAppointment.id}`,
+              client_whatsapp: clientDetails.client_whatsapp || 'N/A',
+              client_email: clientDetails.client_email || 'N/A',
+              dashboard_link: `${window.location.origin}/dashboard/agenda`,
+              marketplace_link: `${window.location.origin}/marketplace`,
+            };
 
-        const businessData = {
-          logo_url: business.logo_url,
-          theme_color: business.theme_color,
-          name: business.name,
-          phone: business.phone,
-          address: business.address,
-        };
+            const businessData = {
+              logo_url: business.logo_url,
+              theme_color: business.theme_color,
+              name: business.name,
+              phone: business.phone,
+              address: business.address,
+            };
 
-        let subject = replaceEmailTemplate(template.subject, businessData, appointmentData, currentCurrency);
-        let body = replaceEmailTemplate(template.body, businessData, appointmentData, currentCurrency);
-        
-        sendEmail({
-          to: clientDetails.client_email,
-          subject: subject,
-          body: body,
-        });
+            let subject = replaceEmailTemplate(template.subject, businessData, appointmentData, currentCurrency);
+            let body = replaceEmailTemplate(template.body, businessData, appointmentData, currentCurrency);
+            
+            console.log('[BOOKING] 📧 Enviando email para cliente:', {
+              to: clientDetails.client_email,
+              businessName: businessData.name,
+              themeColor: businessData.theme_color,
+              subjectLength: subject.length,
+              bodyLength: body.length,
+              clientName: appointmentData.client_name,
+              serviceName: appointmentData.service_name,
+              formattedDate: appointmentData.formatted_date,
+            });
+            
+            sendEmail({
+              to: clientDetails.client_email,
+              subject: subject,
+              body: body,
+            });
+            
+            console.log('[BOOKING] ✅ Email enviado com sucesso para cliente:', clientDetails.client_email);
+          } else {
+            // Fallback: enviar email simples se o template não estiver disponível
+            console.warn('[BOOKING] ⚠️ Template não disponível, enviando email simples para cliente');
+            const simpleSubject = `Agendamento Pendente: ${selectedService.name}`;
+            const simpleBody = `
+              <h1>Agendamento Recebido</h1>
+              <p>Olá <strong>${clientDetails.client_name}</strong>, seu agendamento para <strong>${selectedService.name}</strong> em <strong>${formattedDate}</strong> às <strong>${formattedTime}</strong> foi recebido e está <strong>PENDENTE</strong> de confirmação.</p>
+              <p><strong>Código:</strong> ${clientCode}</p>
+              <p><a href="${window.location.origin}/confirmation/${createdAppointment.id}">Ver Detalhes do Agendamento</a></p>
+            `;
+            
+            sendEmail({
+              to: clientDetails.client_email,
+              subject: simpleSubject,
+              body: simpleBody,
+            });
+          }
+        } else {
+          console.log('[BOOKING] ⚠️ Cliente não forneceu email, pulando envio de email');
+        }
+      } catch (clientEmailError) {
+        console.error('[BOOKING] ❌ Erro ao enviar email para cliente:', clientEmailError);
+        // Não bloquear o fluxo se o email falhar
       }
       
       // Enviar notificação para o dono do negócio
-      const ownerEmail = await fetchOwnerEmail(business.owner_id);
-      if (ownerEmail) {
-          const ownerSubject = `[NOVO AGENDAMENTO] ${business.name}: ${clientDetails.client_name} - ${selectedService.name}`;
-          const ownerBody = `
+      try {
+        const ownerEmail = await fetchOwnerEmail(business.owner_id);
+        console.log('[BOOKING] 📧 Tentando enviar email para dono:', { 
+          ownerId: business.owner_id, 
+          ownerEmail, 
+          hasTemplate: !!templates?.new_appointment_owner 
+        });
+        
+        if (ownerEmail && templates?.new_appointment_owner) {
+          const ownerTemplate = templates.new_appointment_owner;
+          
+          const ownerAppointmentData = {
+            client_name: clientDetails.client_name,
+            client_code: clientCode,
+            service_name: selectedService.name,
+            service_duration: selectedService.duration_minutes,
+            service_price: selectedService.price,
+            formatted_date: formattedDate, // Já inclui dia da semana: "EEEE, dd/MM/yyyy"
+            formatted_time: formattedTime,
+            appointment_status: 'pending' as const,
+            appointment_id: createdAppointment.id,
+            appointment_link: `${window.location.origin}/confirmation/${createdAppointment.id}`,
+            client_whatsapp: clientDetails.client_whatsapp || 'N/A',
+            client_email: clientDetails.client_email || 'N/A',
+            dashboard_link: `${window.location.origin}/dashboard/agenda`,
+          };
+
+          const ownerBusinessData = {
+            logo_url: business.logo_url,
+            theme_color: business.theme_color,
+            name: business.name,
+            phone: business.phone,
+            address: business.address,
+          };
+
+          let ownerSubject = replaceEmailTemplate(ownerTemplate.subject, ownerBusinessData, ownerAppointmentData, currentCurrency);
+          let ownerBody = replaceEmailTemplate(ownerTemplate.body, ownerBusinessData, ownerAppointmentData, currentCurrency);
+          
+          console.log('[BOOKING] 📧 Enviando email para dono do negócio:', {
+            to: ownerEmail,
+            businessName: ownerBusinessData.name,
+            themeColor: ownerBusinessData.theme_color,
+            subjectLength: ownerSubject.length,
+            bodyLength: ownerBody.length,
+          });
+          
+          sendEmail({
+            to: ownerEmail,
+            subject: ownerSubject,
+            body: ownerBody,
+          });
+        } else if (ownerEmail) {
+          // Fallback: enviar email simples se o template não estiver disponível
+          console.warn('[BOOKING] ⚠️ Template não disponível, enviando email simples para dono');
+          const simpleSubject = `[NOVO AGENDAMENTO] ${business.name}: ${clientDetails.client_name} - ${selectedService.name}`;
+          const simpleBody = `
             <h1>Novo Agendamento Pendente</h1>
-            <p>Um novo agendamento foi feito para o seu negócio, ${business.name}.</p>
+            <p>Um novo agendamento foi feito para o seu negócio, <strong>${business.name}</strong>.</p>
             <ul>
-                <li><strong>Cliente:</strong> ${clientDetails.client_name}</li>
-                <li><strong>Serviço:</strong> ${selectedService.name}</li>
-                <li><strong>Data/Hora:</strong> ${formattedDate} às ${formattedTime}</li>
-                <li><strong>WhatsApp:</strong> ${clientDetails.client_whatsapp}</li>
-                <li><strong>E-mail:</strong> ${clientDetails.client_email || 'N/A'}</li>
-                <li><strong>Código Cliente:</strong> ${clientCode}</li>
+              <li><strong>Cliente:</strong> ${clientDetails.client_name}</li>
+              <li><strong>Serviço:</strong> ${selectedService.name}</li>
+              <li><strong>Data/Hora:</strong> ${formattedDate} às ${formattedTime}</li>
+              <li><strong>WhatsApp:</strong> ${clientDetails.client_whatsapp || 'N/A'}</li>
+              <li><strong>E-mail:</strong> ${clientDetails.client_email || 'N/A'}</li>
+              <li><strong>Código Cliente:</strong> ${clientCode}</li>
             </ul>
             <p><a href="${window.location.origin}/dashboard/agenda">Acessar Agenda</a></p>
           `;
           
           sendEmail({
-              to: ownerEmail,
-              subject: ownerSubject,
-              body: ownerBody,
+            to: ownerEmail,
+            subject: simpleSubject,
+            body: simpleBody,
           });
+        } else {
+          console.warn('[BOOKING] ⚠️ Não foi possível enviar email para dono:', {
+            hasEmail: !!ownerEmail,
+            hasTemplate: !!templates?.new_appointment_owner,
+          });
+        }
+      } catch (emailError) {
+        console.error('[BOOKING] ❌ Erro ao enviar email para dono do negócio:', emailError);
+        // Não bloquear o fluxo se o email falhar
       }
 
       // Redirecionar para página de confirmação

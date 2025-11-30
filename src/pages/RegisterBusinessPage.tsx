@@ -20,6 +20,9 @@ import { useNavigate } from 'react-router-dom';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 import { usePlanLimits } from '@/hooks/use-plan-limits';
 import PlanLimitModal from '@/components/PlanLimitModal';
+import { useEmailNotifications } from '@/hooks/use-email-notifications';
+import { useEmailTemplates } from '@/hooks/use-email-templates';
+import { replaceEmailTemplate } from '@/utils/email-template-replacer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { businessCategories, mozambiqueProvinces, getCitiesByProvince, BusinessCategory } from '@/utils/mozambique-locations';
@@ -67,10 +70,12 @@ const initialSchedule = [
 
 const RegisterBusinessPage = () => {
   const { user } = useSession();
-  const { T } = useCurrency();
+  const { T, currentCurrency } = useCurrency();
   const navigate = useNavigate();
   const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
   const { limits, isLoading: isLimitsLoading, refresh: refreshLimits } = usePlanLimits();
+  const { sendEmail } = useEmailNotifications();
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -172,33 +177,39 @@ const RegisterBusinessPage = () => {
     
     setIsSubmitting(true);
 
+    // Sempre gerar novo slug baseado no nome atual do negócio
+    // Se o nome mudou, o slug também deve mudar para refletir o nome atual
     let finalSlug = values.slug;
-
-    // Se for uma nova criação OU se o slug estiver vazio, geramos um novo
-    if (!businessId || !finalSlug) {
-        let attempts = 0;
-        let unique = false;
+    let attempts = 0;
+    let unique = false;
+    
+    while (!unique && attempts < 5) {
+        finalSlug = generateBusinessSlug(values.name);
         
-        while (!unique && attempts < 5) {
-            finalSlug = generateBusinessSlug(values.name);
-            
-            // Verifica se o slug já existe
-            const { count } = await supabase
-                .from('businesses')
-                .select('id', { count: 'exact', head: true })
-                .eq('slug', finalSlug);
+        // Verifica se o slug já existe
+        let query = supabase
+            .from('businesses')
+            .select('id', { count: 'exact', head: true })
+            .eq('slug', finalSlug);
+        
+        // Se estiver atualizando, excluir o próprio business da verificação
+        if (businessId) {
+            query = query.neq('id', businessId);
+        }
+        
+        const { count } = await query;
 
-            if (count === 0) {
-                unique = true;
-            }
+        if (count === 0) {
+            unique = true;
+        } else {
             attempts++;
         }
+    }
 
-        if (!unique) {
-            toast.error(T("Não foi possível gerar um slug único. Tente novamente.", "Could not generate unique slug. Please try again."));
-            setIsSubmitting(false);
-            return;
-        }
+    if (!unique) {
+        toast.error(T("Não foi possível gerar um slug único. Tente novamente.", "Could not generate unique slug. Please try again."));
+        setIsSubmitting(false);
+        return;
     }
 
     const businessData = {
@@ -254,6 +265,71 @@ const RegisterBusinessPage = () => {
         console.log('✅ Tabela consolidada atualizada após criar/atualizar negócio');
       } catch (error) {
         console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+      }
+      
+      // Enviar email de "Negócio Configurado" se for novo negócio
+      const isNewBusiness = !businessId;
+      if (isNewBusiness && templates?.business_configured && user) {
+        try {
+          // Buscar dados do perfil do dono
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('email, first_name, last_name')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          const ownerEmail = profileData?.email || user.email;
+          const ownerName = profileData ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() : 'Dono do Negócio';
+          
+          if (ownerEmail) {
+            const template = templates.business_configured;
+            
+            const businessInfo = {
+              logo_url: values.logo_url || null,
+              theme_color: values.theme_color || '#2563eb',
+              name: values.name,
+              phone: values.phone || null,
+              address: values.address || null,
+            };
+            
+            const appointmentData = {
+              client_name: ownerName,
+              client_code: '',
+              service_name: '',
+              service_duration: 0,
+              service_price: 0,
+              formatted_date: new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+              formatted_time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              appointment_status: 'pending' as const,
+              appointment_id: result.data.id,
+              appointment_link: `${window.location.origin}/dashboard`,
+              dashboard_link: `${window.location.origin}/dashboard`,
+            };
+            
+            let subject = template.subject;
+            let body = template.body
+              .replace(/\{\{owner_name\}\}/g, ownerName)
+              .replace(/\{\{business_name\}\}/g, businessInfo.name)
+              .replace(/\{\{business_primary_color\}\}/g, businessInfo.theme_color)
+              .replace(/\{\{business_logo_url\}\}/g, businessInfo.logo_url || '')
+              .replace(/\{\{business_address\}\}/g, businessInfo.address || 'Não informado')
+              .replace(/\{\{business_whatsapp\}\}/g, businessInfo.phone || 'N/A')
+              .replace(/\{\{dashboard_link\}\}/g, appointmentData.dashboard_link);
+            
+            // Aplicar replaceEmailTemplate para cores e outros placeholders
+            body = replaceEmailTemplate(body, businessInfo, appointmentData, currentCurrency);
+            
+            sendEmail({
+              to: ownerEmail,
+              subject: subject,
+              body: body,
+            });
+            
+            console.log('📧 Email de negócio configurado enviado para:', ownerEmail);
+          }
+        } catch (emailError) {
+          console.error('Erro ao enviar email de negócio configurado:', emailError);
+        }
       }
       
       toast.success(T("Dados do negócio salvos com sucesso!", "Business data saved successfully!"));

@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
+import { useEmailNotifications } from '@/hooks/use-email-notifications';
+import { useEmailTemplates } from '@/hooks/use-email-templates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mozambiqueProvinces, getCitiesByProvince } from '@/utils/mozambique-locations';
 
@@ -33,7 +35,9 @@ type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
 export default function ClientLandingPage() {
   const navigate = useNavigate();
-  const { T } = useCurrency();
+  const { T, currentCurrency } = useCurrency();
+  const { sendEmail } = useEmailNotifications();
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProvince, setSelectedProvince] = useState<string>('');
   const availableCities = selectedProvince ? getCitiesByProvince(selectedProvince) : [];
@@ -110,6 +114,59 @@ export default function ClientLandingPage() {
         }
       } catch (error) {
         console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', error);
+      }
+
+      // Enviar email de boas-vindas para cliente
+      if (templates?.client_welcome) {
+        try {
+          const welcomeTemplate = templates.client_welcome;
+          const clientName = `${values.firstName} ${values.lastName}`;
+          
+          let welcomeSubject = welcomeTemplate.subject;
+          let welcomeBody = welcomeTemplate.body
+            .replace(/\{\{client_name\}\}/g, clientName)
+            .replace(/\{\{marketplace_link\}\}/g, `${window.location.origin}/marketplace`);
+          
+          sendEmail({
+            to: values.email,
+            subject: welcomeSubject,
+            body: welcomeBody,
+          });
+        } catch (emailError) {
+          console.warn('Erro ao enviar email de boas-vindas:', emailError);
+        }
+      }
+      
+      // Enviar notificação para admin sobre novo registro (sempre como Cliente)
+      if (templates?.admin_new_registration) {
+        try {
+          const adminTemplate = templates.admin_new_registration;
+          const userName = `${values.firstName} ${values.lastName}`;
+          const registrationDate = new Date().toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          let adminSubject = adminTemplate.subject;
+          let adminBody = adminTemplate.body
+            .replace(/\{\{user_name\}\}/g, userName)
+            .replace(/\{\{user_email\}\}/g, values.email)
+            .replace(/\{\{user_phone\}\}/g, values.phone || 'N/A')
+            .replace(/\{\{user_type\}\}/g, 'Cliente') // SEMPRE Cliente nesta página
+            .replace(/\{\{registration_date\}\}/g, registrationDate);
+          
+          sendEmail({
+            to: 'emenjoseph7@gmail.com',
+            subject: adminSubject,
+            body: adminBody,
+          });
+        } catch (adminEmailError) {
+          console.warn('Erro ao enviar email de notificação para admin:', adminEmailError);
+        }
       }
 
       toast.success(T("Conta criada com sucesso! Redirecionando...", "Account created successfully! Redirecting..."));

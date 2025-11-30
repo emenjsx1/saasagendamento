@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { History, Store, User } from 'lucide-react';
+import { History, Store, User, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
@@ -10,12 +10,13 @@ export function ClientBottomNavigator() {
   const navItems = [
     { name: T('Histórico', 'History'), href: '/client/history', icon: History },
     { name: T('Marketplace', 'Marketplace'), href: '/marketplace', icon: Store },
+    { name: T('Finanças', 'Finance'), href: '/client/finance', icon: DollarSign },
     { name: T('Perfil', 'Profile'), href: '/client/profile', icon: User },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg md:hidden">
-      <div className="flex items-center justify-around h-16">
+      <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href || 

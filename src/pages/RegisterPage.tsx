@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Mail, ArrowRight, Check, Phone, MapPin } from 'lucide-react';
+import { Loader2, Mail, ArrowRight, Check, Phone, MapPin, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
+import { useEmailNotifications } from '@/hooks/use-email-notifications';
+import { useEmailTemplates } from '@/hooks/use-email-templates';
+import { ensureBusinessAccount } from '@/utils/business-helpers';
 
 const RegisterSchema = z.object({
   firstName: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -20,6 +23,7 @@ const RegisterSchema = z.object({
   email: z.string().email("E-mail inválido."),
   phone: z.string().min(9, "O telefone deve ter pelo menos 9 dígitos."),
   city: z.string().min(2, "A Província/Cidade é obrigatória."),
+  businessName: z.string().min(3, "O nome do negócio é obrigatório (mínimo 3 caracteres)."),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -34,6 +38,8 @@ const RegisterPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: isSessionLoading } = useSession();
   const { T } = useCurrency();
+  const { sendEmail } = useEmailNotifications();
+  const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<RegisterFormValues>({
@@ -44,6 +50,7 @@ const RegisterPage: React.FC = () => {
       email: searchParams.get('email') || "",
       phone: "",
       city: "",
+      businessName: "",
       password: "",
       confirmPassword: "",
     },
@@ -116,6 +123,74 @@ const RegisterPage: React.FC = () => {
         }
       } catch (error) {
         console.warn('⚠️ Erro ao vincular agendamentos (não crítico):', error);
+      }
+
+      // RegisterPage é SEMPRE para DONO DE NEGÓCIO (não cliente)
+      // Enviar email de boas-vindas para dono de negócio
+      if (templates?.owner_welcome) {
+        try {
+          const welcomeTemplate = templates.owner_welcome;
+          const ownerName = `${values.firstName} ${values.lastName}`;
+          
+          let welcomeSubject = welcomeTemplate.subject;
+          let welcomeBody = welcomeTemplate.body
+            .replace(/\{\{owner_name\}\}/g, ownerName)
+            .replace(/\{\{dashboard_link\}\}/g, `${window.location.origin}/dashboard`);
+          
+          sendEmail({
+            to: values.email,
+            subject: welcomeSubject,
+            body: welcomeBody,
+          });
+        } catch (emailError) {
+          console.warn('Erro ao enviar email de boas-vindas para dono:', emailError);
+        }
+      }
+      
+      // Enviar notificação para admin sobre novo registro (sempre como Dono de Negócio)
+      if (templates?.admin_new_registration) {
+        try {
+          const adminTemplate = templates.admin_new_registration;
+          const userName = `${values.firstName} ${values.lastName}`;
+          const registrationDate = new Date().toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          let adminSubject = adminTemplate.subject;
+          let adminBody = adminTemplate.body
+            .replace(/\{\{user_name\}\}/g, userName)
+            .replace(/\{\{user_email\}\}/g, values.email)
+            .replace(/\{\{user_phone\}\}/g, values.phone || 'N/A')
+            .replace(/\{\{user_type\}\}/g, 'Dono de Negócio') // SEMPRE Dono de Negócio nesta página
+            .replace(/\{\{registration_date\}\}/g, registrationDate);
+          
+          sendEmail({
+            to: 'emenjoseph7@gmail.com',
+            subject: adminSubject,
+            body: adminBody,
+          });
+        } catch (adminEmailError) {
+          console.warn('Erro ao enviar email de notificação para admin:', adminEmailError);
+        }
+      }
+
+      // Marcar conta como BUSINESS criando business com nome fornecido
+      // RegisterPage é SEMPRE para DONO DE NEGÓCIO
+      try {
+        const businessId = await ensureBusinessAccount(authData.user.id, values.businessName);
+        if (businessId) {
+          console.log('✅ Conta marcada como BUSINESS após registro com nome:', values.businessName);
+        } else {
+          console.warn('⚠️ Não foi possível criar business (não crítico)');
+        }
+      } catch (businessError) {
+        console.warn('⚠️ Erro ao marcar conta como BUSINESS (não crítico):', businessError);
+        // Não bloquear o fluxo se falhar
       }
 
       toast.success(T("Conta criada com sucesso! Escolha seu plano.", "Account created successfully! Choose your plan."));
@@ -265,6 +340,28 @@ const RegisterPage: React.FC = () => {
                         className="h-12 border-gray-300 dark:border-gray-600 focus:border-black focus:ring-black"
                         {...field} 
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="businessName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700 dark:text-gray-300">{T('Nome do seu Negócio', 'Name of your Business')}</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          type="text" 
+                          placeholder={T('Ex: Barbearia do João', "Ex: John's Barber Shop")}
+                          className="h-12 pl-10 border-gray-300 dark:border-gray-600 focus:border-black focus:ring-black"
+                          {...field} 
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import OwnerRoute from "./components/OwnerRoute";
+import ClientRoute from "./components/ClientRoute";
 import DashboardLayout from "./components/DashboardLayout"; 
 import AdminLayout from "./components/AdminLayout"; // Importar AdminLayout
 import { SessionContextProvider } from "./integrations/supabase/session-context";
@@ -51,6 +52,7 @@ import ClientLayout from "./components/ClientLayout";
 import ClientHistoryPage from "./pages/ClientHistoryPage";
 import ClientLandingPage from "./pages/ClientLandingPage";
 import ClientProfilePage from "./pages/ClientProfilePage";
+import ClientFinancePage from "./pages/ClientFinancePage";
 
 const queryClient = new QueryClient();
 
@@ -97,9 +99,10 @@ const App = () => (
             </Route>
             
             {/* Rotas Protegidas para Clientes */}
-            <Route element={<ProtectedRoute />}>
+            <Route element={<ClientRoute />}>
               <Route path="/client" element={<ClientLayout />}>
                 <Route path="history" element={<ClientHistoryPage />} />
+                <Route path="finance" element={<ClientFinancePage />} />
                 <Route path="profile" element={<ClientProfilePage />} />
               </Route>
             </Route>

@@ -280,10 +280,12 @@ const AppointmentsPage: React.FC = () => {
           
           if (newStatus === 'confirmed') {
               templateKey = 'appointment_confirmed';
-          } else if (newStatus === 'rejected' || newStatus === 'cancelled') {
-              templateKey = 'appointment_pending'; 
+          } else if (newStatus === 'cancelled') {
+              templateKey = 'appointment_cancelled';
+          } else if (newStatus === 'rejected') {
+              templateKey = 'appointment_rejected';
           } else if (newStatus === 'completed') {
-              templateKey = null; 
+              templateKey = 'appointment_completed';
           }
 
           if (templateKey) {
@@ -291,11 +293,15 @@ const AppointmentsPage: React.FC = () => {
               
               try {
                 // Buscar dados do negócio
-                const { data: businessData } = await supabase
+                const { data: businessData, error: businessError } = await supabase
                   .from('businesses')
                   .select('logo_url, theme_color, name, phone, address')
                   .eq('id', app.business_id)
-                  .single();
+                  .maybeSingle();
+
+                if (businessError) {
+                  console.error('Erro ao buscar dados do negócio:', businessError);
+                }
 
                 const appointmentData = {
                   client_name: app.client_name,
@@ -303,7 +309,7 @@ const AppointmentsPage: React.FC = () => {
                   service_name: app.services.name,
                   service_duration: app.services.duration_minutes,
                   service_price: app.services.price,
-                  formatted_date: format(startTime, 'dd/MM/yyyy', { locale: ptBR }),
+                  formatted_date: format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR }), // Incluir dia da semana
                   formatted_time: formattedTime,
                   appointment_status: (newStatus === 'confirmed' ? 'confirmed' : newStatus === 'cancelled' ? 'cancelled' : 'pending') as 'pending' | 'confirmed' | 'cancelled',
                   appointment_id: app.id,
@@ -320,6 +326,15 @@ const AppointmentsPage: React.FC = () => {
 
                 let subject = replaceEmailTemplate(template.subject, businessInfo, appointmentData, currentCurrency);
                 let body = replaceEmailTemplate(template.body, businessInfo, appointmentData, currentCurrency);
+
+                console.log('📧 [AppointmentsPage] Enviando email personalizado:', {
+                  to: app.client_email,
+                  businessName: businessInfo.name,
+                  themeColor: businessInfo.theme_color,
+                  hasLogo: !!businessInfo.logo_url,
+                  subjectLength: subject.length,
+                  bodyLength: body.length,
+                });
 
                 sendEmail({
                   to: app.client_email,
@@ -338,7 +353,7 @@ const AppointmentsPage: React.FC = () => {
                     service_name: app.services.name,
                     service_duration: app.services.duration_minutes,
                     service_price: app.services.price,
-                    formatted_date: format(startTime, 'dd/MM/yyyy', { locale: ptBR }),
+                    formatted_date: format(startTime, 'EEEE, dd/MM/yyyy', { locale: ptBR }), // Incluir dia da semana
                     formatted_time: formattedTime,
                     appointment_status: (newStatus === 'confirmed' ? 'confirmed' : newStatus === 'cancelled' ? 'cancelled' : 'pending') as 'pending' | 'confirmed' | 'cancelled',
                     appointment_id: app.id,

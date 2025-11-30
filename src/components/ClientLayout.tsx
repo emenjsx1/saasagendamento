@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { History, Store, User, LogOut, Menu, X } from 'lucide-react';
+import { History, Store, User, LogOut, Menu, X, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
@@ -31,6 +31,7 @@ const ClientSidebar: React.FC = () => {
   const navItems = [
     { name: T('Meu Histórico', 'My History'), href: '/client/history', icon: History },
     { name: T('Marketplace', 'Marketplace'), href: '/marketplace', icon: Store },
+    { name: T('Finanças', 'Finance'), href: '/client/finance', icon: DollarSign },
     { name: T('Meu Perfil', 'My Profile'), href: '/client/profile', icon: User },
   ];
 

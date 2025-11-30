@@ -60,7 +60,7 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       trialName: 'Teste Gratuito',
       trialPeriod: `por ${trial_days} dias`,
       trialCta: 'Começar Teste Gratuito',
-      freeName: 'Free',
+      freeName: 'Gratis',
       freePeriod: 'por 3 dias',
       freeCta: 'Começar',
       standardName: 'Standard',
@@ -89,13 +89,14 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       isFree: true,
       isPopular: false,
       features: [
-        '30 agendamentos por mês',
+        '10 agendamentos por mês',
         '1 negócio',
+        '10 mensagens WhatsApp por mês',
+        '10 emails por mês',
         'Gestão Financeira habilitada',
         'Página de agendamento personalizada',
         'Gestão de serviços',
         'Relatórios básicos',
-        'Notificações WhatsApp',
         'Suporte padrão'
       ],
       planKey: 'free',
@@ -114,11 +115,12 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       isTrial: false,
       features: [
         'Agendamentos ilimitados',
+        'Mensagens WhatsApp ilimitadas',
+        'Emails ilimitados',
         'Página de agendamento totalmente personalizável',
         'Gestão de serviços completa',
         'Gestão financeira completa',
         'Relatórios básicos',
-        'Notificações no WhatsApp',
         'Suporte prioritário',
         'Máximo 1 negócio criado'
       ],
@@ -140,7 +142,6 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
         'Tudo do plano Standard',
         'Múltiplos negócios (sem limite)',
         'Relatórios avançados',
-        'Integração com WhatsApp (futuro)',
         'Consultoria de setup',
         'Melhor custo-benefício'
       ],

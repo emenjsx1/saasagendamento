@@ -37,17 +37,61 @@ const LoginPage = () => {
   });
 
   // Se já estiver logado, redirecionar baseado no tipo de usuário
+  // IMPORTANTE: Aguardar a verificação completa do hasBusiness antes de redirecionar
   useEffect(() => {
     if (user && !isSessionLoading && userType !== 'loading') {
-      if (userType === 'admin') {
-        navigate('/admin', { replace: true });
-      } else if (userType === 'owner') {
-        navigate('/dashboard', { replace: true });
-      } else if (userType === 'client') {
-        navigate('/client/history', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      // Aguardar um pouco mais para garantir que hasBusiness foi verificado
+      const timeoutId = setTimeout(() => {
+        console.log('🔍 [LoginPage] Redirecionando usuário:', { 
+          userType, 
+          userId: user.id,
+          hasBusiness: userType === 'owner' 
+        });
+        
+        // PRIORIDADE 1: Se for admin
+        if (userType === 'admin') {
+          console.log('✅ [LoginPage] Redirecionando para /admin');
+          navigate('/admin', { replace: true });
+          return;
+        }
+        
+        // PRIORIDADE 2: Se for owner (tem negócio) - NUNCA redirecionar para área do cliente
+        if (userType === 'owner') {
+          console.log('✅ [LoginPage] Redirecionando para /dashboard (owner)');
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+        
+        // PRIORIDADE 3: Se for client (não tem negócio)
+        if (userType === 'client') {
+          console.log('✅ [LoginPage] Redirecionando para /client/history (client)');
+          navigate('/client/history', { replace: true });
+          return;
+        }
+        
+        // Fallback: se não conseguir determinar, verificar diretamente
+        console.warn('⚠️ [LoginPage] Tipo não determinado, verificando diretamente...');
+        supabase
+          .from('businesses')
+          .select('id')
+          .eq('owner_id', user.id)
+          .limit(1)
+          .maybeSingle()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Erro ao verificar negócio:', error);
+              navigate('/client/history', { replace: true });
+            } else if (data) {
+              console.log('✅ [LoginPage] Negócio encontrado, redirecionando para /dashboard');
+              navigate('/dashboard', { replace: true });
+            } else {
+              console.log('✅ [LoginPage] Sem negócio, redirecionando para /client/history');
+              navigate('/client/history', { replace: true });
+            }
+          });
+      }, 300); // Aguardar 300ms para garantir que a verificação foi concluída
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [user, isSessionLoading, userType, navigate]);
 
@@ -91,8 +135,8 @@ const LoginPage = () => {
         }
       }, 500);
       
-      // Redirecionar baseado no tipo de usuário
-      // A lógica de redirecionamento será feita no useEffect abaixo
+      // O redirecionamento será feito pelo useEffect acima quando userType for determinado
+      // Não precisamos fazer redirecionamento manual aqui
 
     } catch (error: any) {
       toast.error(error.message || T("Erro ao fazer login. Verifique suas credenciais.", "Login error. Please check your credentials."));
@@ -110,9 +154,23 @@ const LoginPage = () => {
     );
   }
 
-  // Se o usuário já estiver logado, redireciona
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
+  // Se o usuário já estiver logado, mostrar loader enquanto determina o tipo
+  if (user && userType === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0069FF]" />
+      </div>
+    );
+  }
+  
+  // Se o usuário já estiver logado e o tipo foi determinado, o useEffect vai redirecionar
+  // Mas enquanto isso, mostrar loader
+  if (user && userType !== 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0069FF]" />
+      </div>
+    );
   }
 
   // Features do trial (lado direito)

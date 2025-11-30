@@ -155,8 +155,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuToggle, isMenuO
 
           {/* Right Section: Theme Toggle + Avatar */}
           <div className="flex items-center gap-3 md:gap-4">
-            {/* Theme Toggle */}
-            <div className="hidden sm:block">
+            {/* Theme Toggle - Desktop */}
+            <div className="hidden md:block">
               <ThemeToggle />
             </div>
 
@@ -207,6 +207,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuToggle, isMenuO
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-800" />
+                {/* Theme Toggle - Mobile dentro do dropdown */}
+                <div className="md:hidden px-2 py-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{T('Tema', 'Theme')}</span>
+                    <ThemeToggle />
+                  </div>
+                </div>
+                <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-800 md:hidden" />
                 <DropdownMenuItem
                   onClick={() => navigate('/dashboard/profile')}
                   className="cursor-pointer"

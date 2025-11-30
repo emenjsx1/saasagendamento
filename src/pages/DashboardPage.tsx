@@ -87,34 +87,34 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-center">
-            <div className="text-center px-2.5 py-1.5 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-              <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-1">Status</p>
-              <p className="text-sm sm:text-base font-semibold text-white">Operacional</p>
+            <div className="text-center px-2.5 py-1.5 rounded-xl bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10">
+              <p className="text-xs uppercase tracking-[0.3em] text-white/80 dark:text-gray-400 mb-1">Status</p>
+              <p className="text-sm sm:text-base font-semibold text-white dark:text-white">Operacional</p>
             </div>
             <Button 
               variant="outline" 
-              className="border-gray-300 bg-white text-gray-900 hover:bg-gray-100 w-full sm:w-auto px-4 py-2 text-sm font-semibold"
+              className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 w-full sm:w-auto px-4 py-2 text-sm font-semibold"
               onClick={handleCopyLink}
             >
               Copiar Link Público
             </Button>
           </div>
         </div>
-        {/* Alerta de Limite de Agendamentos (Free) */}
+        {/* Alerta de Limite de Agendamentos (apenas para plano FREE) */}
         {limits.planName === 'free' && limits.maxAppointments !== null && (
           <div className="mb-4">
             <Alert className={cn(
               "border-2 rounded-xl",
               limits.appointmentsUsed >= limits.maxAppointments
-                ? "border-orange-500 bg-orange-50"
-                : limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 5
-                ? "border-yellow-500 bg-yellow-50"
-                : "border-blue-500 bg-blue-50"
+                ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-400"
+                : limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 3
+                ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-400"
+                : "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
             )}>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                 <div>
-                  <p className="font-semibold text-sm sm:text-base text-black mb-1">
+                  <p className="font-semibold text-sm sm:text-base text-black dark:text-white mb-1">
                     {limits.appointmentsUsed >= limits.maxAppointments
                       ? T('Limite de agendamentos atingido!', 'Appointment limit reached!')
                       : T('Agendamentos do mês:', 'Monthly appointments:')
@@ -125,17 +125,17 @@ const DashboardPage = () => {
                       value={limits.maxAppointments ? (limits.appointmentsUsed / limits.maxAppointments) * 100 : 0} 
                       className="h-2 flex-1"
                     />
-                    <span className="text-sm font-semibold text-black whitespace-nowrap">
+                    <span className="text-sm font-semibold text-black dark:text-white whitespace-nowrap">
                       {limits.appointmentsUsed}/{limits.maxAppointments}
                     </span>
                   </div>
-                  {limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 5 && limits.appointmentsRemaining > 0 && (
-                    <p className="text-xs text-gray-600 mt-2">
+                  {limits.appointmentsRemaining !== null && limits.appointmentsRemaining <= 3 && limits.appointmentsRemaining > 0 && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
                       {T(`Restam ${limits.appointmentsRemaining} agendamentos`, `Only ${limits.appointmentsRemaining} appointments remaining`)}
                     </p>
                   )}
                   {limits.appointmentsUsed >= limits.maxAppointments && (
-                    <p className="text-xs text-gray-600 mt-2">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
                       {T('Atualize para continuar criando agendamentos.', 'Upgrade to continue creating appointments.')}
                     </p>
                   )}
@@ -153,94 +153,94 @@ const DashboardPage = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 mt-4 sm:mt-5">
-          <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10">
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-1.5">Agenda Hoje</p>
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5">{periodCount}</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Agendamentos entre {periodLabel}</p>
+          <div className="bg-white/10 dark:bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/20 dark:border-white/10 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/70 dark:text-gray-400 mb-1.5">Agenda Hoje</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5 text-white dark:text-white">{periodCount}</p>
+            <p className="text-white/70 dark:text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Agendamentos entre {periodLabel}</p>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10">
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-1.5">Receita</p>
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5">{formatCurrency(periodRevenue, currentCurrency.key, currentCurrency.locale)}</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Entradas registradas no período</p>
+          <div className="bg-white/10 dark:bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/20 dark:border-white/10 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/70 dark:text-gray-400 mb-1.5">Receita</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5 text-white dark:text-white">{formatCurrency(periodRevenue, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-white/70 dark:text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Entradas registradas no período</p>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10">
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-1.5">Lucro Líquido</p>
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5">{formatCurrency(periodProfit, currentCurrency.key, currentCurrency.locale)}</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Resultado financeiro consolidado</p>
+          <div className="bg-white/10 dark:bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/20 dark:border-white/10 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/70 dark:text-gray-400 mb-1.5">Lucro Líquido</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 mb-1.5 text-white dark:text-white">{formatCurrency(periodProfit, currentCurrency.key, currentCurrency.locale)}</p>
+            <p className="text-white/70 dark:text-gray-400 text-xs sm:text-sm mt-1 leading-relaxed">Resultado financeiro consolidado</p>
           </div>
         </div>
       </div>
 
       {/* Perfil e filtros */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card className="col-span-1 lg:col-span-2 bg-white border-2 border-gray-300 rounded-3xl shadow-2xl">
-          <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-3">
+        <Card className="col-span-1 lg:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-700 rounded-3xl shadow-2xl">
+          <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-3">
             <div>
-              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Resumo Inteligente</CardTitle>
-              <p className="text-xs text-gray-600 mt-1 leading-relaxed">Personalize o intervalo para acompanhar o desempenho</p>
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">Resumo Inteligente</CardTitle>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">Personalize o intervalo para acompanhar o desempenho</p>
             </div>
             <div className="w-full md:w-auto">
               <PeriodFilter range={periodRange} setRange={setPeriodRange} />
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4">
-            <div className="rounded-2xl border border-gray-100 p-3 sm:p-4 bg-gray-50">
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm font-medium text-gray-500">Agendamentos</span>
-                <CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Agendamentos</span>
+                <CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 dark:text-gray-500" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-gray-900">{periodCount}</p>
-              <Link to="/dashboard/agenda" className="text-xs font-semibold uppercase tracking-widest text-gray-500 mt-2 inline-flex items-center gap-2">
+              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-gray-900 dark:text-white">{periodCount}</p>
+              <Link to="/dashboard/agenda" className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-2 inline-flex items-center gap-2">
                 Ver agenda <ArrowUp className="h-3 w-3" />
               </Link>
             </div>
-            <div className="rounded-2xl border border-gray-100 p-3 sm:p-4 bg-gray-50">
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm font-medium text-gray-500">Receitas</span>
-                <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
+                <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Receitas</span>
+                <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 dark:text-emerald-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-emerald-600">{formatCurrency(periodRevenue, currentCurrency.key, currentCurrency.locale)}</p>
-              <Link to="/dashboard/finance" className="text-xs font-semibold uppercase tracking-widest text-gray-500 mt-2 inline-flex items-center gap-2">
+              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-emerald-600 dark:text-emerald-400">{formatCurrency(periodRevenue, currentCurrency.key, currentCurrency.locale)}</p>
+              <Link to="/dashboard/finance" className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-2 inline-flex items-center gap-2">
                 Financeiro <ArrowUp className="h-3 w-3" />
               </Link>
             </div>
-            <div className="rounded-2xl border border-gray-100 p-3 sm:p-4 bg-gray-50">
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm font-medium text-gray-500">Despesas</span>
-                <ArrowDown className="h-4 w-4 sm:h-5 sm:w-5 text-rose-500" />
+                <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Despesas</span>
+                <ArrowDown className="h-4 w-4 sm:h-5 sm:w-5 text-rose-500 dark:text-rose-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-rose-600">{formatCurrency(periodExpense, currentCurrency.key, currentCurrency.locale)}</p>
-              <Link to="/dashboard/finance" className="text-xs font-semibold uppercase tracking-widest text-gray-500 mt-2 inline-flex items-center gap-2">
+              <p className="text-xl sm:text-2xl font-bold mt-2 mb-2 text-rose-600 dark:text-rose-400">{formatCurrency(periodExpense, currentCurrency.key, currentCurrency.locale)}</p>
+              <Link to="/dashboard/finance" className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-2 inline-flex items-center gap-2">
                 Ajustar custos <ArrowUp className="h-3 w-3" />
               </Link>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-2 border-gray-300 shadow-2xl bg-white">
-          <CardHeader className="pb-2 p-3 sm:p-4 border-b-2 border-gray-200">
-            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Perfil do proprietário</CardTitle>
-            <p className="text-xs uppercase tracking-[0.4em] text-gray-600">Personalize sua marca</p>
+        <Card className="rounded-3xl border-2 border-gray-300 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900">
+          <CardHeader className="pb-2 p-3 sm:p-4 border-b-2 border-gray-200 dark:border-gray-700">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">Perfil do proprietário</CardTitle>
+            <p className="text-xs uppercase tracking-[0.4em] text-gray-600 dark:text-gray-400">Personalize sua marca</p>
           </CardHeader>
           <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 pt-3">
-            <div className="rounded-2xl border-2 border-gray-200 p-4 bg-white flex items-center gap-3">
-              <div className="h-14 w-14 rounded-full bg-black text-white flex items-center justify-center text-2xl font-bold">
+            <div className="rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex items-center gap-3">
+              <div className="h-14 w-14 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-2xl font-bold">
                 {business?.name?.substring(0, 2).toUpperCase() || 'AG'}
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{business?.name || 'Negócio sem nome'}</p>
-                <p className="text-sm text-gray-600 truncate">{business?.address || 'Endereço não informado'}</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{business?.name || 'Negócio sem nome'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{business?.address || 'Endereço não informado'}</p>
               </div>
             </div>
             <div className="space-y-3">
-              <Button asChild className="w-full rounded-2xl bg-black hover:bg-black/90 text-white shadow-lg font-semibold">
+              <Button asChild className="w-full rounded-2xl bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-white/90 text-white dark:text-black shadow-lg font-semibold">
                 <Link to="/register-business">Atualizar página pública</Link>
               </Button>
-              <Button asChild variant="outline" className="w-full rounded-2xl border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold">
+              <Button asChild variant="outline" className="w-full rounded-2xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold">
                 <Link to="/profile">Editar informações pessoais</Link>
               </Button>
             </div>
-            <div className="rounded-2xl border-2 border-dashed border-gray-300 p-4 text-center text-sm text-gray-600 bg-gray-50">
+            <div className="rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 text-center text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50">
               Adicione fotos, logotipo e mensagem de boas-vindas para elevar a percepção da sua marca.
             </div>
           </CardContent>
@@ -254,10 +254,10 @@ const DashboardPage = () => {
           { title: 'Serviços & Catálogo', description: 'Atualize preços, duração e destaque seus serviços mais rentáveis.', link: '/dashboard/services' },
           { title: 'Personalizar Página', description: 'Defina fotos, mensagem e tema da sua página pública.', link: '/register-business' },
         ].map((item) => (
-          <div key={item.title} className="rounded-3xl border-2 border-gray-300 p-3 sm:p-4 bg-white shadow-xl flex flex-col gap-2">
-            <p className="text-xs uppercase tracking-[0.4em] text-gray-800 font-bold">{item.title}</p>
-            <p className="text-gray-800 text-xs sm:text-sm flex-grow leading-relaxed font-medium">{item.description}</p>
-            <Button asChild variant="outline" className="rounded-full border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-900 text-xs sm:text-sm justify-between px-3 py-2 font-medium">
+          <div key={item.title} className="rounded-3xl border-2 border-gray-300 dark:border-gray-700 p-3 sm:p-4 bg-white dark:bg-gray-900 shadow-xl flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-[0.4em] text-gray-800 dark:text-white font-bold">{item.title}</p>
+            <p className="text-gray-800 dark:text-gray-300 text-xs sm:text-sm flex-grow leading-relaxed font-medium">{item.description}</p>
+            <Button asChild variant="outline" className="rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs sm:text-sm justify-between px-3 py-2 font-medium">
               <Link to={item.link}>
                 Acessar área
                 <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -268,23 +268,23 @@ const DashboardPage = () => {
       </div>
 
       {/* Link público */}
-      <Card className="rounded-3xl border-2 border-gray-300 shadow-2xl bg-white">
-        <CardHeader className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between p-3 sm:p-4 border-b-2 border-gray-200">
+      <Card className="rounded-3xl border-2 border-gray-300 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900">
+        <CardHeader className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between p-3 sm:p-4 border-b-2 border-gray-200 dark:border-gray-700">
           <div>
-            <CardTitle className="text-base sm:text-lg font-bold text-gray-900 mb-1">Link de agendamento público</CardTitle>
-            <p className="text-xs sm:text-sm text-gray-700 mt-1 leading-relaxed font-medium">Compartilhe com seus clientes e receba novos agendamentos 24/7</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1">Link de agendamento público</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 leading-relaxed font-medium">Compartilhe com seus clientes e receba novos agendamentos 24/7</p>
           </div>
-          <LinkIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-800" />
+          <LinkIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-800 dark:text-gray-200" />
         </CardHeader>
         <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 pt-3">
-          <div className="rounded-2xl border-2 border-dashed border-gray-400 bg-gray-100 p-4 text-sm text-gray-900 break-all font-mono">
+          <div className="rounded-2xl border-2 border-dashed border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 p-4 text-sm text-gray-900 dark:text-gray-100 break-all font-mono">
             {window.location.origin}/book/{businessSlug}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Button onClick={handleCopyLink} className="rounded-2xl bg-black text-white hover:bg-black/90 font-semibold shadow-lg">
+            <Button onClick={handleCopyLink} className="rounded-2xl bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 font-semibold shadow-lg">
               Copiar link agora
             </Button>
-            <Button variant="outline" className="rounded-2xl border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-900 font-semibold">
+            <Button variant="outline" className="rounded-2xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold">
               Visualizar página pública
             </Button>
           </div>

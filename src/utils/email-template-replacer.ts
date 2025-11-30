@@ -20,6 +20,10 @@ interface AppointmentData {
   appointment_status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   appointment_id: string;
   appointment_link?: string;
+  client_whatsapp?: string;
+  client_email?: string;
+  dashboard_link?: string;
+  marketplace_link?: string;
 }
 
 export const replaceEmailTemplate = (
@@ -71,6 +75,15 @@ export const replaceEmailTemplate = (
   // Para o gradiente com opacidade, usar formato hex com alpha
   const primaryColorDD = primaryColor.length === 7 ? primaryColor + 'dd' : primaryColor;
 
+  // Log para debug
+  console.log('🔍 [replaceEmailTemplate] Substituindo placeholders:', {
+    hasBusinessData: !!business,
+    businessName: business.name,
+    themeColor: business.theme_color,
+    logoUrl: business.logo_url,
+    templateLength: template.length,
+  });
+
   // Substituir placeholders - IMPORTANTE: substituir variações de cor ANTES da cor base
   let result = template
     // Substituir variações de cor primeiro (antes da cor base para evitar conflitos)
@@ -102,7 +115,11 @@ export const replaceEmailTemplate = (
     .replace(/\{\{appointment_id\}\}/g, appointment.appointment_id)
     .replace(/\{\{appointment_link\}\}/g, appointment.appointment_link || '#')
     .replace(/\{\{status_text\}\}/g, statusText)
-    .replace(/\{\{status_emoji\}\}/g, statusEmoji);
+    .replace(/\{\{status_emoji\}\}/g, statusEmoji)
+    .replace(/\{\{client_whatsapp\}\}/g, appointment.client_whatsapp || 'N/A')
+    .replace(/\{\{client_email\}\}/g, appointment.client_email || 'N/A')
+    .replace(/\{\{dashboard_link\}\}/g, appointment.dashboard_link || '#')
+    .replace(/\{\{marketplace_link\}\}/g, appointment.marketplace_link || (typeof window !== 'undefined' ? `${window.location.origin}/marketplace` : '/marketplace'));
 
   return result;
 };

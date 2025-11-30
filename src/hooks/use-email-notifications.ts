@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { trackMessageUsage } from '@/utils/message-usage-tracking';
 
 // URL da Edge Function (Substitua ihozrsfnfmwmrkbzpqlj pelo seu Project ID)
 const RESEND_FUNCTION_URL = 'https://ihozrsfnfmwmrkbzpqlj.supabase.co/functions/v1/send-email';
@@ -12,7 +13,7 @@ interface EmailPayload {
 
 export const useEmailNotifications = () => {
   
-  const sendEmail = async (payload: EmailPayload) => {
+  const sendEmail = async (payload: EmailPayload, userId?: string) => {
     try {
       // O token de autenticação é necessário para chamar Edge Functions
       const { data: { session } } = await supabase.auth.getSession();
@@ -37,6 +38,12 @@ export const useEmailNotifications = () => {
       }
 
       console.log("Email notification sent successfully.");
+      
+      // Rastrear uso de email após envio bem-sucedido
+      const emailUserId = userId || session.user.id;
+      if (emailUserId) {
+        await trackMessageUsage(emailUserId, 'email');
+      }
       // Não mostramos toast de sucesso para o usuário final, apenas logamos.
 
     } catch (error: any) {

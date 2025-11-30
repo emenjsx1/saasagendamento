@@ -9,14 +9,22 @@ export interface PlanLimits {
   planName: 'free' | 'standard' | 'teams' | null;
   maxAppointments: number | null; // null = ilimitado
   maxBusinesses: number | null; // null = ilimitado
+  maxWhatsAppMessages: number | null; // null = ilimitado
+  maxEmails: number | null; // null = ilimitado
   hasFinancialManagement: boolean;
   hasAdvancedReports: boolean;
   planExpired: boolean;
   appointmentsUsed: number;
   businessesCount: number;
+  whatsAppMessagesUsed: number;
+  emailsUsed: number;
   appointmentsRemaining: number | null;
+  whatsAppMessagesRemaining: number | null;
+  emailsRemaining: number | null;
   canCreateAppointment: boolean;
   canCreateBusiness: boolean;
+  canSendWhatsApp: boolean;
+  canSendEmail: boolean;
   canAccessFinance: boolean;
   canAccessAdvancedReports: boolean;
 }
@@ -35,14 +43,22 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
     planName: null,
     maxAppointments: null,
     maxBusinesses: null,
+    maxWhatsAppMessages: null,
+    maxEmails: null,
     hasFinancialManagement: false,
     hasAdvancedReports: false,
     planExpired: false,
     appointmentsUsed: 0,
     businessesCount: 0,
+    whatsAppMessagesUsed: 0,
+    emailsUsed: 0,
     appointmentsRemaining: null,
+    whatsAppMessagesRemaining: null,
+    emailsRemaining: null,
     canCreateAppointment: false,
     canCreateBusiness: false,
+    canSendWhatsApp: false,
+    canSendEmail: false,
     canAccessFinance: false,
     canAccessAdvancedReports: false,
   });
@@ -129,6 +145,7 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
         const now = new Date();
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
+        const monthStartDateString = monthStart.toISOString().split('T')[0]; // YYYY-MM-DD
 
         // Buscar todos os negócios do usuário
         const { data: userBusinesses } = await supabase
@@ -151,36 +168,74 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
           appointmentsCount = count || 0;
         }
 
+        // 3.5. Buscar uso de WhatsApp e Email do mês atual
+        // Buscar uso de WhatsApp
+        const { data: whatsappData } = await supabase
+          .from('message_usage')
+          .select('count')
+          .eq('user_id', user.id)
+          .eq('message_type', 'whatsapp')
+          .eq('usage_month', monthStartDateString)
+          .maybeSingle();
+
+        // Buscar uso de Email
+        const { data: emailData } = await supabase
+          .from('message_usage')
+          .select('count')
+          .eq('user_id', user.id)
+          .eq('message_type', 'email')
+          .eq('usage_month', monthStartDateString)
+          .maybeSingle();
+
+        const whatsAppMessagesUsed = whatsappData?.count || 0;
+        const emailsUsed = emailData?.count || 0;
+
         // 4. Definir limites baseados no plano
         let maxAppointments: number | null = null;
         let maxBusinesses: number | null = null;
+        let maxWhatsAppMessages: number | null = null;
+        let maxEmails: number | null = null;
         let hasFinancialManagement = false;
         let hasAdvancedReports = false;
 
         switch (currentPlan) {
           case 'free':
-            maxAppointments = 30;
+            maxAppointments = 10; // 10 agendamentos por mês
             maxBusinesses = 1;
+            maxWhatsAppMessages = 10; // 10 mensagens WhatsApp por mês
+            maxEmails = 10; // 10 emails por mês
             hasFinancialManagement = true; // Free tem gestão financeira
             hasAdvancedReports = false;
             break;
           case 'standard':
             maxAppointments = null; // Ilimitado
             maxBusinesses = 1;
+            maxWhatsAppMessages = null; // Ilimitado
+            maxEmails = null; // Ilimitado
             hasFinancialManagement = true;
             hasAdvancedReports = false;
             break;
           case 'teams':
             maxAppointments = null; // Ilimitado
             maxBusinesses = null; // Ilimitado
+            maxWhatsAppMessages = null; // Ilimitado
+            maxEmails = null; // Ilimitado
             hasFinancialManagement = true;
             hasAdvancedReports = true;
             break;
         }
 
-        // 5. Calcular permissões
+        // 5. Calcular permissões e restantes
         const appointmentsRemaining = maxAppointments !== null 
           ? Math.max(0, maxAppointments - appointmentsCount)
+          : null;
+
+        const whatsAppMessagesRemaining = maxWhatsAppMessages !== null
+          ? Math.max(0, maxWhatsAppMessages - whatsAppMessagesUsed)
+          : null;
+
+        const emailsRemaining = maxEmails !== null
+          ? Math.max(0, maxEmails - emailsUsed)
           : null;
 
         const canCreateAppointment = planExpired 
@@ -195,6 +250,18 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
           ? true
           : totalBusinesses < maxBusinesses;
 
+        const canSendWhatsApp = planExpired
+          ? false
+          : maxWhatsAppMessages === null
+          ? true
+          : whatsAppMessagesUsed < maxWhatsAppMessages;
+
+        const canSendEmail = planExpired
+          ? false
+          : maxEmails === null
+          ? true
+          : emailsUsed < maxEmails;
+
         const canAccessFinance = hasFinancialManagement && !planExpired;
         const canAccessAdvancedReports = hasAdvancedReports && !planExpired;
 
@@ -203,14 +270,22 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
           planName: currentPlan,
           maxAppointments,
           maxBusinesses,
+          maxWhatsAppMessages,
+          maxEmails,
           hasFinancialManagement,
           hasAdvancedReports,
           planExpired,
           appointmentsUsed: appointmentsCount,
           businessesCount: totalBusinesses,
+          whatsAppMessagesUsed,
+          emailsUsed,
           appointmentsRemaining,
+          whatsAppMessagesRemaining,
+          emailsRemaining,
           canCreateAppointment,
           canCreateBusiness,
+          canSendWhatsApp,
+          canSendEmail,
           canAccessFinance,
           canAccessAdvancedReports,
         });
