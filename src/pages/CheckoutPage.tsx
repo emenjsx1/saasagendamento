@@ -129,6 +129,7 @@ const CheckoutPage: React.FC = () => {
   const [paymentError, setPaymentError] = useState<string>('');
   const [processingTimer, setProcessingTimer] = useState(180); // 180 segundos = 3 minutos
   const [paymentReference, setPaymentReference] = useState<string>('');
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(AccountSchema),
@@ -243,6 +244,22 @@ const CheckoutPage: React.FC = () => {
     captureUTMParameters();
   }, []);
 
+  // Timeout para detectar se o carregamento está demorando muito
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isSessionLoading || isConfigLoading || !subscriptionConfig) {
+        setLoadingTimeout(true);
+        console.error('⚠️ Timeout no carregamento do checkout:', {
+          isSessionLoading,
+          isConfigLoading,
+          hasSubscriptionConfig: !!subscriptionConfig,
+        });
+      }
+    }, 10000); // 10 segundos
+
+    return () => clearTimeout(timeout);
+  }, [isSessionLoading, isConfigLoading, subscriptionConfig]);
+
   // Cronômetro para modal de processamento
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -274,8 +291,25 @@ const CheckoutPage: React.FC = () => {
 
   if (isSessionLoading || isConfigLoading || !subscriptionConfig) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-gray-600">Carregando informações de checkout...</p>
+          {loadingTimeout && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                O carregamento está demorando mais que o esperado. Por favor, recarregue a página.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-2"
+                variant="outline"
+              >
+                Recarregar Página
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

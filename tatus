@@ -1,0 +1,20 @@
+[33m01d9a08[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: Melhorar tratamento de erro 400 no checkout - Adicionar logs detalhados na Edge Function - Melhorar mensagens de erro com informações específicas - Adicionar validações mais robustas - Melhorar tratamento de erro no cliente para exibir mensagens mais claras
+[33m3569bc8[m Atualização de arquivos: ProfilePage, CheckoutPage, ChoosePlanPage, MarketplacePage e hooks
+[33mca23853[m Corrigir erro de sintaxe no CheckoutPage.tsx - adicionar chaves de fechamento faltantes e corrigir indentação
+[33mfa4fae9[m feat: Implementa marketplace, área do cliente e integração com Google Maps
+[33m643676e[m fix: corrigir menu mobile iPhone - botão fechar e overlay
+[33m0462139[m fix: ocultar sidebar desktop no mobile e corrigir layout
+[33m3a940f7[m fix: corrigir menu hambúrguer mobile e reverter largura para 100%
+[33md0ea8ef[m fix: renderizar sidebar desktop corretamente
+[33m5b757d9[m feat: sidebar desktop sempre visível e logo do negócio no menu hambúrguer
+[33m55bdd76[m refactor: ajustar largura máxima do conteúdo para 85% e simplificar menu hambúrguer
+[33m03024f5[m refactor: simplificar MobileProfileArea removendo informações redundantes
+[33mdcba872[m feat: criar header global moderno e profissional para dashboard
+[33m810d0bc[m feat: adicionar header com toggle de tema e menu de perfil na página de agenda
+[33m05c2942[m style: aumentar espaçamento no sidebar mobile para melhorar legibilidade
+[33md6aa1c9[m fix: ajustar sidebar para ocupar 100% da altura e atualizar landing page para usuários logados
+[33m645ee3f[m ajustes landing page, booking e melhorias mobile
+[33mb984ed8[m Reduzir tamanho dos cards de estatÃ­sticas e voltar hero section para fundo branco
+[33m50ebc2d[m Aumentar tamanhos do Hero e cards de estatÃ­sticas para versÃ£o PC
+[33m26a0145[m Ajustar tamanhos de fonte para desktop (md+) mantendo mobile compacto
+[33m6aea7bc[m Reduzir tamanhos de fonte e espaÃ§amentos em todo o site para layout mais compacto
