@@ -68,10 +68,10 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
         let currentPlan: 'free' | 'standard' | 'teams' | null = null;
         let planExpired = false;
 
-        // Buscar pagamento mais recente
+        // Buscar pagamento mais recente (payments não tem plan_name, então só buscamos status)
         const { data: payments } = await supabase
           .from('payments')
-          .select('plan_name, expires_at, status')
+          .select('expires_at, status')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -86,16 +86,25 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
           .limit(1)
           .maybeSingle();
 
-        // Verificar plano ativo
+        // Verificar plano ativo (usar subscriptions para plan_name, payments só para status)
         if (payments && payments.status === 'paid') {
-          const planLower = payments.plan_name?.toLowerCase() || '';
-          if (planLower.includes('free')) currentPlan = 'free';
-          else if (planLower.includes('standard')) currentPlan = 'standard';
-          else if (planLower.includes('teams')) currentPlan = 'teams';
-
           // Verificar se expirou
           if (payments.expires_at) {
             const expiresAt = parseISO(payments.expires_at);
+            planExpired = isBefore(expiresAt, new Date());
+          }
+        }
+        
+        // Usar subscriptions para determinar o plano
+        if (subscriptions && subscriptions.status === 'active') {
+          const planLower = subscriptions.plan_name?.toLowerCase() || '';
+          if (planLower.includes('free')) currentPlan = 'free';
+          else if (planLower.includes('standard')) currentPlan = 'standard';
+          else if (planLower.includes('teams')) currentPlan = 'teams';
+          
+          // Verificar se expirou usando trial_ends_at
+          if (subscriptions.trial_ends_at) {
+            const expiresAt = parseISO(subscriptions.trial_ends_at);
             planExpired = isBefore(expiresAt, new Date());
           }
         } else if (subscriptions && (subscriptions.status === 'active' || subscriptions.status === 'trial')) {

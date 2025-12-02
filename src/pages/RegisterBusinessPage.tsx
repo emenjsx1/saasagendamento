@@ -52,6 +52,7 @@ const BusinessSchema = z.object({
   province: z.string().optional(),
   city: z.string().optional(),
   is_public: z.boolean().optional(),
+  auto_assign_employees: z.boolean().optional(),
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -100,6 +101,7 @@ const RegisterBusinessPage = () => {
       province: "",
       city: "",
       is_public: true,
+      auto_assign_employees: false,
     },
   });
 
@@ -113,6 +115,33 @@ const RegisterBusinessPage = () => {
         .select('id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url, slug, category, province, city, is_public')
         .eq('owner_id', user.id)
         .single();
+      
+      // Tentar buscar auto_assign_employees separadamente (pode não existir se migration não foi executada)
+      let autoAssignEmployees = false;
+      if (data) {
+        try {
+          const { data: businessData, error: selectError } = await supabase
+            .from('businesses')
+            .select('auto_assign_employees')
+            .eq('id', data.id)
+            .single();
+          
+          // Se der erro 400 ou 42703, a coluna não existe
+          if (selectError && (selectError.code === '42703' || selectError.message?.includes('does not exist') || selectError.message?.includes('column') || selectError.status === 400)) {
+            // Coluna não existe ainda, usar default
+            console.warn('Coluna auto_assign_employees não encontrada. Execute a migration add_auto_assign_to_businesses.sql');
+            autoAssignEmployees = false;
+          } else if (businessData) {
+            autoAssignEmployees = businessData.auto_assign_employees || false;
+          }
+        } catch (e: any) {
+          // Coluna não existe ainda, usar default
+          if (e.code !== '42703' && !e.message?.includes('does not exist') && !e.message?.includes('column') && e.status !== 400) {
+            console.warn('Erro ao buscar auto_assign_employees:', e);
+          }
+          autoAssignEmployees = false;
+        }
+      }
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
         toast.error(T("Erro ao carregar dados do negócio.", "Error loading business data."));
@@ -138,6 +167,7 @@ const RegisterBusinessPage = () => {
           province: data.province || "",
           city: data.city || "",
           is_public: data.is_public !== undefined ? data.is_public : true,
+          auto_assign_employees: autoAssignEmployees,
         });
         setSelectedProvince(data.province || "");
       }
@@ -177,39 +207,44 @@ const RegisterBusinessPage = () => {
     
     setIsSubmitting(true);
 
-    // Sempre gerar novo slug baseado no nome atual do negócio
-    // Se o nome mudou, o slug também deve mudar para refletir o nome atual
+    // Gerar slug apenas se for um novo negócio
+    // Se for atualização, manter o slug existente (não mudar)
     let finalSlug = values.slug;
-    let attempts = 0;
-    let unique = false;
     
-    while (!unique && attempts < 5) {
+    if (!businessId) {
+      // NOVO NEGÓCIO: Gerar slug único
+      let attempts = 0;
+      let unique = false;
+      
+      while (!unique && attempts < 5) {
+          finalSlug = generateBusinessSlug(values.name);
+          
+          // Verifica se o slug já existe
+          const { count } = await supabase
+              .from('businesses')
+              .select('id', { count: 'exact', head: true })
+              .eq('slug', finalSlug);
+
+          if (count === 0) {
+              unique = true;
+          } else {
+              attempts++;
+          }
+      }
+
+      if (!unique) {
+          toast.error(T("Não foi possível gerar um slug único. Tente novamente.", "Could not generate unique slug. Please try again."));
+          setIsSubmitting(false);
+          return;
+      }
+    } else {
+      // ATUALIZAÇÃO: Manter o slug existente (não gerar novo)
+      // Se não houver slug salvo, usar o que está no formulário ou gerar um
+      if (!finalSlug) {
+        // Se por algum motivo não tiver slug, gerar um (caso raro)
         finalSlug = generateBusinessSlug(values.name);
-        
-        // Verifica se o slug já existe
-        let query = supabase
-            .from('businesses')
-            .select('id', { count: 'exact', head: true })
-            .eq('slug', finalSlug);
-        
-        // Se estiver atualizando, excluir o próprio business da verificação
-        if (businessId) {
-            query = query.neq('id', businessId);
-        }
-        
-        const { count } = await query;
-
-        if (count === 0) {
-            unique = true;
-        } else {
-            attempts++;
-        }
-    }
-
-    if (!unique) {
-        toast.error(T("Não foi possível gerar um slug único. Tente novamente.", "Could not generate unique slug. Please try again."));
-        setIsSubmitting(false);
-        return;
+      }
+      // Caso contrário, manter o slug existente (finalSlug já tem o valor do formulário)
     }
 
     const businessData = {
@@ -224,7 +259,8 @@ const RegisterBusinessPage = () => {
       theme_color: values.theme_color,
       instagram_url: values.instagram_url || null,
       facebook_url: values.facebook_url || null,
-      slug: finalSlug, // Salva o slug
+      // IMPORTANTE: Só incluir slug se for um novo negócio (não atualizar em edições)
+      ...(businessId ? {} : { slug: finalSlug }),
       category: values.category || null,
       province: values.province || null,
       city: values.city || null,
@@ -233,7 +269,7 @@ const RegisterBusinessPage = () => {
 
     let result;
     if (businessId) {
-      // Atualizar
+      // Atualizar dados básicos primeiro
       result = await supabase
         .from('businesses')
         .update(businessData)
@@ -255,8 +291,34 @@ const RegisterBusinessPage = () => {
       toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + result.error.message);
       console.error(result.error);
     } else {
-      setBusinessId(result.data.id);
+      const finalBusinessId = result.data.id;
+      setBusinessId(finalBusinessId);
       form.setValue('slug', result.data.slug); // Atualiza o slug no formulário
+      
+      // Tentar atualizar auto_assign_employees separadamente (pode não existir se migration não foi executada)
+      if (values.auto_assign_employees !== undefined) {
+        try {
+          const { error: updateError } = await supabase
+            .from('businesses')
+            .update({ auto_assign_employees: values.auto_assign_employees })
+            .eq('id', finalBusinessId);
+          
+          if (updateError) {
+            // Coluna não existe - migration não foi executada (código 42703 ou 400)
+            if (updateError.code === '42703' || updateError.message?.includes('does not exist') || updateError.message?.includes('column') || updateError.status === 400) {
+              console.warn('⚠️ Coluna auto_assign_employees não existe. Execute a migration add_auto_assign_to_businesses.sql');
+              // Não mostrar toast para não incomodar o usuário - a funcionalidade ainda funciona sem isso
+            } else {
+              console.warn('Erro ao atualizar auto_assign_employees:', updateError);
+            }
+          }
+        } catch (err: any) {
+          // Ignorar erros de coluna não existente
+          if (err.code !== '42703' && !err.message?.includes('does not exist') && !err.message?.includes('column') && err.status !== 400) {
+            console.warn('Erro ao atualizar auto_assign_employees:', err);
+          }
+        }
+      }
       
       // Atualizar tabela consolidada (se existir)
       // Os triggers do banco também vão atualizar automaticamente, mas isso garante atualização imediata
@@ -536,6 +598,29 @@ const RegisterBusinessPage = () => {
                       </FormLabel>
                       <p className="text-xs text-muted-foreground">
                         {T('Permitir que seu negócio apareça no marketplace público', 'Allow your business to appear in the public marketplace')}
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="auto_assign_employees"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-semibold">
+                        {T('Distribuição Automática de Funcionários', 'Automatic Employee Assignment')}
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        {T('Se ativado, os agendamentos serão distribuídos automaticamente entre os funcionários disponíveis. Se desativado, o cliente escolhe o funcionário.', 'If enabled, appointments will be automatically distributed among available employees. If disabled, the client chooses the employee.')}
                       </p>
                     </div>
                   </FormItem>

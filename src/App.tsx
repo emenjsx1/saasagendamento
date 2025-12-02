@@ -30,7 +30,8 @@ import PricingPage from "./pages/PricingPage";
 import ProfilePage from "./pages/ProfilePage"; 
 import CheckoutPage from "./pages/CheckoutPage";
 import RegisterPage from "./pages/RegisterPage";
-import ChoosePlanPage from "./pages/ChoosePlanPage"; 
+import ChoosePlanPage from "./pages/ChoosePlanPage";
+import EmployeesPage from "./pages/EmployeesPage"; 
 import AdminDashboardPage from "./pages/AdminDashboardPage"; 
 import AdminBusinessesPage from "./pages/AdminBusinessesPage"; // Nova
 import AdminUsersPage from "./pages/AdminUsersPage"; // Nova
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/register-business" element={<RegisterBusinessPage />} />
                 <Route path="/dashboard/services" element={<ServicesPage />} />
+                <Route path="/dashboard/employees" element={<EmployeesPage />} />
                 <Route path="/dashboard/agenda" element={<AppointmentsPage />} />
                 <Route path="/dashboard/finance" element={<FinancePage />} /> 
                 <Route path="/dashboard/reports" element={<ReportsPage />} /> 

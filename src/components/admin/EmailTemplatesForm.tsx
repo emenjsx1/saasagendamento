@@ -55,7 +55,8 @@ const templatePlaceholders: Record<keyof EmailTemplates, string[]> = {
       '{{formatted_date}}', '{{formatted_time}}', '{{date}}', '{{time}}',
       '{{appointment_status}}', '{{appointment_id}}', '{{appointment_link}}',
       '{{business_logo_url}}', '{{business_primary_color}}', '{{business_name}}',
-      '{{business_whatsapp}}', '{{business_address}}', '{{status_emoji}}', '{{status_text}}'
+      '{{business_whatsapp}}', '{{business_address}}', '{{status_emoji}}', '{{status_text}}',
+      '{{employee_name}}', '{{employee_phone}}', '{{employee_email}}'
     ],
     appointment_confirmed: [
       '{{client_name}}', '{{client_code}}', '{{service_name}}', 

@@ -111,6 +111,14 @@ export const defaultEmailTemplates: EmailTemplates = {
                           <span style="display: inline-block; background-color: #f3f4f6; color: #111827; font-family: 'Courier New', monospace; font-size: 15px; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: 1px solid #e5e7eb; letter-spacing: 1.5px;">{{client_code}}</span>
                         </td>
                       </tr>
+                      <tr>
+                        <td style="padding: 14px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Atendente:</strong></td>
+                        <td style="padding: 14px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{employee_name}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 14px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Contato do Atendente:</strong></td>
+                        <td style="padding: 14px 0; color: #111827; font-size: 15px; vertical-align: top;">{{employee_phone}}</td>
+                      </tr>
                     </table>
                   </td>
                 </tr>
@@ -118,15 +126,17 @@ export const defaultEmailTemplates: EmailTemplates = {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 16px; padding: 28px; margin: 0 0 32px 0; border: 1px solid #e5e7eb;">
                 <tr>
                   <td>
-                    <h3 style="margin: 0 0 20px 0; color: #111827; font-size: 19px; font-weight: 600;">Informações do negócio</h3>
+                    <h3 style="margin: 0 0 20px 0; color: #111827; font-size: 19px; font-weight: 600;">📞 Informações de Contato</h3>
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="padding: 10px 0; color: #6b7280; font-size: 15px; width: 110px; vertical-align: top; font-weight: 500;"><strong>Nome:</strong></td>
+                        <td style="padding: 10px 0; color: #6b7280; font-size: 15px; width: 110px; vertical-align: top; font-weight: 500;"><strong>Negócio:</strong></td>
                         <td style="padding: 10px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{business_name}}</td>
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>WhatsApp:</strong></td>
-                        <td style="padding: 10px 0; color: #111827; font-size: 15px; vertical-align: top;">{{business_whatsapp}}</td>
+                        <td style="padding: 10px 0; color: #111827; font-size: 15px; vertical-align: top;">
+                          <a href="https://wa.me/{{business_whatsapp}}" style="color: #25D366; text-decoration: none; font-weight: 600;">{{business_whatsapp}}</a>
+                        </td>
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Endereço:</strong></td>
@@ -145,8 +155,13 @@ export const defaultEmailTemplates: EmailTemplates = {
                   </td>
                 </tr>
               </table>
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 32px 0;">
+                <p style="margin: 0; color: #92400e; font-size: 15px; line-height: 1.7; font-weight: 500;">
+                  <strong>⏰ Status:</strong> Seu agendamento está <strong>PENDENTE</strong> de confirmação. Você receberá uma notificação por email assim que for confirmado pelo estabelecimento.
+                </p>
+              </div>
               <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.7; text-align: center;">
-                Estamos ansiosos para atendê-lo! Caso precise reagendar ou cancelar, entre em contato conosco através do WhatsApp.
+                Estamos ansiosos para atendê-lo! Caso precise reagendar ou cancelar, entre em contato conosco através do WhatsApp acima.
               </p>
             </td>
           </tr>
@@ -192,6 +207,9 @@ export const defaultEmailTemplates: EmailTemplates = {
               <p style="margin: 0 0 24px 0; color: #1f2937; font-size: 19px; line-height: 1.6; font-weight: 500;">
                 Olá, <strong style="color: #111827; font-weight: 700;">{{client_name}}</strong>!
               </p>
+              <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 17px; line-height: 1.7;">
+                Seu agendamento foi recebido e está <strong style="color: {{business_primary_color}}; font-weight: 600;">PENDENTE</strong> de confirmação. Você receberá uma notificação assim que for confirmado.
+              </p>
               <p style="margin: 0 0 36px 0; color: #6b7280; font-size: 17px; line-height: 1.7;">
                 Aqui estão os detalhes do seu agendamento:
               </p>
@@ -228,6 +246,14 @@ export const defaultEmailTemplates: EmailTemplates = {
                           <span style="display: inline-block; background-color: #f3f4f6; color: #111827; font-family: 'Courier New', monospace; font-size: 15px; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: 1px solid #e5e7eb; letter-spacing: 1.5px;">{{client_code}}</span>
                         </td>
                       </tr>
+                      <tr>
+                        <td style="padding: 14px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Atendente:</strong></td>
+                        <td style="padding: 14px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{employee_name}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 14px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Contato do Atendente:</strong></td>
+                        <td style="padding: 14px 0; color: #111827; font-size: 15px; vertical-align: top;">{{employee_phone}}</td>
+                      </tr>
                     </table>
                   </td>
                 </tr>
@@ -235,15 +261,17 @@ export const defaultEmailTemplates: EmailTemplates = {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 16px; padding: 28px; margin: 0 0 32px 0; border: 1px solid #e5e7eb;">
                 <tr>
                   <td>
-                    <h3 style="margin: 0 0 20px 0; color: #111827; font-size: 19px; font-weight: 600;">Informações do negócio</h3>
+                    <h3 style="margin: 0 0 20px 0; color: #111827; font-size: 19px; font-weight: 600;">📞 Informações de Contato</h3>
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="padding: 10px 0; color: #6b7280; font-size: 15px; width: 110px; vertical-align: top; font-weight: 500;"><strong>Nome:</strong></td>
+                        <td style="padding: 10px 0; color: #6b7280; font-size: 15px; width: 110px; vertical-align: top; font-weight: 500;"><strong>Negócio:</strong></td>
                         <td style="padding: 10px 0; color: #111827; font-size: 15px; font-weight: 600; vertical-align: top;">{{business_name}}</td>
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>WhatsApp:</strong></td>
-                        <td style="padding: 10px 0; color: #111827; font-size: 15px; vertical-align: top;">{{business_whatsapp}}</td>
+                        <td style="padding: 10px 0; color: #111827; font-size: 15px; vertical-align: top;">
+                          <a href="https://wa.me/{{business_whatsapp}}" style="color: #25D366; text-decoration: none; font-weight: 600;">{{business_whatsapp}}</a>
+                        </td>
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; color: #6b7280; font-size: 15px; vertical-align: top; font-weight: 500;"><strong>Endereço:</strong></td>
@@ -262,8 +290,13 @@ export const defaultEmailTemplates: EmailTemplates = {
                   </td>
                 </tr>
               </table>
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 32px 0;">
+                <p style="margin: 0; color: #92400e; font-size: 15px; line-height: 1.7; font-weight: 500;">
+                  <strong>⏰ Status:</strong> Seu agendamento está <strong>PENDENTE</strong> de confirmação. Você receberá uma notificação por email assim que for confirmado pelo estabelecimento.
+                </p>
+              </div>
               <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.7; text-align: center;">
-                Estamos ansiosos para atendê-lo! Caso precise reagendar ou cancelar, entre em contato conosco através do WhatsApp.
+                Estamos ansiosos para atendê-lo! Caso precise reagendar ou cancelar, entre em contato conosco através do WhatsApp acima.
               </p>
             </td>
           </tr>

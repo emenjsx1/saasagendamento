@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useEmailNotifications } from '@/hooks/use-email-notifications';
 import { useAdminSettings } from '@/hooks/use-admin-settings';
 import { replaceEmailTemplate } from '@/utils/email-template-replacer';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import AdminUserDetailsDialog from '@/components/admin/AdminUserDetailsDialog';
 
 interface UserProfile {
   id: string;
@@ -27,9 +29,11 @@ interface UserProfile {
 }
 
 const AdminUsersPage: React.FC = () => {
+  const { T } = useCurrency();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const { sendEmail } = useEmailNotifications();
   const { settings } = useAdminSettings();
 
@@ -40,7 +44,7 @@ const AdminUsersPage: React.FC = () => {
       // 1. Buscar todos os perfis
       let profilesQuery = supabase
         .from('profiles')
-        .select('id, email, first_name, last_name, created_at');
+        .select('id, email, first_name, last_name, created_at, is_blocked');
 
       if (searchTerm) {
         profilesQuery = profilesQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
@@ -103,7 +107,7 @@ const AdminUsersPage: React.FC = () => {
           last_name: p.last_name,
           created_at: p.created_at,
           role: role,
-          is_active: true,
+          is_active: !p.is_blocked, // is_active é o inverso de is_blocked
           business_name: businessName,
           subscription_status: subStatus,
           plan_name: planName,
@@ -123,13 +127,94 @@ const AdminUsersPage: React.FC = () => {
     fetchUsers();
   }, [searchTerm]);
 
-  const handleToggleActive = (user: UserProfile) => {
-    toast.info(`Funcionalidade de Ativar/Inativar Usuário para ${user.email} em desenvolvimento.`);
+  const handleToggleActive = async (user: UserProfile) => {
+    const newStatus = !user.is_active;
+    const action = newStatus ? T('desbloquear', 'unblock') : T('bloquear', 'block');
+    
+    if (!window.confirm(
+      T(
+        `Tem certeza que deseja ${action} o usuário ${user.email}?`,
+        `Are you sure you want to ${action} user ${user.email}?`
+      )
+    )) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_blocked: !newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast.success(
+        T(
+          `Usuário ${newStatus ? 'desbloqueado' : 'bloqueado'} com sucesso!`,
+          `User ${newStatus ? 'unblocked' : 'blocked'} successfully!`
+        )
+      );
+      
+      // Atualizar lista
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao alterar status do usuário:', error);
+      toast.error(
+        T(
+          `Erro ao ${action} usuário: ${error.message}`,
+          `Error ${action}ing user: ${error.message}`
+        )
+      );
+    }
   };
 
-  const handleDelete = (user: UserProfile) => {
-    if (window.confirm(`Tem certeza que deseja excluir o usuário ${user.email}? Esta ação é irreversível.`)) {
-      toast.info(`Funcionalidade de Excluir Usuário para ${user.email} em desenvolvimento.`);
+  const handleEditClick = (userId: string) => {
+    setEditingUserId(userId);
+  };
+
+  const handleDelete = async (user: UserProfile) => {
+    if (!window.confirm(
+      T(
+        `Tem certeza que deseja excluir o usuário ${user.email}? Esta ação é irreversível e deletará todos os dados associados (negócios, agendamentos, etc.).`,
+        `Are you sure you want to delete user ${user.email}? This action is irreversible and will delete all associated data (businesses, appointments, etc.).`
+      )
+    )) {
+      return;
+    }
+
+    try {
+      // Deletar usuário do Supabase Auth (isso também deleta o perfil devido ao CASCADE)
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (authError) {
+        // Se não tiver permissão de admin, tentar deletar apenas o perfil
+        console.warn('Não foi possível deletar do auth (pode precisar de permissões de admin). Tentando deletar perfil...', authError);
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+      }
+
+      toast.success(
+        T(
+          `Usuário ${user.email} excluído com sucesso!`,
+          `User ${user.email} deleted successfully!`
+        )
+      );
+      
+      // Atualizar lista
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      toast.error(
+        T(
+          `Erro ao excluir usuário: ${error.message}`,
+          `Error deleting user: ${error.message}`
+        )
+      );
     }
   };
   
@@ -268,21 +353,21 @@ const AdminUsersPage: React.FC = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>Listagem de Usuários</CardTitle>
+          <CardTitle>{T('Listagem de Usuários', 'User List')} ({users.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-4 space-x-4">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou email..."
+                placeholder={T("Buscar por nome ou email...", "Search by name or email...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Button variant="outline" onClick={fetchUsers}>
-              <Filter className="h-4 w-4 mr-2" /> Filtrar
+              <Filter className="h-4 w-4 mr-2" /> {T('Atualizar', 'Refresh')}
             </Button>
           </div>
 
@@ -291,19 +376,19 @@ const AdminUsersPage: React.FC = () => {
               <Loader2 className="h-8 w-8 animate-spin text-red-600" />
             </div>
           ) : users.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nenhum usuário encontrado.</p>
+            <p className="text-center text-muted-foreground py-4">{T('Nenhum usuário encontrado.', 'No users found.')}</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Plano</TableHead>
-                    <TableHead>Status Pagamento</TableHead>
-                    <TableHead>Cadastro</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead>{T('Nome', 'Name')}</TableHead>
+                    <TableHead>{T('Email', 'Email')}</TableHead>
+                    <TableHead>{T('Tipo', 'Type')}</TableHead>
+                    <TableHead>{T('Plano', 'Plan')}</TableHead>
+                    <TableHead>{T('Status Pagamento', 'Payment Status')}</TableHead>
+                    <TableHead>{T('Cadastro', 'Registered')}</TableHead>
+                    <TableHead className="text-right">{T('Ações', 'Actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -326,17 +411,17 @@ const AdminUsersPage: React.FC = () => {
                       <TableCell>{format(new Date(user.created_at), 'dd/MM/yyyy')}</TableCell>
                       <TableCell className="text-right space-x-2">
                         {user.subscription_status === 'pending_payment' && (
-                            <Button variant="default" size="sm" onClick={() => handleSendPaymentReminder(user)} title="Enviar Lembrete">
-                                Lembrete
+                            <Button variant="default" size="sm" onClick={() => handleSendPaymentReminder(user)} title={T('Enviar Lembrete', 'Send Reminder')}>
+                                {T('Lembrete', 'Reminder')}
                             </Button>
                         )}
                         <Button variant="outline" size="icon" title="Editar">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="secondary" size="icon" onClick={() => handleToggleActive(user)} title={user.is_active ? 'Inativar' : 'Ativar'}>
+                        <Button variant="secondary" size="icon" onClick={() => handleToggleActive(user)} title={user.is_active ? T('Bloquear', 'Block') : T('Desbloquear', 'Unblock')}>
                           {user.is_active ? <UserX className="h-4 w-4 text-red-600" /> : <UserCheck className="h-4 w-4 text-green-600" />}
                         </Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDelete(user)} title="Excluir">
+                        <Button variant="destructive" size="icon" onClick={() => handleDelete(user)} title={T('Excluir', 'Delete')}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -348,6 +433,17 @@ const AdminUsersPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de Detalhes/Edição do Usuário */}
+      {editingUserId && (
+        <AdminUserDetailsDialog
+          open={!!editingUserId}
+          onOpenChange={(open) => {
+            if (!open) setEditingUserId(null);
+          }}
+          userId={editingUserId}
+        />
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode, X } from 'lucide-react';
+import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode, X, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
@@ -36,6 +36,7 @@ const Sidebar: React.FC = () => {
     { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
     { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
     { name: T('Serviços', 'Services'), href: '/dashboard/services', icon: Briefcase },
+    { name: T('Funcionários', 'Employees'), href: '/dashboard/employees', icon: Users },
     { name: T('Financeiro', 'Finance'), href: '/dashboard/finance', icon: DollarSign },
     { name: T('Relatórios', 'Reports'), href: '/dashboard/reports', icon: BarChart3 },
     { name: T('Divulgação & QR Code', 'Promotion & QR Code'), href: '/dashboard/qr-code', icon: QrCode },
@@ -218,6 +219,7 @@ const MobileSidebar: React.FC<{
     { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
     { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
     { name: T('Serviços', 'Services'), href: '/dashboard/services', icon: Briefcase },
+    { name: T('Funcionários', 'Employees'), href: '/dashboard/employees', icon: Users },
     { name: T('Financeiro', 'Finance'), href: '/dashboard/finance', icon: DollarSign },
     { name: T('Relatórios', 'Reports'), href: '/dashboard/reports', icon: BarChart3 },
     { name: T('Divulgação & QR Code', 'Promotion & QR Code'), href: '/dashboard/qr-code', icon: QrCode },

@@ -24,6 +24,9 @@ interface AppointmentData {
   client_email?: string;
   dashboard_link?: string;
   marketplace_link?: string;
+  employee_name?: string | null;
+  employee_phone?: string | null;
+  employee_email?: string | null;
 }
 
 export const replaceEmailTemplate = (
@@ -119,7 +122,13 @@ export const replaceEmailTemplate = (
     .replace(/\{\{client_whatsapp\}\}/g, appointment.client_whatsapp || 'N/A')
     .replace(/\{\{client_email\}\}/g, appointment.client_email || 'N/A')
     .replace(/\{\{dashboard_link\}\}/g, appointment.dashboard_link || '#')
-    .replace(/\{\{marketplace_link\}\}/g, appointment.marketplace_link || (typeof window !== 'undefined' ? `${window.location.origin}/marketplace` : '/marketplace'));
+    .replace(/\{\{marketplace_link\}\}/g, appointment.marketplace_link || (typeof window !== 'undefined' ? `${window.location.origin}/marketplace` : '/marketplace'))
+    .replace(/\{\{employee_name\}\}/g, appointment.employee_name || 'A ser definido')
+    .replace(/\{\{employee_phone\}\}/g, appointment.employee_phone || 'N/A')
+    .replace(/\{\{employee_email\}\}/g, appointment.employee_email || 'N/A')
+    // Remover blocos condicionais Handlebars (não suportados) - mostrar sempre
+    .replace(/\{\{#if employee_phone\}\}/g, '')
+    .replace(/\{\{\/if\}\}/g, '');
 
   return result;
 };

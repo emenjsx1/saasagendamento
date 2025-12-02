@@ -19,6 +19,8 @@ import { useEmailTemplates } from '@/hooks/use-email-templates';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBusiness } from '@/hooks/use-business'; // Importar useBusiness para pegar theme_color
 import { replaceEmailTemplate } from '@/utils/email-template-replacer';
+import { useEmployees } from '@/hooks/use-employees';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type AppointmentStatus = 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
 
@@ -40,6 +42,8 @@ interface Appointment {
   end_time: string;
   status: AppointmentStatus;
   services: Service;
+  employee_id?: string | null;
+  employees?: { id: string; name: string } | null;
 }
 
 const statusMap: Record<AppointmentStatus, { label: string, variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' }> = {
@@ -57,6 +61,7 @@ const AppointmentsPage: React.FC = () => {
   const { sendEmail } = useEmailNotifications(); 
   const { templates, isLoading: isTemplatesLoading } = useEmailTemplates();
   const { currentCurrency, T } = useCurrency();
+  const { employees, fetchActiveEmployees } = useEmployees(business?.id || null);
   
   // Usar business.id se disponível, senão usar businessId do hook
   const businessId = business?.id || businessIdFromHook || businessIdFromSchedule;
@@ -65,6 +70,7 @@ const AppointmentsPage: React.FC = () => {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]); // Para o resumo rápido
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('pending');
+  const [filterEmployee, setFilterEmployee] = useState<string | 'all'>('all');
   const [filterDate, setFilterDate] = useState<Date | undefined>(startOfDay(new Date()));
   const [refreshKey, setRefreshKey] = useState(0);
   
@@ -124,6 +130,8 @@ const AppointmentsPage: React.FC = () => {
         start_time,
         end_time,
         status,
+        employee_id,
+        employees (id, name),
         services (id, name, duration_minutes, price)
       `)
       .eq('business_id', businessId)
@@ -166,6 +174,8 @@ const AppointmentsPage: React.FC = () => {
         start_time,
         end_time,
         status,
+        employee_id,
+        employees (id, name),
         services (id, name, duration_minutes, price)
       `)
       .eq('business_id', businessId)
@@ -176,6 +186,12 @@ const AppointmentsPage: React.FC = () => {
     if (filterStatus !== 'all') {
       query = query.eq('status', filterStatus);
       console.log('Aplicando filtro de status:', filterStatus);
+    }
+    
+    // Aplicar filtro de Funcionário
+    if (filterEmployee !== 'all') {
+      query = query.eq('employee_id', filterEmployee);
+      console.log('Aplicando filtro de funcionário:', filterEmployee);
     }
     
     // Ordenar por data de início
@@ -203,10 +219,11 @@ const AppointmentsPage: React.FC = () => {
         client_name: a.client_name,
       })));
       
-      // Mapear os dados para garantir que o objeto services esteja no formato correto
+      // Mapear os dados para garantir que o objeto services e employees estejam no formato correto
       const mappedAppointments = (appointmentsData || []).map(app => ({
           ...app,
           services: Array.isArray(app.services) ? app.services[0] : app.services,
+          employees: Array.isArray(app.employees) ? app.employees[0] : app.employees,
       })) as Appointment[];
       
       console.log('✅ Agendamentos mapeados:', mappedAppointments.length);
@@ -230,6 +247,26 @@ const AppointmentsPage: React.FC = () => {
   const handleRescheduleSuccess = () => {
     // Força a atualização da lista
     setRefreshKey(prev => prev + 1); 
+  };
+
+  // Função para reatribuir funcionário
+  const reassignEmployee = async (appointmentId: string, newEmployeeId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ employee_id: newEmployeeId })
+        .eq('id', appointmentId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success(T('Funcionário reatribuído com sucesso!', 'Employee reassigned successfully!'));
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      console.error('Erro ao reatribuir funcionário:', error);
+      toast.error(T('Erro ao reatribuir funcionário.', 'Error reassigning employee.'));
+    }
   };
 
   const updateAppointmentStatus = async (app: Appointment, newStatus: AppointmentStatus) => {
@@ -530,29 +567,49 @@ const AppointmentsPage: React.FC = () => {
                   <CalendarIcon className="h-4 w-4 text-gray-500" />
                   <DateFilter date={filterDate} setDate={setFilterDate} />
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-2 py-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
-                  <Filter className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                  <ToggleGroup
-                    type="single"
-                    value={filterStatus}
-                    onValueChange={(value: AppointmentStatus | 'all') => value && setFilterStatus(value)}
-                    className="flex gap-1 flex-shrink-0"
-                  >
-                    {[
-                      { label: T('Pendente', 'Pending'), value: 'pending' },
-                      { label: T('Confirmado', 'Confirmed'), value: 'confirmed' },
-                      { label: T('Concluído', 'Completed'), value: 'completed' },
-                      { label: T('Todos', 'All'), value: 'all' },
-                    ].map((item) => (
-                      <ToggleGroupItem
-                        key={item.value}
-                        value={item.value as AppointmentStatus | 'all'}
-                        className="rounded-xl px-2 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap flex-shrink-0 data-[state=on]:bg-black data-[state=on]:text-white"
-                      >
-                        {item.label}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-2 py-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
+                    <Filter className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <ToggleGroup
+                      type="single"
+                      value={filterStatus}
+                      onValueChange={(value: AppointmentStatus | 'all') => value && setFilterStatus(value)}
+                      className="flex gap-1 flex-shrink-0"
+                    >
+                      {[
+                        { label: T('Pendente', 'Pending'), value: 'pending' },
+                        { label: T('Confirmado', 'Confirmed'), value: 'confirmed' },
+                        { label: T('Concluído', 'Completed'), value: 'completed' },
+                        { label: T('Todos', 'All'), value: 'all' },
+                      ].map((item) => (
+                        <ToggleGroupItem
+                          key={item.value}
+                          value={item.value as AppointmentStatus | 'all'}
+                          className="rounded-xl px-2 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap flex-shrink-0 data-[state=on]:bg-black data-[state=on]:text-white"
+                        >
+                          {item.label}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                  {employees.length > 0 && (
+                    <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 w-full sm:w-auto">
+                      <User className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <Select value={filterEmployee} onValueChange={(value) => setFilterEmployee(value)}>
+                        <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring-0">
+                          <SelectValue placeholder={T('Todos os funcionários', 'All employees')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{T('Todos os funcionários', 'All employees')}</SelectItem>
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -614,6 +671,18 @@ const AppointmentsPage: React.FC = () => {
                                   <Briefcase className="h-4 w-4" />
                                   {app.services.name} ({app.services.duration_minutes} min)
                                 </p>
+                                {app.employees && (
+                                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    {T('Atendente:', 'Staff:')} {app.employees.name}
+                                  </p>
+                                )}
+                                {!app.employees && app.employee_id && (
+                                  <p className="text-sm text-gray-400 italic flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    {T('Atendente não encontrado', 'Staff not found')}
+                                  </p>
+                                )}
                                 <p className="text-base font-bold text-emerald-600">
                                   {formatCurrency(app.services.price, currentCurrency.key, currentCurrency.locale)}
                                 </p>
@@ -645,6 +714,27 @@ const AppointmentsPage: React.FC = () => {
                                       <DropdownMenuItem onClick={() => updateAppointmentStatus(app, 'completed')}>
                                         {T('Registrar Conclusão', 'Register Completion')}
                                       </DropdownMenuItem>
+                                    )}
+                                    {employees.length > 0 && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuLabel>{T('Reatribuir Funcionário', 'Reassign Employee')}</DropdownMenuLabel>
+                                        {employees.map((emp) => (
+                                          <DropdownMenuItem
+                                            key={emp.id}
+                                            onClick={() => reassignEmployee(app.id, emp.id)}
+                                            disabled={app.employee_id === emp.id}
+                                          >
+                                            <User className="h-4 w-4 mr-2" />
+                                            {emp.name}
+                                            {app.employee_id === emp.id && ` (${T('Atual', 'Current')})`}
+                                          </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuItem onClick={() => reassignEmployee(app.id, null)}>
+                                          <XCircle className="h-4 w-4 mr-2" />
+                                          {T('Remover Atribuição', 'Remove Assignment')}
+                                        </DropdownMenuItem>
+                                      </>
                                     )}
                                     <DropdownMenuSeparator />
                                     {app.status !== 'rejected' && (

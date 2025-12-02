@@ -23,6 +23,9 @@ import { Currency } from '@/utils/currency';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { replaceEmailTemplate } from '@/utils/email-template-replacer';
 import { useSession } from '@/integrations/supabase/session-context';
+import { useEmployees, Employee } from '@/hooks/use-employees';
+import { assignEmployeeAutomatically } from '@/utils/employee-assignment';
+import { Users } from 'lucide-react';
 
 // Tipos de dados
 interface DaySchedule {
@@ -63,13 +66,15 @@ interface ClientDetails {
 
 // Componente de Indicador de Etapas (Step Indicator)
 const StepIndicator: React.FC<{
-  currentStep: 'service' | 'datetime' | 'details';
+  currentStep: 'service' | 'datetime' | 'employee' | 'details';
   T: (pt: string, en: string) => string;
-}> = ({ currentStep, T }) => {
+  showEmployeeStep?: boolean;
+}> = ({ currentStep, T, showEmployeeStep = true }) => {
   const steps = [
     { key: 'service', label: T('Serviço', 'Service'), number: 1 },
     { key: 'datetime', label: T('Data & Hora', 'Date & Time'), number: 2 },
-    { key: 'details', label: T('Seus Dados', 'Your Details'), number: 3 },
+    ...(showEmployeeStep ? [{ key: 'employee', label: T('Atendente', 'Staff'), number: 3 }] : []),
+    { key: 'details', label: T('Seus Dados', 'Your Details'), number: showEmployeeStep ? 4 : 3 },
   ];
 
   const getCurrentStepIndex = () => {
@@ -459,6 +464,122 @@ const AppointmentScheduler: React.FC<{
   );
 };
 
+// Componente de Seleção de Funcionário
+const EmployeeSelector: React.FC<{
+  employees: Employee[];
+  selectedEmployee: string | null;
+  setSelectedEmployee: (id: string | null) => void;
+  autoAssignEnabled: boolean;
+  onBack: () => void;
+  onContinue: () => void;
+  isLoading: boolean;
+  themeColor: string;
+  T: (pt: string, en: string) => string;
+}> = ({ employees, selectedEmployee, setSelectedEmployee, autoAssignEnabled, onBack, onContinue, isLoading, themeColor, T }) => {
+  const activeEmployees = employees.filter(emp => emp.is_active);
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">
+          {T('Escolha seu Atendente', 'Choose your Staff')}
+        </h2>
+        <p className="text-gray-600 text-sm sm:text-sm">
+          {autoAssignEnabled 
+            ? T('O atendente será atribuído automaticamente', 'The staff member will be assigned automatically')
+            : T('Selecione com quem deseja ser atendido', 'Select who you want to be served by')
+          }
+        </p>
+      </div>
+
+      <div className="bg-white rounded-xl border-2 border-gray-200 p-3 sm:p-4 space-y-3 sm:space-y-4">
+        {autoAssignEnabled ? (
+          <div className="p-6 text-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-700 font-medium mb-2">
+              {T('Atribuição Automática', 'Automatic Assignment')}
+            </p>
+            <p className="text-sm text-gray-600">
+              {T(
+                'O sistema irá atribuir automaticamente um atendente disponível para você.',
+                'The system will automatically assign an available staff member to you.'
+              )}
+            </p>
+          </div>
+        ) : activeEmployees.length === 0 ? (
+          <div className="p-6 text-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-700 font-medium mb-2">
+              {T('Nenhum Atendente Disponível', 'No Staff Available')}
+            </p>
+            <p className="text-sm text-gray-600">
+              {T(
+                'Não há atendentes disponíveis no momento. Você pode continuar sem selecionar.',
+                'There are no staff members available at the moment. You can continue without selecting.'
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activeEmployees.map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => setSelectedEmployee(employee.id)}
+                className={cn(
+                  "w-full p-4 rounded-lg border-2 text-left transition-all",
+                  selectedEmployee === employee.id
+                    ? "border-black bg-black text-white"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                )}
+                style={selectedEmployee === employee.id ? { borderColor: themeColor, backgroundColor: themeColor } : {}}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                    selectedEmployee === employee.id ? "border-white" : "border-gray-400"
+                  )}>
+                    {selectedEmployee === employee.id && (
+                      <div className="h-2 w-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold">{employee.name}</p>
+                    {employee.phone && (
+                      <p className="text-xs opacity-80">{employee.phone}</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Botões de Navegação */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-gray-200">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm h-auto w-full sm:w-auto"
+          >
+            <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            {T('Voltar', 'Back')}
+          </Button>
+          
+          <Button
+            onClick={onContinue}
+            disabled={isLoading}
+            className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-xs sm:text-base h-auto disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+            style={{ backgroundColor: themeColor }}
+          >
+            {T('Continuar', 'Continue')}
+            <ArrowRight className="ml-2 h-3 w-3 sm:h-5 sm:w-5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Componente de Detalhes do Cliente (Estilo Calendly - mais limpo e espaçado)
 const ClientDetailsForm: React.FC<{ 
   clientDetails: ClientDetails, 
@@ -568,15 +689,20 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado do Agendamento
-  const [currentStep, setCurrentStep] = useState<'service' | 'datetime' | 'details'>('service');
+  const [currentStep, setCurrentStep] = useState<'service' | 'datetime' | 'employee' | 'details'>('service');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
   const [clientDetails, setClientDetails] = useState<ClientDetails>({
     client_name: '',
     client_whatsapp: '',
     client_email: '',
   });
+  
+  // Hook para funcionários
+  const { employees, fetchActiveEmployees, isLoading: isLoadingEmployees } = useEmployees(business?.id || null);
 
 
   // 1. Carregar dados do negócio e serviços
@@ -593,11 +719,39 @@ const BookingPage = () => {
       try {
         // Buscar dados do negócio USANDO O SLUG
         console.log('[BOOKING] 📡 Buscando negócio pelo slug:', businessSlug);
+        // Buscar dados básicos primeiro
         const { data: businessData, error: businessError } = await supabase
           .from('businesses')
           .select('id, owner_id, name, description, address, phone, logo_url, cover_photo_url, working_hours, theme_color, instagram_url, facebook_url')
           .eq('slug', businessSlug)
           .maybeSingle();
+        
+        // Tentar buscar auto_assign_employees separadamente (pode não existir se migration não foi executada)
+        let autoAssignValue = false;
+        if (businessData) {
+          try {
+            const { data: autoAssignData, error: selectError } = await supabase
+              .from('businesses')
+              .select('auto_assign_employees')
+              .eq('id', businessData.id)
+              .single();
+            
+            // Se der erro 400 ou 42703, a coluna não existe
+            if (selectError && (selectError.code === '42703' || selectError.message?.includes('does not exist') || selectError.message?.includes('column') || selectError.status === 400)) {
+              // Coluna não existe ainda, usar default
+              console.warn('Coluna auto_assign_employees não encontrada. Execute a migration add_auto_assign_to_businesses.sql');
+              autoAssignValue = false;
+            } else if (autoAssignData) {
+              autoAssignValue = autoAssignData.auto_assign_employees || false;
+            }
+          } catch (e: any) {
+            // Coluna não existe ainda, usar default
+            if (e.code !== '42703' && !e.message?.includes('does not exist') && !e.message?.includes('column') && e.status !== 400) {
+              console.warn('Erro ao buscar auto_assign_employees:', e);
+            }
+            autoAssignValue = false;
+          }
+        }
 
         if (businessError) {
           console.error('[BOOKING] ❌ Erro ao buscar negócio:', {
@@ -632,9 +786,11 @@ const BookingPage = () => {
           id: businessData.id,
           name: businessData.name,
           owner_id: businessData.owner_id,
+          auto_assign_employees: autoAssignValue,
         });
 
         setBusiness(businessData as Business);
+        setAutoAssignEnabled(autoAssignValue);
         const actualBusinessId = businessData.id;
 
         // Buscar serviços
@@ -832,6 +988,24 @@ const BookingPage = () => {
     // Gera o código único do cliente
     const clientCode = generateClientCode();
 
+    // Determinar employee_id
+    let finalEmployeeId: string | null = null;
+    
+    if (autoAssignEnabled) {
+      // Se distribuição automática está habilitada, atribuir automaticamente
+      const assignedId = await assignEmployeeAutomatically(
+        business.id,
+        selectedDate,
+        selectedTime
+      );
+      finalEmployeeId = assignedId;
+      console.log('[BOOKING] 👤 Funcionário atribuído automaticamente:', assignedId);
+    } else if (selectedEmployee) {
+      // Se cliente selecionou manualmente
+      finalEmployeeId = selectedEmployee;
+      console.log('[BOOKING] 👤 Funcionário selecionado manualmente:', selectedEmployee);
+    }
+
     const newAppointmentData = {
       business_id: business.id,
       service_id: selectedService.id,
@@ -843,6 +1017,7 @@ const BookingPage = () => {
       status: 'pending',
       client_code: clientCode,
       user_id: user?.id || null, // Vincular ao usuário se estiver logado
+      employee_id: finalEmployeeId, // Adicionar employee_id
     };
 
     console.log('[BOOKING] 📝 Criando agendamento com dados:', {
@@ -868,7 +1043,7 @@ const BookingPage = () => {
       const { data: createdAppointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert(newAppointmentData)
-        .select('id, business_id, start_time, status')
+        .select('id, business_id, start_time, status, employee_id, employees (id, name, phone, email)')
         .single();
 
       console.log('[BOOKING] 📥 Resposta da criação:', { 
@@ -977,6 +1152,40 @@ const BookingPage = () => {
           if (templates?.appointment_pending) {
             const template = templates.appointment_pending;
             
+            // Buscar informações do funcionário se houver
+            let employeeName: string | null = null;
+            let employeePhone: string | null = null;
+            let employeeEmail: string | null = null;
+            
+            if (finalEmployeeId) {
+              // Se temos employee_id, buscar informações do funcionário
+              if (createdAppointment.employees) {
+                const employee = Array.isArray(createdAppointment.employees) 
+                  ? createdAppointment.employees[0] 
+                  : createdAppointment.employees;
+                employeeName = (employee as any)?.name || null;
+                employeePhone = (employee as any)?.phone || null;
+                employeeEmail = (employee as any)?.email || null;
+              } else {
+                // Se não veio no select, buscar separadamente
+                try {
+                  const { data: employeeData } = await supabase
+                    .from('employees')
+                    .select('name, phone, email')
+                    .eq('id', finalEmployeeId)
+                    .single();
+                  
+                  if (employeeData) {
+                    employeeName = employeeData.name;
+                    employeePhone = employeeData.phone;
+                    employeeEmail = employeeData.email;
+                  }
+                } catch (err) {
+                  console.warn('[BOOKING] Erro ao buscar dados do funcionário:', err);
+                }
+              }
+            }
+            
             const appointmentData = {
               client_name: clientDetails.client_name,
               client_code: clientCode,
@@ -992,6 +1201,9 @@ const BookingPage = () => {
               client_email: clientDetails.client_email || 'N/A',
               dashboard_link: `${window.location.origin}/dashboard/agenda`,
               marketplace_link: `${window.location.origin}/marketplace`,
+              employee_name: employeeName,
+              employee_phone: employeePhone,
+              employee_email: employeeEmail,
             };
 
             const businessData = {
@@ -1285,7 +1497,11 @@ const BookingPage = () => {
         </Card>
 
         {/* Indicador de Etapas */}
-        <StepIndicator currentStep={currentStep} T={T} />
+        <StepIndicator 
+          currentStep={currentStep} 
+          T={T} 
+          showEmployeeStep={employees.length > 0}
+        />
             
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Coluna de Seleção - Sistema de Etapas */}
@@ -1327,7 +1543,13 @@ const BookingPage = () => {
                 onBack={() => setCurrentStep('service')}
                 onContinue={() => {
                   if (selectedDate && selectedTime) {
-                    setCurrentStep('details');
+                    // Verificar se precisa mostrar step de funcionário
+                    const hasEmployees = employees.length > 0;
+                    if (hasEmployees) {
+                      setCurrentStep('employee');
+                    } else {
+                      setCurrentStep('details');
+                    }
                   }
                 }}
                 themeColor={themeColor}
@@ -1335,12 +1557,36 @@ const BookingPage = () => {
               />
             )}
 
-            {/* Etapa 3: Dados do Cliente */}
+            {/* Etapa 3: Seleção de Funcionário */}
+            {currentStep === 'employee' && selectedService && selectedDate && selectedTime && (
+              <EmployeeSelector
+                employees={employees}
+                selectedEmployee={selectedEmployee}
+                setSelectedEmployee={setSelectedEmployee}
+                autoAssignEnabled={autoAssignEnabled}
+                onBack={() => setCurrentStep('datetime')}
+                onContinue={() => {
+                  setCurrentStep('details');
+                }}
+                isLoading={isLoadingEmployees}
+                themeColor={themeColor}
+                T={T}
+              />
+            )}
+
+            {/* Etapa 4: Dados do Cliente */}
             {currentStep === 'details' && selectedService && selectedDate && selectedTime && (
               <ClientDetailsForm 
                 clientDetails={clientDetails}
                 setClientDetails={setClientDetails}
-                onBack={() => setCurrentStep('datetime')}
+                onBack={() => {
+                  // Voltar para step apropriado
+                  if (employees.length > 0) {
+                    setCurrentStep('employee');
+                  } else {
+                    setCurrentStep('datetime');
+                  }
+                }}
                 onSubmit={handleBooking}
                 isSubmitting={isSubmitting}
                 T={T}
@@ -1378,6 +1624,24 @@ const BookingPage = () => {
                       </div>
                     )}
 
+                    {selectedEmployee && employees.length > 0 && (
+                      <div className="pb-4 border-b text-sm">
+                        <div className="text-gray-600">{T('Atendente', 'Staff')}</div>
+                        <div className="font-medium">
+                          {employees.find(e => e.id === selectedEmployee)?.name || T('A ser atribuído', 'To be assigned')}
+                        </div>
+                      </div>
+                    )}
+
+                    {autoAssignEnabled && employees.length > 0 && !selectedEmployee && (
+                      <div className="pb-4 border-b text-sm">
+                        <div className="text-gray-600">{T('Atendente', 'Staff')}</div>
+                        <div className="font-medium text-gray-500 italic">
+                          {T('Atribuição automática', 'Automatic assignment')}
+                        </div>
+                      </div>
+                    )}
+
                     {clientDetails.client_name && (
                       <div className="pb-4 border-b text-sm">
                         <div className="text-gray-600">{T('Cliente', 'Client')}</div>
@@ -1397,7 +1661,15 @@ const BookingPage = () => {
                       <Button 
                         className="w-full h-11" 
                         onClick={handleBooking} 
-                        disabled={!selectedService || !selectedDate || !selectedTime || !clientDetails.client_name || !clientDetails.client_whatsapp || isSubmitting}
+                        disabled={
+                          !selectedService || 
+                          !selectedDate || 
+                          !selectedTime || 
+                          !clientDetails.client_name || 
+                          !clientDetails.client_whatsapp || 
+                          isSubmitting ||
+                          (employees.length > 0 && !autoAssignEnabled && !selectedEmployee)
+                        }
                         style={{ backgroundColor: themeColor }}
                       >
                         {isSubmitting ? (
