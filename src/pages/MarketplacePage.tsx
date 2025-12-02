@@ -23,11 +23,12 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rating' | 'name' | 'newest'>('rating');
   const [clientProvince, setClientProvince] = useState<string | null>(null);
+  const [filtersCleared, setFiltersCleared] = useState(false);
 
   // Carregar província do cliente se estiver logado
   useEffect(() => {
     const loadClientProvince = async () => {
-      if (user && userType === 'client') {
+      if (user && userType === 'client' && !clientProvince) {
         const { data } = await supabase
           .from('profiles')
           .select('address')
@@ -38,15 +39,16 @@ export default function MarketplacePage() {
           // Extrair província do campo address (formato: "Província, Cidade" ou só "Província")
           const province = data.address.split(',')[0].trim();
           setClientProvince(province);
-          // Se não houver filtro selecionado, usar a província do cliente
-          if (selectedProvince === 'all') {
+          // Aplicar província do cliente apenas na primeira carga se os filtros não foram limpos
+          if (selectedProvince === 'all' && !filtersCleared) {
             setSelectedProvince(province);
           }
         }
       }
     };
     loadClientProvince();
-  }, [user, userType, selectedProvince]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userType]);
 
   const { businesses, isLoading, error, totalCount } = useMarketplace({
     category: selectedCategory,
@@ -60,9 +62,10 @@ export default function MarketplacePage() {
 
   const clearFilters = () => {
     setSelectedCategory('all');
-    setSelectedProvince(clientProvince || 'all'); // Manter província do cliente se existir
+    setSelectedProvince('all'); // Limpar completamente, incluindo a província do cliente
     setSearchQuery('');
     setSortBy('rating');
+    setFiltersCleared(true); // Marcar que os filtros foram limpos manualmente
   };
 
   return (

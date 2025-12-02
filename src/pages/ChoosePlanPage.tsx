@@ -12,7 +12,6 @@ import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { addDays } from 'date-fns';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
-import { ensureBusinessAccount } from '@/utils/business-helpers';
 
 const ChoosePlanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,9 +21,7 @@ const ChoosePlanPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const allPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig, currentCurrency) : [];
-  // Filtrar plano Free - não mostrar na página de escolha (só aparece após registro ou em links diretos)
-  const pricingPlans = allPlans.filter(plan => plan.planKey !== 'free' && plan.planSlug !== 'free');
+  const pricingPlans = subscriptionConfig ? generatePricingPlans(subscriptionConfig, currentCurrency) : [];
 
   useEffect(() => {
     if (!isSessionLoading && !user) {
@@ -50,18 +47,6 @@ const ChoosePlanPage: React.FC = () => {
       toast.error(T("Você precisa estar logado para escolher um plano.", "You need to be logged in to choose a plan."));
       navigate('/register');
       return;
-    }
-
-    // Garantir que conta seja marcada como BUSINESS antes de escolher plano
-    // Planos são apenas para área de negócios
-    try {
-      const businessId = await ensureBusinessAccount(user.id);
-      if (!businessId) {
-        toast.warning(T("Aviso: Não foi possível marcar conta como BUSINESS. Continuando...", "Warning: Could not mark account as BUSINESS. Continuing..."));
-      }
-    } catch (error) {
-      console.warn('⚠️ Erro ao garantir business account (não crítico):', error);
-      // Continuar mesmo se falhar
     }
 
     // Se for o plano FREE (3 dias), criar subscription direto e ir para dashboard
