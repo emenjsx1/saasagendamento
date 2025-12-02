@@ -31,12 +31,33 @@ serve(async (req) => {
     // Ler o body apenas se houver conteúdo
     let requestData;
     try {
-      requestData = await req.json();
+      const bodyText = await req.text();
+      console.log('📥 Body recebido:', bodyText);
+      
+      if (!bodyText || bodyText.trim() === '') {
+        console.error('❌ Body vazio ou inválido');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Corpo da requisição vazio. Por favor, envie os dados de pagamento.',
+            details: { body: bodyText }
+          }), 
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      requestData = JSON.parse(bodyText);
+      console.log('📋 Dados parseados:', JSON.stringify(requestData));
     } catch (e) {
+      console.error('❌ Erro ao parsear JSON:', e);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Corpo da requisição inválido ou vazio' 
+          message: 'Corpo da requisição inválido. Por favor, verifique o formato JSON.',
+          details: { error: e.message }
         }), 
         {
           status: 400,
@@ -47,12 +68,24 @@ serve(async (req) => {
 
     const { amount, phone, method, reference } = requestData;
 
-    // Validações
-    if (!amount || !phone || !method || !reference) {
+    // Validações com mensagens detalhadas
+    const missingFields = [];
+    if (amount === undefined || amount === null || amount === '') missingFields.push('amount');
+    if (!phone || phone === '') missingFields.push('phone');
+    if (!method || method === '') missingFields.push('method');
+    if (!reference || reference === '') missingFields.push('reference');
+
+    if (missingFields.length > 0) {
+      console.error('❌ Campos faltando:', missingFields);
+      console.error('📋 Dados recebidos:', { amount, phone, method, reference });
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Campos obrigatórios: amount, phone, method, reference' 
+          message: `Campos obrigatórios faltando: ${missingFields.join(', ')}. Por favor, verifique os dados enviados.`,
+          details: { 
+            missingFields,
+            receivedData: { amount, phone, method, reference }
+          }
         }), 
         {
           status: 400,
@@ -61,11 +94,14 @@ serve(async (req) => {
       );
     }
 
+    // Validar método de pagamento
     if (!['mpesa', 'emola'].includes(method)) {
+      console.error('❌ Método inválido:', method);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Método inválido. Use "mpesa" ou "emola"' 
+          message: `Método de pagamento inválido: "${method}". Use "mpesa" ou "emola".`,
+          details: { receivedMethod: method, validMethods: ['mpesa', 'emola'] }
         }), 
         {
           status: 400,
@@ -74,11 +110,21 @@ serve(async (req) => {
       );
     }
 
+    // Validar número de telefone
+    console.log('📞 Validando telefone:', phone);
     if (!validatePhoneNumber(phone)) {
+      console.error('❌ Telefone inválido:', phone);
+      const digits = phone.replace(/\D/g, '');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Número de telefone inválido. Use um número válido de Moçambique (84, 85, 86, 87) com 9 dígitos.' 
+          message: `Número de telefone inválido: "${phone}". Use um número válido de Moçambique começando com 84, 85, 86 ou 87 e com exatamente 9 dígitos.`,
+          details: { 
+            receivedPhone: phone, 
+            digitsOnly: digits,
+            digitsCount: digits.length,
+            validFormat: '84XXXXXXX, 85XXXXXXX, 86XXXXXXX ou 87XXXXXXX (9 dígitos)'
+          }
         }), 
         {
           status: 400,
@@ -88,12 +134,32 @@ serve(async (req) => {
     }
 
     // Validar valor mínimo
-    const amountNum = typeof amount === 'number' ? amount : parseFloat(amount);
-    if (amountNum < 1 || isNaN(amountNum)) {
+    console.log('💰 Validando valor:', amount, typeof amount);
+    const amountNum = typeof amount === 'number' ? amount : parseFloat(String(amount));
+    console.log('💰 Valor convertido:', amountNum);
+    
+    if (isNaN(amountNum)) {
+      console.error('❌ Valor não é um número:', amount);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Valor mínimo de pagamento é 1 MZN.' 
+          message: `Valor inválido: "${amount}". O valor deve ser um número válido.`,
+          details: { receivedAmount: amount, type: typeof amount }
+        }), 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
+    if (amountNum < 1) {
+      console.error('❌ Valor menor que mínimo:', amountNum);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: `Valor mínimo de pagamento é 1 MZN. Valor recebido: ${amountNum} MZN.`,
+          details: { receivedAmount: amountNum, minimumAmount: 1 }
         }), 
         {
           status: 400,
@@ -104,17 +170,28 @@ serve(async (req) => {
 
     // Limpar número de telefone (9 dígitos sem código do país)
     let phoneDigits = phone.replace(/\D/g, '');
+    console.log('📞 Telefone após remoção de caracteres não numéricos:', phoneDigits);
+    
     if (phoneDigits.startsWith('258')) {
       phoneDigits = phoneDigits.substring(3);
+      console.log('📞 Telefone após remover código 258:', phoneDigits);
     } else if (phoneDigits.startsWith('00258')) {
       phoneDigits = phoneDigits.substring(5);
+      console.log('📞 Telefone após remover código 00258:', phoneDigits);
     }
 
     if (phoneDigits.length !== 9) {
+      console.error('❌ Telefone não tem 9 dígitos:', { original: phone, cleaned: phoneDigits, length: phoneDigits.length });
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Número de telefone deve ter 9 dígitos (ex: 84XXXXXXX).' 
+          message: `Número de telefone deve ter exatamente 9 dígitos. Recebido: ${phoneDigits.length} dígitos após limpeza.`,
+          details: { 
+            originalPhone: phone,
+            cleanedPhone: phoneDigits,
+            length: phoneDigits.length,
+            expectedLength: 9
+          }
         }), 
         {
           status: 400,

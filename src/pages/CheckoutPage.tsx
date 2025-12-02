@@ -1280,11 +1280,39 @@ const CheckoutPage: React.FC = () => {
         
         // Mostrar mensagem de erro mais detalhada
         let errorMessage = paymentResponse.message || T("Erro ao processar pagamento.", "Error processing payment.");
+        
+        // Extrair detalhes se disponíveis
         if ((paymentResponse as any).details) {
           const details = (paymentResponse as any).details;
-          if (details.message) errorMessage = details.message;
-          else if (details.error) errorMessage = details.error;
+          
+          // Se houver campos faltando, mostrar isso
+          if (details.missingFields && Array.isArray(details.missingFields)) {
+            errorMessage = T(
+              `Campos obrigatórios faltando: ${details.missingFields.join(', ')}. Por favor, verifique os dados e tente novamente.`,
+              `Missing required fields: ${details.missingFields.join(', ')}. Please check your data and try again.`
+            );
+          }
+          // Se houver erro de telefone, mostrar formato esperado
+          else if (details.validFormat) {
+            errorMessage = `${errorMessage}\n\n${T('Formato esperado:', 'Expected format:')} ${details.validFormat}`;
+          }
+          // Se houver erro de comprimento do telefone
+          else if (details.length && details.expectedLength) {
+            errorMessage = `${errorMessage}\n\n${T(`Dígitos recebidos: ${details.length}, esperado: ${details.expectedLength}`, `Digits received: ${details.length}, expected: ${details.expectedLength}`)}`;
+          }
+          // Outros erros específicos
+          else if (details.message) {
+            errorMessage = details.message;
+          } else if (details.error) {
+            errorMessage = details.error;
+          }
         }
+        
+        console.error('❌ Erro no pagamento:', {
+          message: errorMessage,
+          status: paymentResponse.status,
+          details: (paymentResponse as any).details,
+        });
         
         setPaymentError(errorMessage);
         setShowErrorModal(true);

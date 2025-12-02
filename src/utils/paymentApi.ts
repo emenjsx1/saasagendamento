@@ -122,7 +122,24 @@ export const processPaymentApi = async (request: PaymentRequest): Promise<Paymen
       }),
     });
 
-    const responseData = await response.json();
+    // Verificar se a resposta é JSON válido
+    let responseData: any = {};
+    try {
+      const responseText = await response.text();
+      console.log('📥 Resposta raw da Edge Function:', responseText);
+      
+      if (responseText) {
+        responseData = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear resposta JSON:', parseError);
+      return {
+        success: false,
+        message: 'Erro ao processar resposta do servidor. Tente novamente.',
+        status: response.status || 500,
+        details: { parseError: parseError.message },
+      };
+    }
 
     console.log('📥 Resposta da Edge Function:', {
       status: response.status,
@@ -139,10 +156,30 @@ export const processPaymentApi = async (request: PaymentRequest): Promise<Paymen
       };
     }
 
-    // Erro retornado pela Edge Function
+    // Erro retornado pela Edge Function - mostrar mensagem detalhada
+    let errorMessage = responseData.message || 'Erro ao processar pagamento. Tente novamente.';
+    
+    // Se houver detalhes, incluir informações adicionais na mensagem
+    if (responseData.details) {
+      const details = responseData.details;
+      
+      // Adicionar informações específicas baseadas nos detalhes
+      if (details.missingFields) {
+        errorMessage = `Campos faltando: ${details.missingFields.join(', ')}. ${errorMessage}`;
+      }
+      
+      if (details.receivedPhone && details.validFormat) {
+        errorMessage = `${errorMessage}\n\nFormato esperado: ${details.validFormat}`;
+      }
+      
+      if (details.length && details.expectedLength) {
+        errorMessage = `${errorMessage}\n\nDígitos recebidos: ${details.length}, esperado: ${details.expectedLength}`;
+      }
+    }
+
     return {
       success: false,
-      message: responseData.message || 'Erro ao processar pagamento. Tente novamente.',
+      message: errorMessage,
       status: responseData.status || response.status,
       details: responseData.details,
     };
