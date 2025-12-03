@@ -66,14 +66,14 @@ interface ClientDetails {
 
 // Componente de Indicador de Etapas (Step Indicator)
 const StepIndicator: React.FC<{
-  currentStep: 'service' | 'datetime' | 'employee' | 'details';
+  currentStep: 'service' | 'employee' | 'datetime' | 'details';
   T: (pt: string, en: string) => string;
   showEmployeeStep?: boolean;
 }> = ({ currentStep, T, showEmployeeStep = true }) => {
   const steps = [
     { key: 'service', label: T('Serviço', 'Service'), number: 1 },
-    { key: 'datetime', label: T('Data & Hora', 'Date & Time'), number: 2 },
-    ...(showEmployeeStep ? [{ key: 'employee', label: T('Atendente', 'Staff'), number: 3 }] : []),
+    ...(showEmployeeStep ? [{ key: 'employee', label: T('Atendente', 'Staff'), number: 2 }] : []),
+    { key: 'datetime', label: T('Data & Hora', 'Date & Time'), number: showEmployeeStep ? 3 : 2 },
     { key: 'details', label: T('Seus Dados', 'Your Details'), number: showEmployeeStep ? 4 : 3 },
   ];
 
@@ -224,7 +224,8 @@ const ServiceSelector: React.FC<{
 // Componente de Agendamento
 const AppointmentScheduler: React.FC<{ 
   business: Business;
-  selectedService: Service; 
+  selectedService: Service;
+  selectedEmployee: string | null; // Adicionado para filtrar por funcionário
   selectedDate: Date | undefined; 
   setSelectedDate: (date: Date | undefined) => void;
   selectedTime: string | null;
@@ -233,7 +234,7 @@ const AppointmentScheduler: React.FC<{
   onContinue: () => void;
   themeColor: string;
   T: (pt: string, en: string) => string;
-}> = ({ business, selectedService, selectedDate, setSelectedDate, selectedTime, setSelectedTime, onBack, onContinue, themeColor, T }) => {
+}> = ({ business, selectedService, selectedEmployee, selectedDate, setSelectedDate, selectedTime, setSelectedTime, onBack, onContinue, themeColor, T }) => {
   
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isTimesLoading, setIsTimesLoading] = useState(false);
@@ -262,17 +263,28 @@ const AppointmentScheduler: React.FC<{
     let currentTime = setMinutes(setHours(date, startHour), startMinute);
     const endTimeLimit = setMinutes(setHours(date, endHour), endMinute);
 
-    // 1. Buscar agendamentos existentes para o dia
+    // 1. Buscar agendamentos CONFIRMADOS para o dia e funcionário específico
+    // IMPORTANTE: Apenas agendamentos CONFIRMADOS bloqueiam horários
+    // Pendentes não bloqueiam, permitindo que outros funcionários tenham o mesmo horário
     const startOfDay = format(date, 'yyyy-MM-dd 00:00:00');
     const endOfDay = format(date, 'yyyy-MM-dd 23:59:59');
 
-    const { data: existingAppointments, error } = await supabase
+    let query = supabase
       .from('appointments')
-      .select('start_time, end_time')
+      .select('start_time, end_time, employee_id')
       .eq('business_id', business.id)
+      .eq('status', 'confirmed') // APENAS confirmados bloqueiam horários
       .gte('start_time', startOfDay)
-      .lte('start_time', endOfDay)
-      .in('status', ['pending', 'confirmed']); // Considerar pendentes e confirmados
+      .lte('start_time', endOfDay);
+
+    // Se um funcionário foi selecionado, filtrar apenas agendamentos desse funcionário
+    // Se não há funcionário selecionado, considerar todos os funcionários (para auto-assign)
+    if (selectedEmployee) {
+      query = query.eq('employee_id', selectedEmployee);
+    }
+    // Se selectedEmployee é null, não filtrar por funcionário (mostrar disponibilidade geral)
+
+    const { data: existingAppointments, error } = await query;
 
     if (error) {
       toast.error("Erro ao carregar horários existentes.");
@@ -334,13 +346,13 @@ const AppointmentScheduler: React.FC<{
 
     setAvailableTimes(newAvailableTimes);
     setIsTimesLoading(false);
-  }, [business.id, business.working_hours, selectedService.duration_minutes, setSelectedTime]);
+  }, [business.id, business.working_hours, selectedService.duration_minutes, selectedEmployee, setSelectedTime]);
 
   useEffect(() => {
     if (selectedDate && business.working_hours && selectedService) {
       fetchAvailableTimes(selectedDate);
     }
-  }, [selectedDate, business.working_hours, selectedService, fetchAvailableTimes]);
+  }, [selectedDate, business.working_hours, selectedService, selectedEmployee, fetchAvailableTimes]);
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -567,7 +579,7 @@ const EmployeeSelector: React.FC<{
           
           <Button
             onClick={onContinue}
-            disabled={isLoading}
+            disabled={isLoading || (!autoAssignEnabled && !selectedEmployee && activeEmployees.length > 0)}
             className="bg-black hover:bg-gray-900 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-xs sm:text-base h-auto disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             style={{ backgroundColor: themeColor }}
           >
@@ -689,7 +701,7 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado do Agendamento
-  const [currentStep, setCurrentStep] = useState<'service' | 'datetime' | 'employee' | 'details'>('service');
+  const [currentStep, setCurrentStep] = useState<'service' | 'employee' | 'datetime' | 'details'>('service');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -1522,7 +1534,12 @@ const BookingPage = () => {
                 }} 
                 onContinue={() => {
                   if (selectedService) {
-                    setCurrentStep('datetime');
+                    // Ir para seleção de funcionário se houver funcionários, senão para data/hora
+                    if (employees.length > 0) {
+                      setCurrentStep('employee');
+                    } else {
+                      setCurrentStep('datetime');
+                    }
                   }
               }} 
               themeColor={themeColor}
@@ -1531,44 +1548,49 @@ const BookingPage = () => {
             />
             )}
 
-            {/* Etapa 2: Data e Hora */}
-            {currentStep === 'datetime' && selectedService && business.working_hours && (
-              <AppointmentScheduler 
-                business={business}
-                selectedService={selectedService}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                selectedTime={selectedTime}
-                setSelectedTime={setSelectedTime}
-                onBack={() => setCurrentStep('service')}
-                onContinue={() => {
-                  if (selectedDate && selectedTime) {
-                    // Verificar se precisa mostrar step de funcionário
-                    const hasEmployees = employees.length > 0;
-                    if (hasEmployees) {
-                      setCurrentStep('employee');
-                    } else {
-                      setCurrentStep('details');
-                    }
-                  }
-                }}
-                themeColor={themeColor}
-                T={T}
-              />
-            )}
-
-            {/* Etapa 3: Seleção de Funcionário */}
-            {currentStep === 'employee' && selectedService && selectedDate && selectedTime && (
+            {/* Etapa 2: Seleção de Funcionário */}
+            {currentStep === 'employee' && selectedService && (
               <EmployeeSelector
                 employees={employees}
                 selectedEmployee={selectedEmployee}
                 setSelectedEmployee={setSelectedEmployee}
                 autoAssignEnabled={autoAssignEnabled}
-                onBack={() => setCurrentStep('datetime')}
+                onBack={() => setCurrentStep('service')}
                 onContinue={() => {
-                  setCurrentStep('details');
+                  // Permitir continuar se autoAssignEnabled está ativo OU se um funcionário foi selecionado
+                  if (autoAssignEnabled || selectedEmployee) {
+                    setCurrentStep('datetime');
+                  }
                 }}
                 isLoading={isLoadingEmployees}
+                themeColor={themeColor}
+                T={T}
+              />
+            )}
+
+            {/* Etapa 3: Data e Hora */}
+            {currentStep === 'datetime' && selectedService && business.working_hours && (
+              <AppointmentScheduler 
+                business={business}
+                selectedService={selectedService}
+                selectedEmployee={selectedEmployee}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                selectedTime={selectedTime}
+                setSelectedTime={setSelectedTime}
+                onBack={() => {
+                  // Voltar para funcionário se houver, senão para serviço
+                  if (employees.length > 0) {
+                    setCurrentStep('employee');
+                  } else {
+                    setCurrentStep('service');
+                  }
+                }}
+                onContinue={() => {
+                  if (selectedDate && selectedTime) {
+                    setCurrentStep('details');
+                  }
+                }}
                 themeColor={themeColor}
                 T={T}
               />
@@ -1580,12 +1602,8 @@ const BookingPage = () => {
                 clientDetails={clientDetails}
                 setClientDetails={setClientDetails}
                 onBack={() => {
-                  // Voltar para step apropriado
-                  if (employees.length > 0) {
-                    setCurrentStep('employee');
-                  } else {
-                    setCurrentStep('datetime');
-                  }
+                  // Sempre voltar para datetime (etapa anterior)
+                  setCurrentStep('datetime');
                 }}
                 onSubmit={handleBooking}
                 isSubmitting={isSubmitting}

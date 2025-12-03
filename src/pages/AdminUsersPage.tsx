@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Users, Loader2, Search, Filter, Edit, Trash2, UserCheck, UserX, Briefcase, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, parseISO, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ interface UserProfile {
   business_name: string | null;
   subscription_status: string;
   plan_name: string;
+  trial_ends_at: string | null;
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -72,15 +73,19 @@ const AdminUsersPage: React.FC = () => {
       const { data: businessData } = await supabase.from('businesses').select('owner_id, name');
       const businessMap = new Map(businessData?.map(b => [b.owner_id, b.name]) || []);
       
-      // 3. Buscar subscriptions separadamente
+      // 3. Buscar subscriptions separadamente (incluindo trial_ends_at)
       const userIds = profilesData.map(p => p.id);
       const { data: subscriptionsData } = await supabase
         .from('subscriptions')
-        .select('user_id, status, plan_name')
+        .select('user_id, status, plan_name, trial_ends_at')
         .in('user_id', userIds);
       
       const subscriptionsMap = new Map(
-        (subscriptionsData || []).map(s => [s.user_id, { status: s.status, plan_name: s.plan_name }])
+        (subscriptionsData || []).map(s => [s.user_id, { 
+          status: s.status, 
+          plan_name: s.plan_name,
+          trial_ends_at: s.trial_ends_at 
+        }])
       );
       
       // 4. Mapear e combinar
@@ -92,6 +97,7 @@ const AdminUsersPage: React.FC = () => {
         const subscription = subscriptionsMap.get(p.id);
         const subStatus = subscription?.status || 'N/A';
         const planName = subscription?.plan_name || 'N/A';
+        const trialEndsAt = subscription?.trial_ends_at || null;
         
         let role: UserProfile['role'] = 'Client';
         if (isAdministrator) {
@@ -111,7 +117,15 @@ const AdminUsersPage: React.FC = () => {
           business_name: businessName,
           subscription_status: subStatus,
           plan_name: planName,
+          trial_ends_at: trialEndsAt,
         };
+      });
+
+      // Ordenar por data de registro (mais antigos primeiro)
+      mappedUsers.sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateA - dateB; // Ordem crescente (mais antigos primeiro)
       });
 
       setUsers(mappedUsers);
@@ -218,6 +232,43 @@ const AdminUsersPage: React.FC = () => {
     }
   };
   
+  // Calcular dias restantes do trial
+  const getTrialDaysRemaining = (user: UserProfile): number | null => {
+    if (!user.trial_ends_at || user.subscription_status !== 'trial') {
+      return null;
+    }
+    
+    try {
+      const trialEndDate = parseISO(user.trial_ends_at);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      trialEndDate.setHours(0, 0, 0, 0);
+      
+      const daysRemaining = differenceInDays(trialEndDate, today);
+      return daysRemaining >= 0 ? daysRemaining : null; // Retorna null se já expirou
+    } catch {
+      return null;
+    }
+  };
+
+  // Verificar se trial expirou
+  const isTrialExpired = (user: UserProfile): boolean => {
+    if (!user.trial_ends_at || user.subscription_status !== 'trial') {
+      return false;
+    }
+    
+    try {
+      const trialEndDate = parseISO(user.trial_ends_at);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      trialEndDate.setHours(0, 0, 0, 0);
+      
+      return isBefore(trialEndDate, today) || isAfter(today, trialEndDate);
+    } catch {
+      return false;
+    }
+  };
+
   const handleSendPaymentReminder = async (user: UserProfile) => {
     if (user.subscription_status !== 'pending_payment') {
       toast.warning(`O usuário ${user.email} não está com pagamento pendente.`);
@@ -318,6 +369,122 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
+  const handleSendTrialExpirationEmail = async (user: UserProfile) => {
+    if (user.subscription_status !== 'trial') {
+      toast.warning(`O usuário ${user.email} não está em período de teste.`);
+      return;
+    }
+
+    const daysRemaining = getTrialDaysRemaining(user);
+    const expired = isTrialExpired(user);
+
+    if (!expired && daysRemaining !== null && daysRemaining > 0) {
+      toast.warning(`O teste do usuário ${user.email} ainda não expirou. Restam ${daysRemaining} dias.`);
+      return;
+    }
+
+    try {
+      const loadingToast = toast.loading(`Enviando email de expiração de teste para ${user.email}...`);
+      
+      // Buscar template de email (usar template padrão ou customizado)
+      let template = settings?.email_templates?.trial_expiration;
+      
+      // Se teste expirou, ajustar mensagem
+      if (expired) {
+        template = {
+          subject: "⏰ Seu Teste Gratuito Expirou!",
+          body: template?.body || `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⏰ Teste Expirado</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>${userName}</strong>,</p>
+      <p>Seu período de <strong>teste gratuito</strong> expirou.</p>
+      <p>Para continuar usando todos os recursos da plataforma, escolha um plano agora:</p>
+      <div style="text-align: center;">
+        <a href="{{upgrade_link}}" class="button">Escolher Plano</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>FEITO POR AgenCode</p>
+      <p>Este é um email automático, por favor não responda.</p>
+    </div>
+  </div>
+</body>
+</html>`
+        };
+      } else {
+        template = template || {
+          subject: "⏰ Seu Teste Gratuito Expira em Breve!",
+          body: "<h1>Aviso</h1><p>Olá, seu período de teste está expirando. Escolha um plano para continuar.</p><p><a href='{{upgrade_link}}'>Escolher Plano</a></p>"
+        };
+      }
+
+      // Preparar dados para o template
+      const businessData = {
+        logo_url: '',
+        theme_color: '#16a34a',
+        name: 'AgenCode',
+        phone: '',
+        address: '',
+      };
+
+      const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Cliente';
+      const checkoutLink = `${window.location.origin}/checkout`;
+
+      // Substituir placeholders
+      const replaceTrialTemplate = (text: string): string => {
+        return text
+          .replace(/\{\{business_logo_url\}\}/g, businessData.logo_url || '')
+          .replace(/\{\{business_primary_color\}15\}/g, 'rgba(22, 163, 74, 0.15)')
+          .replace(/\{\{business_primary_color\}08\}/g, 'rgba(22, 163, 74, 0.08)')
+          .replace(/\{\{business_primary_color\}20\}/g, 'rgba(22, 163, 74, 0.20)')
+          .replace(/\{\{business_primary_color\}30\}/g, 'rgba(22, 163, 74, 0.30)')
+          .replace(/\{\{business_primary_color\}40\}/g, 'rgba(22, 163, 74, 0.40)')
+          .replace(/\{\{business_primary_color\}dd\}/g, '#16a34add')
+          .replace(/\{\{business_primary_color\}d9\}/g, '#16a34ad9')
+          .replace(/\{\{business_primary_color\}e6\}/g, '#16a34ae6')
+          .replace(/\{\{business_primary_color\}\}/g, businessData.theme_color)
+          .replace(/\{\{business_name\}\}/g, businessData.name)
+          .replace(/\{\{business_whatsapp\}\}/g, businessData.phone || '')
+          .replace(/\{\{business_address\}\}/g, businessData.address || '')
+          .replace(/\{\{plan_name\}\}/g, user.plan_name || 'Plano')
+          .replace(/\{\{days_left\}\}/g, expired ? '0' : (daysRemaining?.toString() || '0'))
+          .replace(/\{\{upgrade_link\}\}/g, checkoutLink)
+          .replace(/\{\{payment_link\}\}/g, checkoutLink);
+      };
+
+      const subject = replaceTrialTemplate(template.subject);
+      const body = replaceTrialTemplate(template.body);
+
+      // Enviar email
+      await sendEmail({
+        to: user.email,
+        subject: subject,
+        body: body,
+      });
+
+      toast.success(`Email de expiração de teste enviado com sucesso para ${user.email}!`, { id: loadingToast });
+    } catch (error: any) {
+      console.error('Erro ao enviar email de expiração de teste:', error);
+      toast.error(`Erro ao enviar email: ${error.message}`);
+    }
+  };
+
   const getRoleBadge = (role: UserProfile['role']) => {
     switch (role) {
       case 'Admin':
@@ -411,8 +578,34 @@ const AdminUsersPage: React.FC = () => {
                       <TableCell>{format(new Date(user.created_at), 'dd/MM/yyyy')}</TableCell>
                       <TableCell className="text-right space-x-2">
                         {user.subscription_status === 'pending_payment' && (
-                            <Button variant="default" size="sm" onClick={() => handleSendPaymentReminder(user)} title={T('Enviar Lembrete', 'Send Reminder')}>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={() => handleSendPaymentReminder(user)} 
+                              title={T('Enviar Lembrete de Pagamento', 'Send Payment Reminder')}
+                            >
                                 {T('Lembrete', 'Reminder')}
+                            </Button>
+                        )}
+                        {user.subscription_status === 'trial' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleSendTrialExpirationEmail(user)}
+                              title={
+                                isTrialExpired(user) 
+                                  ? T('Enviar Email: Teste Expirado', 'Send Email: Trial Expired')
+                                  : getTrialDaysRemaining(user) !== null
+                                    ? T(`Enviar Email: ${getTrialDaysRemaining(user)} dias restantes`, `Send Email: ${getTrialDaysRemaining(user)} days remaining`)
+                                    : T('Enviar Email de Expiração', 'Send Expiration Email')
+                              }
+                            >
+                                {isTrialExpired(user) 
+                                  ? T('Teste Expirado', 'Trial Expired')
+                                  : getTrialDaysRemaining(user) !== null
+                                    ? `${getTrialDaysRemaining(user)}d`
+                                    : T('Teste', 'Trial')
+                                }
                             </Button>
                         )}
                         <Button variant="outline" size="icon" title="Editar">

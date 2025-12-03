@@ -1,37 +1,89 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY'); // Assumindo que a chave Resend será configurada
-// Usando o email fixo fornecido pelo usuário
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const RESEND_FROM_EMAIL = 'agencodes@mozcodes.space'; 
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
-  // 1. Autenticação (Opcional, mas recomendado para funções sensíveis)
-  // Neste caso, vamos confiar que apenas o servidor Supabase ou o cliente autenticado
-  // com a chave anon está chamando, mas para produção, a verificação JWT seria ideal.
-
   try {
-    const { to, subject, body } = await req.json();
+    // Validar chave da API do Resend
+    if (!RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY não configurada');
+      return new Response(JSON.stringify({ 
+        error: 'RESEND_API_KEY not configured. Please configure the Resend API key in Supabase Edge Function secrets.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    if (!to || !subject || !body) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: to, subject, body' }), {
+    // Parse do body
+    let requestData;
+    try {
+      const bodyText = await req.text();
+      if (!bodyText || bodyText.trim() === '') {
+        return new Response(JSON.stringify({ 
+          error: 'Request body is empty' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      requestData = JSON.parse(bodyText);
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear JSON:', parseError);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON in request body' 
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (!RESEND_API_KEY) {
-        throw new Error("RESEND_API_KEY not configured.");
+    const { to, subject, body } = requestData;
+
+    // Validar campos obrigatórios
+    if (!to || !subject || !body) {
+      const missingFields = [];
+      if (!to) missingFields.push('to');
+      if (!subject) missingFields.push('subject');
+      if (!body) missingFields.push('body');
+      
+      return new Response(JSON.stringify({ 
+        error: `Missing required fields: ${missingFields.join(', ')}` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(to)) {
+      return new Response(JSON.stringify({ 
+        error: `Invalid email format: ${to}` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('📧 Enviando email:', { to, subject, bodyLength: body.length });
+
+    // Enviar email via Resend API
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -47,21 +99,45 @@ serve(async (req) => {
     });
 
     if (!resendResponse.ok) {
-      const errorData = await resendResponse.json();
-      console.error('Resend API Error:', errorData);
-      throw new Error(`Resend failed: ${resendResponse.statusText}`);
+      let errorData;
+      try {
+        errorData = await resendResponse.json();
+      } catch {
+        errorData = { message: resendResponse.statusText };
+      }
+      
+      console.error('❌ Resend API Error:', {
+        status: resendResponse.status,
+        statusText: resendResponse.statusText,
+        error: errorData
+      });
+      
+      return new Response(JSON.stringify({ 
+        error: `Resend API failed: ${errorData.message || resendResponse.statusText}`,
+        details: errorData
+      }), {
+        status: resendResponse.status || 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const data = await resendResponse.json();
+    console.log('✅ Email enviado com sucesso:', data);
 
-    return new Response(JSON.stringify({ message: 'Email sent successfully', data }), {
+    return new Response(JSON.stringify({ 
+      message: 'Email sent successfully', 
+      data 
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Function Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('❌ Function Error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Internal server error',
+      stack: error.stack
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

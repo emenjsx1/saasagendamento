@@ -9,7 +9,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Edit, Trash2, Users, Phone, Mail, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2, Plus, Edit, Trash2, Users, Phone, Mail, CheckCircle, XCircle, AlertCircle, MoreVertical } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -244,29 +245,42 @@ const EmployeesPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 pb-12 max-w-6xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 pb-12 max-w-6xl mx-auto">
       {/* Header */}
       <Card className="rounded-3xl border border-gray-200 shadow-xl">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <div>
-                <CardTitle className="text-2xl font-bold">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-xl sm:text-2xl font-bold">
                   {T('Funcionários / Atendentes', 'Employees / Staff')}
                 </CardTitle>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
                   {T('Gerencie os funcionários que atendem os clientes', 'Manage employees who serve customers')}
                 </p>
               </div>
             </div>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog open={isModalOpen} onOpenChange={(open) => {
+              setIsModalOpen(open);
+              if (!open) {
+                setEditingEmployee(null);
+                form.reset();
+              }
+            }}>
               <DialogTrigger asChild>
-                <Button onClick={handleCreateClick} className="rounded-2xl">
+                <Button 
+                  onClick={() => {
+                    setEditingEmployee(null);
+                    setIsModalOpen(true);
+                  }}
+                  className="rounded-2xl w-full sm:w-auto"
+                >
                   <Plus className="h-4 w-4 mr-2" />
-                  {T('Adicionar Funcionário', 'Add Employee')}
+                  <span className="hidden sm:inline">{T('Adicionar Funcionário', 'Add Employee')}</span>
+                  <span className="sm:hidden">{T('Adicionar', 'Add')}</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -348,7 +362,7 @@ const EmployeesPage: React.FC = () => {
 
       {/* Lista de Funcionários */}
       <Card className="rounded-3xl border border-gray-200 shadow-xl">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           {employees.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -361,92 +375,178 @@ const EmployeesPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{T('Nome', 'Name')}</TableHead>
-                  <TableHead>{T('Telefone', 'Phone')}</TableHead>
-                  <TableHead>{T('Email', 'Email')}</TableHead>
-                  <TableHead>{T('Status', 'Status')}</TableHead>
-                  <TableHead className="text-right">{T('Ações', 'Actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {employees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>
-                      {employee.phone ? (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          {employee.phone}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {employee.email ? (
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-gray-400" />
-                          {employee.email}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={employee.is_active ? "default" : "secondary"}>
-                        {employee.is_active ? (
-                          <>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            {T('Ativo', 'Active')}
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-3 w-3 mr-1" />
-                            {T('Inativo', 'Inactive')}
-                          </>
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleActive(employee)}
-                          disabled={isSubmitting}
-                          title={employee.is_active ? T('Desativar', 'Deactivate') : T('Ativar', 'Activate')}
-                        >
-                          {employee.is_active ? (
-                            <XCircle className="h-4 w-4" />
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{T('Nome', 'Name')}</TableHead>
+                      <TableHead>{T('Telefone', 'Phone')}</TableHead>
+                      <TableHead>{T('Email', 'Email')}</TableHead>
+                      <TableHead>{T('Status', 'Status')}</TableHead>
+                      <TableHead className="text-right">{T('Ações', 'Actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell className="font-medium">{employee.name}</TableCell>
+                        <TableCell>
+                          {employee.phone ? (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-gray-400" />
+                              {employee.phone}
+                            </div>
                           ) : (
-                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-gray-400">-</span>
                           )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(employee)}
-                          title={T('Editar', 'Edit')}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(employee)}
-                          title={T('Excluir', 'Delete')}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        </TableCell>
+                        <TableCell>
+                          {employee.email ? (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-gray-400" />
+                              <span className="truncate max-w-[200px]">{employee.email}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={employee.is_active ? "default" : "secondary"}>
+                            {employee.is_active ? (
+                              <>
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                {T('Ativo', 'Active')}
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="h-3 w-3 mr-1" />
+                                {T('Inativo', 'Inactive')}
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleActive(employee)}
+                              disabled={isSubmitting}
+                              title={employee.is_active ? T('Desativar', 'Deactivate') : T('Ativar', 'Activate')}
+                            >
+                              {employee.is_active ? (
+                                <XCircle className="h-4 w-4" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClick(employee)}
+                              title={T('Editar', 'Edit')}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteClick(employee)}
+                              title={T('Excluir', 'Delete')}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {employees.map((employee) => (
+                  <Card key={employee.id} className="border border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-base truncate">{employee.name}</h3>
+                            <Badge variant={employee.is_active ? "default" : "secondary"} className="flex-shrink-0">
+                              {employee.is_active ? (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  {T('Ativo', 'Active')}
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  {T('Inativo', 'Inactive')}
+                                </>
+                              )}
+                            </Badge>
+                          </div>
+                          
+                          {employee.phone && (
+                            <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                              <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">{employee.phone}</span>
+                            </div>
+                          )}
+                          
+                          {employee.email && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">{employee.email}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleToggleActive(employee)}
+                              disabled={isSubmitting}
+                            >
+                              {employee.is_active ? (
+                                <>
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  {T('Desativar', 'Deactivate')}
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  {T('Ativar', 'Activate')}
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditClick(employee)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              {T('Editar', 'Edit')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(employee)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {T('Excluir', 'Delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

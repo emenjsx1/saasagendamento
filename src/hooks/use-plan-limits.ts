@@ -71,7 +71,7 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
         // Buscar pagamento mais recente (payments não tem plan_name, então só buscamos status)
         const { data: payments } = await supabase
           .from('payments')
-          .select('expires_at, status')
+          .select('status, payment_date')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -87,13 +87,8 @@ export const usePlanLimits = (): UsePlanLimitsResult => {
           .maybeSingle();
 
         // Verificar plano ativo (usar subscriptions para plan_name, payments só para status)
-        if (payments && payments.status === 'paid') {
-          // Verificar se expirou
-          if (payments.expires_at) {
-            const expiresAt = parseISO(payments.expires_at);
-            planExpired = isBefore(expiresAt, new Date());
-          }
-        }
+        // Nota: A verificação de expiração é feita usando trial_ends_at da tabela subscriptions
+        // A tabela payments não possui coluna expires_at
         
         // Usar subscriptions para determinar o plano
         if (subscriptions && subscriptions.status === 'active') {
