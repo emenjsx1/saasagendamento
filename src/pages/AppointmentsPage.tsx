@@ -448,36 +448,60 @@ const AppointmentsPage: React.FC = () => {
   };
 
   const filteredAppointments = useMemo(() => {
+    console.log('🔍 Filtrando agendamentos:', {
+      total: appointments.length,
+      filterDate: filterDate?.toISOString(),
+      isToday: filterDate ? isToday(filterDate) : false
+    });
+    
     if (!filterDate) return appointments;
     
     const isSelectedToday = isToday(filterDate);
     const now = new Date();
 
-    return appointments.filter(app => {
+    const filtered = appointments.filter(app => {
       // Se não for hoje, mostrar todos
       if (!isSelectedToday) return true;
       
       // IMPORTANTE: Agendamentos pendentes devem SEMPRE ser mostrados,
       // mesmo que o horário já tenha passado
       if (app.status === 'pending') {
+        console.log('✅ Pendente mantido:', app.client_name, app.start_time);
         return true;
       }
       
       // Para outros status (confirmed, completed, etc), 
       // mostrar apenas se o horário ainda não passou
       const startTime = parseISO(app.start_time);
-      return startTime >= now;
+      const shouldShow = startTime >= now;
+      if (!shouldShow) {
+        console.log('⏰ Agendamento removido (horário passou):', app.client_name, app.status, app.start_time);
+      }
+      return shouldShow;
     });
+    
+    console.log('✅ Agendamentos após filtro:', filtered.length, 'de', appointments.length);
+    return filtered;
   }, [appointments, filterDate]);
 
   // Agrupar os horários que possuem agendamentos
   // Nota: Agendamentos pendentes são sempre mostrados, mesmo que o horário já tenha passado
   const hourlySchedule = useMemo(() => {
+    console.log('🕐 Criando hourlySchedule com', filteredAppointments.length, 'agendamentos filtrados');
+    
     const appointmentsByHour = new Map<string, Appointment[]>();
 
     filteredAppointments.forEach(app => {
       const startTime = parseISO(app.start_time);
       const hourKey = format(startTime, 'HH:00');
+      
+      console.log('📅 Agendamento:', {
+        id: app.id,
+        client: app.client_name,
+        status: app.status,
+        start_time: app.start_time,
+        hourKey: hourKey
+      });
 
       if (!appointmentsByHour.has(hourKey)) {
         appointmentsByHour.set(hourKey, []);
@@ -486,9 +510,12 @@ const AppointmentsPage: React.FC = () => {
       appointmentsByHour.get(hourKey)?.push(app);
     });
 
-    return Array.from(appointmentsByHour.entries())
+    const result = Array.from(appointmentsByHour.entries())
       .sort(([hourA], [hourB]) => (hourA > hourB ? 1 : -1))
       .map(([hour, apps]) => ({ hour, appointments: apps }));
+    
+    console.log('✅ hourlySchedule criado com', result.length, 'horários');
+    return result;
   }, [filteredAppointments]);
 
   if (isScheduleLoading || isLoadingAppointments || isTemplatesLoading || isBusinessDataLoading) {
@@ -629,9 +656,16 @@ const AppointmentsPage: React.FC = () => {
             <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
               {hourlySchedule.length === 0 ? (
                 <div className="p-6 text-center text-gray-500 text-sm">
-                  {isToday(filterDate ?? new Date())
-                    ? T('Nenhum horário restante para hoje.', 'No remaining time slots for today.')
-                    : T('Nenhum agendamento para este dia.', 'No appointments for this day.')}
+                  {filteredAppointments.length === 0 
+                    ? (isToday(filterDate ?? new Date())
+                        ? T('Nenhum agendamento pendente para hoje.', 'No pending appointments for today.')
+                        : T('Nenhum agendamento para este dia.', 'No appointments for this day.'))
+                    : T('Nenhum agendamento encontrado com os filtros selecionados.', 'No appointments found with selected filters.')}
+                  {filteredAppointments.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {T('Total de agendamentos filtrados:', 'Total filtered appointments:')} {filteredAppointments.length}
+                    </p>
+                  )}
                 </div>
               ) : (
                 hourlySchedule.map(({ hour, appointments: hourlyApps }) => (
