@@ -454,13 +454,24 @@ const AppointmentsPage: React.FC = () => {
     const now = new Date();
 
     return appointments.filter(app => {
+      // Se não for hoje, mostrar todos
       if (!isSelectedToday) return true;
+      
+      // IMPORTANTE: Agendamentos pendentes devem SEMPRE ser mostrados,
+      // mesmo que o horário já tenha passado
+      if (app.status === 'pending') {
+        return true;
+      }
+      
+      // Para outros status (confirmed, completed, etc), 
+      // mostrar apenas se o horário ainda não passou
       const startTime = parseISO(app.start_time);
       return startTime >= now;
     });
   }, [appointments, filterDate]);
 
-  // Agrupar somente os horários que realmente possuem agendamentos (e que não estão no passado para o dia atual)
+  // Agrupar os horários que possuem agendamentos
+  // Nota: Agendamentos pendentes são sempre mostrados, mesmo que o horário já tenha passado
   const hourlySchedule = useMemo(() => {
     const appointmentsByHour = new Map<string, Appointment[]>();
 
