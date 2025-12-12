@@ -242,24 +242,24 @@ const AdminTicketsPage: React.FC = () => {
   const getStatusBadge = (status: Ticket['status']) => {
     switch (status) {
       case 'open':
-        return <Badge className="bg-blue-100 text-blue-700 border-blue-300"><AlertCircle className="h-3 w-3 mr-1" /> {T('Aberto', 'Open')}</Badge>;
+        return <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"><AlertCircle className="h-3 w-3 mr-1" /> {T('Aberto', 'Open')}</Badge>;
       case 'in_progress':
-        return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300"><Clock className="h-3 w-3 mr-1" /> {T('Em Andamento', 'In Progress')}</Badge>;
+        return <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"><Clock className="h-3 w-3 mr-1" /> {T('Em Andamento', 'In Progress')}</Badge>;
       case 'resolved':
-        return <Badge className="bg-green-100 text-green-700 border-green-300"><CheckCircle className="h-3 w-3 mr-1" /> {T('Resolvido', 'Resolved')}</Badge>;
+        return <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"><CheckCircle className="h-3 w-3 mr-1" /> {T('Resolvido', 'Resolved')}</Badge>;
       case 'closed':
-        return <Badge className="bg-gray-100 text-gray-700 border-gray-300"><XCircle className="h-3 w-3 mr-1" /> {T('Fechado', 'Closed')}</Badge>;
+        return <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"><XCircle className="h-3 w-3 mr-1" /> {T('Fechado', 'Closed')}</Badge>;
     }
   };
 
   const getPriorityBadge = (priority: Ticket['priority']) => {
     switch (priority) {
       case 'low':
-        return <Badge variant="outline" className="text-gray-600">{T('Baixa', 'Low')}</Badge>;
+        return <Badge variant="outline" className="text-gray-600 dark:text-gray-400">{T('Baixa', 'Low')}</Badge>;
       case 'medium':
-        return <Badge variant="outline" className="text-yellow-600">{T('Média', 'Medium')}</Badge>;
+        return <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400">{T('Média', 'Medium')}</Badge>;
       case 'high':
-        return <Badge variant="outline" className="text-red-600">{T('Alta', 'High')}</Badge>;
+        return <Badge variant="outline" className="text-red-600 dark:text-red-400">{T('Alta', 'High')}</Badge>;
     }
   };
 
@@ -272,13 +272,13 @@ const AdminTicketsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-red-600 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-red-600 dark:text-red-400 flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
               <MessageSquare className="h-6 w-6 text-white" />
             </div>
             {T('Gerenciamento de Tickets', 'Tickets Management')}
           </h1>
-          <p className="text-gray-600 mt-2">{T('Visualize e responda todos os tickets de suporte', 'View and respond to all support tickets')}</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">{T('Visualize e responda todos os tickets de suporte', 'View and respond to all support tickets')}</p>
         </div>
       </div>
 
@@ -352,8 +352,8 @@ const AdminTicketsPage: React.FC = () => {
                         className={cn(
                           "p-4 border rounded-lg transition-all hover:shadow-md",
                           selectedTicket?.id === ticket.id 
-                            ? "border-red-500 bg-red-50 shadow-md" 
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-900/20 shadow-md" 
+                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                         )}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -379,7 +379,7 @@ const AdminTicketsPage: React.FC = () => {
                           {getStatusBadge(ticket.status)}
                           {getPriorityBadge(ticket.priority)}
                         </div>
-                        <div className="text-xs text-gray-500 space-y-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                           <p>{ticket.user_name || T('Usuário', 'User')}</p>
                           <p>{format(new Date(ticket.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
                         </div>
@@ -403,7 +403,7 @@ const AdminTicketsPage: React.FC = () => {
                     <div className="flex items-center gap-3 flex-wrap">
                       {getStatusBadge(selectedTicket.status)}
                       {getPriorityBadge(selectedTicket.priority)}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         {T('Por', 'By')}: {selectedTicket.user_name} ({selectedTicket.user_email})
                       </span>
                     </div>
@@ -427,19 +427,19 @@ const AdminTicketsPage: React.FC = () => {
 
               <CardContent className="flex-1 flex flex-col p-0">
                 {/* Descrição Inicial */}
-                <div className="p-4 border-b bg-gray-50">
+                <div className="p-4 border-b bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-blue-600" />
+                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">{selectedTicket.user_name}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="font-semibold text-sm dark:text-gray-200">{selectedTicket.user_name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {format(new Date(selectedTicket.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTicket.description}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedTicket.description}</p>
                     </div>
                   </div>
                 </div>
@@ -458,13 +458,13 @@ const AdminTicketsPage: React.FC = () => {
                         <div className={cn(
                           "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0",
                           message.sender_type === 'admin' 
-                            ? "bg-red-100" 
-                            : "bg-blue-100"
+                            ? "bg-red-100 dark:bg-red-900/30" 
+                            : "bg-blue-100 dark:bg-blue-900/30"
                         )}>
                           {message.sender_type === 'admin' ? (
-                            <Shield className="h-4 w-4 text-red-600" />
+                            <Shield className="h-4 w-4 text-red-600 dark:text-red-400" />
                           ) : (
-                            <User className="h-4 w-4 text-blue-600" />
+                            <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           )}
                         </div>
                         <div className={cn(
@@ -474,12 +474,12 @@ const AdminTicketsPage: React.FC = () => {
                           <div className={cn(
                             "inline-block p-3 rounded-lg",
                             message.sender_type === 'admin'
-                              ? "bg-red-100 text-red-900"
-                              : "bg-blue-100 text-blue-900"
+                              ? "bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200"
+                              : "bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200"
                           )}>
                             <p className="text-sm whitespace-pre-wrap">{message.message}</p>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {message.sender_name} • {format(new Date(message.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                           </p>
                         </div>
@@ -489,7 +489,7 @@ const AdminTicketsPage: React.FC = () => {
                 </ScrollArea>
 
                 {/* Input de Resposta */}
-                <div className="p-4 border-t bg-gray-50">
+                <div className="p-4 border-t bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex gap-2">
                     <Textarea
                       value={newMessage}
@@ -515,7 +515,7 @@ const AdminTicketsPage: React.FC = () => {
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     {T('Pressione Ctrl+Enter para enviar', 'Press Ctrl+Enter to send')}
                   </p>
                 </div>

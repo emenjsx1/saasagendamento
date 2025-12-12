@@ -15,7 +15,7 @@ export function ClientBottomNavigator() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg md:hidden">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -29,22 +29,22 @@ export function ClientBottomNavigator() {
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full transition-colors",
                 isActive
-                  ? "text-black"
-                  : "text-gray-500"
+                  ? "text-black dark:text-white"
+                  : "text-gray-500 dark:text-gray-400"
               )}
             >
               <Icon className={cn(
                 "h-5 w-5 mb-1",
-                isActive && "text-black"
+                isActive && "text-black dark:text-white"
               )} />
               <span className={cn(
                 "text-xs font-medium",
-                isActive ? "text-black" : "text-gray-500"
+                isActive ? "text-black dark:text-white" : "text-gray-500 dark:text-gray-400"
               )}>
                 {item.name}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />
               )}
             </Link>
           );

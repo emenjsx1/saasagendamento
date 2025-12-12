@@ -53,6 +53,7 @@ const BusinessSchema = z.object({
   city: z.string().optional(),
   is_public: z.boolean().optional(),
   auto_assign_employees: z.boolean().optional(),
+  require_payment_on_booking: z.boolean().optional(),
 });
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
@@ -102,6 +103,7 @@ const RegisterBusinessPage = () => {
       city: "",
       is_public: true,
       auto_assign_employees: false,
+      require_payment_on_booking: false,
     },
   });
 
@@ -116,30 +118,34 @@ const RegisterBusinessPage = () => {
         .eq('owner_id', user.id)
         .single();
       
-      // Tentar buscar auto_assign_employees separadamente (pode não existir se migration não foi executada)
+      // Tentar buscar auto_assign_employees e require_payment_on_booking separadamente (pode não existir se migration não foi executada)
       let autoAssignEmployees = false;
+      let requirePaymentOnBooking = false;
       if (data) {
         try {
           const { data: businessData, error: selectError } = await supabase
             .from('businesses')
-            .select('auto_assign_employees')
+            .select('auto_assign_employees, require_payment_on_booking')
             .eq('id', data.id)
             .single();
           
           // Se der erro 400 ou 42703, a coluna não existe
           if (selectError && (selectError.code === '42703' || selectError.message?.includes('does not exist') || selectError.message?.includes('column') || selectError.status === 400)) {
             // Coluna não existe ainda, usar default
-            console.warn('Coluna auto_assign_employees não encontrada. Execute a migration add_auto_assign_to_businesses.sql');
+            console.warn('Colunas auto_assign_employees ou require_payment_on_booking não encontradas. Execute as migrations necessárias.');
             autoAssignEmployees = false;
+            requirePaymentOnBooking = false;
           } else if (businessData) {
             autoAssignEmployees = businessData.auto_assign_employees || false;
+            requirePaymentOnBooking = businessData.require_payment_on_booking || false;
           }
         } catch (e: any) {
           // Coluna não existe ainda, usar default
           if (e.code !== '42703' && !e.message?.includes('does not exist') && !e.message?.includes('column') && e.status !== 400) {
-            console.warn('Erro ao buscar auto_assign_employees:', e);
+            console.warn('Erro ao buscar configurações do negócio:', e);
           }
           autoAssignEmployees = false;
+          requirePaymentOnBooking = false;
         }
       }
 
@@ -168,6 +174,7 @@ const RegisterBusinessPage = () => {
           city: data.city || "",
           is_public: data.is_public !== undefined ? data.is_public : true,
           auto_assign_employees: autoAssignEmployees,
+          require_payment_on_booking: requirePaymentOnBooking,
         });
         setSelectedProvince(data.province || "");
       }
@@ -247,7 +254,7 @@ const RegisterBusinessPage = () => {
       // Caso contrário, manter o slug existente (finalSlug já tem o valor do formulário)
     }
 
-    const businessData = {
+    const businessData: any = {
       owner_id: user.id,
       name: values.name,
       description: values.description,
@@ -267,6 +274,11 @@ const RegisterBusinessPage = () => {
       is_public: values.is_public !== undefined ? values.is_public : true,
     };
 
+    // Adicionar auto_assign_employees e require_payment_on_booking sempre (mesmo que false)
+    // Isso garante que os valores sejam salvos corretamente
+    businessData.auto_assign_employees = values.auto_assign_employees ?? false;
+    businessData.require_payment_on_booking = values.require_payment_on_booking ?? false;
+
     let result;
     if (businessId) {
       // Atualizar dados básicos primeiro
@@ -285,53 +297,72 @@ const RegisterBusinessPage = () => {
         .single();
     }
 
-    setIsSubmitting(false);
-
     if (result.error) {
-      toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + result.error.message);
-      console.error(result.error);
-    } else {
-      const finalBusinessId = result.data.id;
-      setBusinessId(finalBusinessId);
-      form.setValue('slug', result.data.slug); // Atualiza o slug no formulário
+      setIsSubmitting(false);
       
-      // Tentar atualizar auto_assign_employees separadamente (pode não existir se migration não foi executada)
-      if (values.auto_assign_employees !== undefined) {
-        try {
-          const { error: updateError } = await supabase
+      // Verificar se o erro é porque as colunas não existem
+      if (result.error.code === '42703' || result.error.message?.includes('does not exist') || result.error.message?.includes('column')) {
+        // Se for erro de coluna não existente, tentar salvar sem esses campos
+        console.warn('⚠️ Colunas auto_assign_employees ou require_payment_on_booking não existem. Tentando salvar sem esses campos...');
+        
+        const businessDataWithoutNewFields = { ...businessData };
+        delete businessDataWithoutNewFields.auto_assign_employees;
+        delete businessDataWithoutNewFields.require_payment_on_booking;
+        
+        let retryResult;
+        if (businessId) {
+          retryResult = await supabase
             .from('businesses')
-            .update({ auto_assign_employees: values.auto_assign_employees })
-            .eq('id', finalBusinessId);
-          
-          if (updateError) {
-            // Coluna não existe - migration não foi executada (código 42703 ou 400)
-            if (updateError.code === '42703' || updateError.message?.includes('does not exist') || updateError.message?.includes('column') || updateError.status === 400) {
-              console.warn('⚠️ Coluna auto_assign_employees não existe. Execute a migration add_auto_assign_to_businesses.sql');
-              // Não mostrar toast para não incomodar o usuário - a funcionalidade ainda funciona sem isso
-            } else {
-              console.warn('Erro ao atualizar auto_assign_employees:', updateError);
-            }
-          }
-        } catch (err: any) {
-          // Ignorar erros de coluna não existente
-          if (err.code !== '42703' && !err.message?.includes('does not exist') && !err.message?.includes('column') && err.status !== 400) {
-            console.warn('Erro ao atualizar auto_assign_employees:', err);
-          }
+            .update(businessDataWithoutNewFields)
+            .eq('id', businessId)
+            .select('id, slug')
+            .single();
+        } else {
+          retryResult = await supabase
+            .from('businesses')
+            .insert(businessDataWithoutNewFields)
+            .select('id, slug')
+            .single();
         }
+        
+        if (retryResult.error) {
+          toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + retryResult.error.message);
+          console.error(retryResult.error);
+          setIsSubmitting(false);
+          return;
+        } else {
+          toast.warning(T("Negócio salvo, mas algumas configurações não foram aplicadas. Execute as migrations necessárias.", "Business saved, but some settings were not applied. Please run the necessary migrations."));
+          const finalBusinessId = retryResult.data.id;
+          setBusinessId(finalBusinessId);
+          form.setValue('slug', retryResult.data.slug);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        toast.error(T("Erro ao salvar o negócio: ", "Error saving business: ") + result.error.message);
+        console.error(result.error);
+        setIsSubmitting(false);
+        return;
       }
-      
-      // Atualizar tabela consolidada (se existir)
-      // Os triggers do banco também vão atualizar automaticamente, mas isso garante atualização imediata
-      try {
-        await refreshConsolidatedUserData(user.id);
-        console.log('✅ Tabela consolidada atualizada após criar/atualizar negócio');
-      } catch (error) {
-        console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
-      }
-      
-      // Enviar email de "Negócio Configurado" se for novo negócio
-      const isNewBusiness = !businessId;
-      if (isNewBusiness && templates?.business_configured && user) {
+    }
+
+    // Sucesso - continuar com o fluxo
+    const finalBusinessId = result.data.id;
+    setBusinessId(finalBusinessId);
+    form.setValue('slug', result.data.slug); // Atualiza o slug no formulário
+    
+    // Atualizar tabela consolidada (se existir)
+    // Os triggers do banco também vão atualizar automaticamente, mas isso garante atualização imediata
+    try {
+      await refreshConsolidatedUserData(user.id);
+      console.log('✅ Tabela consolidada atualizada após criar/atualizar negócio');
+    } catch (error) {
+      console.warn('⚠️ Erro ao atualizar tabela consolidada (não crítico):', error);
+    }
+    
+    // Enviar email de "Negócio Configurado" se for novo negócio
+    const isNewBusiness = !businessId;
+    if (isNewBusiness && templates?.business_configured && user) {
         try {
           // Buscar dados do perfil do dono
           const { data: profileData } = await supabase
@@ -389,13 +420,14 @@ const RegisterBusinessPage = () => {
             
             console.log('📧 Email de negócio configurado enviado para:', ownerEmail);
           }
-        } catch (emailError) {
-          console.error('Erro ao enviar email de negócio configurado:', emailError);
-        }
-      }
-      
-      toast.success(T("Dados do negócio salvos com sucesso!", "Business data saved successfully!"));
+    } catch (emailError) {
+      console.error('Erro ao enviar email de negócio configurado:', emailError);
     }
+    }
+    
+    // Mostrar mensagem de sucesso apenas após tudo ser salvo
+    toast.success(T("Dados do negócio salvos com sucesso!", "Business data saved successfully!"));
+    setIsSubmitting(false);
   };
 
   const ownerId = user?.id;
@@ -621,6 +653,29 @@ const RegisterBusinessPage = () => {
                       </FormLabel>
                       <p className="text-xs text-muted-foreground">
                         {T('Se ativado, os agendamentos serão distribuídos automaticamente entre os funcionários disponíveis. Se desativado, o cliente escolhe o funcionário.', 'If enabled, appointments will be automatically distributed among available employees. If disabled, the client chooses the employee.')}
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="require_payment_on_booking"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-semibold">
+                        {T('Requer Pagamento Durante o Agendamento', 'Require Payment During Booking')}
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        {T('Se ativado, o cliente deve pagar durante o agendamento (M-Pesa, e-Mola ou Cartão). Se o pagamento for bem-sucedido, o agendamento será confirmado automaticamente.', 'If enabled, the client must pay during booking (M-Pesa, e-Mola or Card). If payment is successful, the appointment will be automatically confirmed.')}
                       </p>
                     </div>
                   </FormItem>

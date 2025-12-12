@@ -288,6 +288,44 @@ const AppointmentsPage: React.FC = () => {
 
       console.log('Status atualizado no banco com sucesso');
 
+      // Criar interação no CRM quando status muda (não bloqueia se falhar)
+      try {
+        const { linkAppointmentToClient } = await import('@/utils/crm-helpers');
+        if (app.business_id) {
+          await linkAppointmentToClient(
+            app.id,
+            app.business_id,
+            {
+              name: app.client_name,
+              email: app.client_email || null,
+              phone: null,
+              whatsapp: app.client_whatsapp || null,
+            },
+            {
+              service_name: app.services?.name || 'Serviço',
+              start_time: app.start_time,
+              status: newStatus,
+            }
+          );
+          console.log('✅ Interação criada no CRM para mudança de status');
+        }
+      } catch (crmError: any) {
+        console.warn('⚠️ Erro ao criar interação no CRM (não crítico):', crmError);
+      }
+
+      // Se status mudou para confirmed, enviar webhooks dos lembretes criados
+      if (newStatus === 'confirmed') {
+        try {
+          // Aguardar um pouco para garantir que o trigger criou os lembretes
+          setTimeout(async () => {
+            const { sendWebhooksForAppointmentReminders } = await import('@/utils/send-reminder-webhooks');
+            await sendWebhooksForAppointmentReminders(app.id);
+          }, 1000);
+        } catch (webhookError: any) {
+          console.warn('⚠️ Erro ao enviar webhooks de lembretes (não crítico):', webhookError);
+        }
+      }
+
       // Atualizar estado local imediatamente
       if (filterStatus !== 'all' && filterStatus !== newStatus) {
         // Se o novo status não corresponde ao filtro, remover da lista
@@ -451,7 +489,8 @@ const AppointmentsPage: React.FC = () => {
     console.log('🔍 Filtrando agendamentos:', {
       total: appointments.length,
       filterDate: filterDate?.toISOString(),
-      isToday: filterDate ? isToday(filterDate) : false
+      isToday: filterDate ? isToday(filterDate) : false,
+      filterStatus
     });
     
     if (!filterDate) return appointments;
@@ -470,7 +509,19 @@ const AppointmentsPage: React.FC = () => {
         return true;
       }
       
-      // Para outros status (confirmed, completed, etc), 
+      // Se o filtro está em "confirmed" ou "completed", mostrar TODOS desse status,
+      // mesmo que o horário já tenha passado (o usuário quer ver todos os confirmados/completados)
+      if (filterStatus === 'confirmed' && app.status === 'confirmed') {
+        console.log('✅ Confirmado mantido (filtro ativo):', app.client_name, app.start_time);
+        return true;
+      }
+      
+      if (filterStatus === 'completed' && app.status === 'completed') {
+        console.log('✅ Concluído mantido (filtro ativo):', app.client_name, app.start_time);
+        return true;
+      }
+      
+      // Para outros casos (quando não está filtrando por status específico),
       // mostrar apenas se o horário ainda não passou
       const startTime = parseISO(app.start_time);
       const shouldShow = startTime >= now;
@@ -482,7 +533,7 @@ const AppointmentsPage: React.FC = () => {
     
     console.log('✅ Agendamentos após filtro:', filtered.length, 'de', appointments.length);
     return filtered;
-  }, [appointments, filterDate]);
+  }, [appointments, filterDate, filterStatus]);
 
   // Agrupar os horários que possuem agendamentos
   // Nota: Agendamentos pendentes são sempre mostrados, mesmo que o horário já tenha passado
@@ -570,19 +621,19 @@ const AppointmentsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Confirmados', 'Confirmed')}</p>
-            <p className="text-xl md:text-2xl font-bold mt-2">{appointments.filter(app => app.status === 'confirmed').length}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{allAppointments.filter(app => app.status === 'confirmed').length}</p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Clientes aguardando atendimento hoje', 'Clients waiting for service today')}</p>
           </div>
           <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Pendentes', 'Pending')}</p>
-            <p className="text-xl md:text-2xl font-bold mt-2">{appointments.filter(app => app.status === 'pending').length}</p>
+            <p className="text-xl md:text-2xl font-bold mt-2">{allAppointments.filter(app => app.status === 'pending').length}</p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">{T('Agendamentos aguardando ação', 'Appointments awaiting action')}</p>
           </div>
           <div className="bg-white/5 rounded-2xl border border-white/15 p-3">
             <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{T('Receita estimada', 'Estimated Revenue')}</p>
             <p className="text-xl md:text-2xl font-bold mt-2">
               {formatCurrency(
-                appointments.reduce((sum, app) => sum + (app.services?.price || 0), 0),
+                allAppointments.reduce((sum, app) => sum + (app.services?.price || 0), 0),
                 currentCurrency.key,
                 currentCurrency.locale
               )}
@@ -601,13 +652,13 @@ const AppointmentsPage: React.FC = () => {
                 <p className="text-sm text-gray-500 mt-1">{T('Configure a data e o status para focar no que importa agora.', 'Set date and status to focus on what matters now.')}</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 flex-shrink-0">
-                  <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 flex-shrink-0">
+                  <CalendarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <DateFilter date={filterDate} setDate={setFilterDate} />
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-2 py-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
-                    <Filter className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
+                    <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                     <ToggleGroup
                       type="single"
                       value={filterStatus}
@@ -623,7 +674,7 @@ const AppointmentsPage: React.FC = () => {
                         <ToggleGroupItem
                           key={item.value}
                           value={item.value as AppointmentStatus | 'all'}
-                          className="rounded-xl px-2 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap flex-shrink-0 data-[state=on]:bg-black data-[state=on]:text-white"
+                          className="rounded-xl px-2 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap flex-shrink-0 data-[state=on]:bg-black data-[state=on]:text-white dark:data-[state=on]:bg-white dark:data-[state=on]:text-black"
                         >
                           {item.label}
                         </ToggleGroupItem>
@@ -631,8 +682,8 @@ const AppointmentsPage: React.FC = () => {
                     </ToggleGroup>
                   </div>
                   {employees.length > 0 && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 w-full sm:w-auto">
-                      <User className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <div className="flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 w-full sm:w-auto">
+                      <User className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                       <Select value={filterEmployee} onValueChange={(value) => setFilterEmployee(value)}>
                         <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring-0">
                           <SelectValue placeholder={T('Todos os funcionários', 'All employees')} />
@@ -670,10 +721,10 @@ const AppointmentsPage: React.FC = () => {
               ) : (
                 hourlySchedule.map(({ hour, appointments: hourlyApps }) => (
                   <div key={hour} className="flex flex-col md:flex-row">
-                    <div className="md:w-24 flex-shrink-0 px-4 py-4 bg-gray-50 border-b md:border-r flex items-center justify-center">
-                      <span className="text-xl font-semibold text-gray-700">{hour}</span>
+                    <div className="md:w-24 flex-shrink-0 px-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-b md:border-r dark:border-gray-700 flex items-center justify-center">
+                      <span className="text-xl font-semibold text-gray-700 dark:text-gray-300">{hour}</span>
                     </div>
-                    <div className="flex-1 px-4 py-4 space-y-4 border-b min-h-[60px]">
+                    <div className="flex-1 px-4 py-4 space-y-4 border-b dark:border-gray-700 min-h-[60px]">
                       {hourlyApps.map((app) => {
                         const startTime = parseISO(app.start_time);
                         const endTime = parseISO(app.end_time);
@@ -683,7 +734,7 @@ const AppointmentsPage: React.FC = () => {
                           <div
                             key={app.id}
                             className={cn(
-                              'p-4 rounded-2xl border transition-all bg-white/70 backdrop-blur hover:shadow-lg flex flex-col gap-3',
+                              'p-4 rounded-2xl border transition-all bg-white/70 dark:bg-gray-800/70 backdrop-blur hover:shadow-lg flex flex-col gap-3',
                               app.status === 'confirmed' && 'border-black',
                               app.status === 'completed' && 'border-emerald-500',
                               app.status === 'pending' && 'border-yellow-500/60',
@@ -834,10 +885,10 @@ const AppointmentsPage: React.FC = () => {
                   onClick: () => setFilterStatus('all'),
                 },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-gray-200 p-4 bg-white flex items-center justify-between">
+                <div key={item.label} className="rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{item.label}</p>
-                    <p className="text-lg font-semibold text-gray-900">{item.value}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{item.label}</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
                   </div>
                   <Button variant="outline" size="sm" className="rounded-full" onClick={item.onClick}>
                     {item.action}

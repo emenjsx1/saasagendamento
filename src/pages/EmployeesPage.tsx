@@ -16,7 +16,9 @@ import { toast } from 'sonner';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBusiness } from '@/hooks/use-business';
 import { useEmployees, Employee } from '@/hooks/use-employees';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Link } from 'react-router-dom';
 
 // Esquema de validação para o formulário de funcionário
 const EmployeeSchema = z.object({
@@ -39,6 +41,8 @@ const EmployeesPage: React.FC = () => {
     updateEmployee, 
     deleteEmployee 
   } = useEmployees(business?.id || null);
+  
+  const { limits, isLoading: isLimitsLoading } = usePlanLimits();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -76,6 +80,17 @@ const EmployeesPage: React.FC = () => {
 
   // Abrir modal para criar novo funcionário
   const handleCreateClick = () => {
+    // Verificar limite antes de abrir modal
+    if (!limits.canCreateEmployee) {
+      toast.error(
+        T(
+          `Você atingiu o limite de ${limits.maxEmployees} funcionário(s) do seu plano ${limits.planName === 'standard' ? 'Profissional' : limits.planName === 'teams' ? 'Negócio' : limits.planName}. Atualize para adicionar mais funcionários.`,
+          `You have reached the limit of ${limits.maxEmployees} employee(s) for your ${limits.planName} plan. Upgrade to add more employees.`
+        ),
+        { duration: 6000 }
+      );
+      return;
+    }
     setEditingEmployee(null);
     setIsModalOpen(true);
   };
@@ -116,6 +131,19 @@ const EmployeesPage: React.FC = () => {
           handleCloseModal();
         }
       } else {
+        // Verificar limite de funcionários antes de criar
+        if (!limits.canCreateEmployee) {
+          toast.error(
+            T(
+              `Você atingiu o limite de ${limits.maxEmployees} funcionário(s) do seu plano. Atualize para adicionar mais funcionários.`,
+              `You have reached the limit of ${limits.maxEmployees} employee(s) for your plan. Upgrade to add more employees.`
+            ),
+            { duration: 5000 }
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
         // Criar novo funcionário
         const result = await createEmployee({
           name: values.name,

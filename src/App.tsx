@@ -21,7 +21,8 @@ import BookingPage from "./pages/BookingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
 import ServicesPage from "./pages/ServicesPage"; 
 import AppointmentsPage from "./pages/AppointmentsPage"; 
-import FinancePage from "./pages/FinancePage"; 
+import FinancePage from "./pages/FinancePage";
+import BalancePage from "./pages/BalancePage"; 
 import ReportsPage from "./pages/ReportsPage"; 
 import AboutPage from "./pages/AboutPage"; 
 import SupportPage from "./pages/SupportPage"; 
@@ -39,6 +40,7 @@ import AdminAppointmentsPage from "./pages/AdminAppointmentsPage"; // Nova
 import AdminReportsPage from "./pages/AdminReportsPage"; // Nova
 import AdminSettingsPage from "./pages/AdminSettingsPage"; // Nova
 import AdminPaymentsPage from "./pages/AdminPaymentsPage"; // Nova
+import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminTicketDetailsPage from "./pages/AdminTicketDetailsPage";
 import TicketsPage from "./pages/TicketsPage";
@@ -54,6 +56,11 @@ import ClientHistoryPage from "./pages/ClientHistoryPage";
 import ClientLandingPage from "./pages/ClientLandingPage";
 import ClientProfilePage from "./pages/ClientProfilePage";
 import ClientFinancePage from "./pages/ClientFinancePage";
+import ClientsPage from "./pages/ClientsPage";
+import ClientDetailPage from "./pages/ClientDetailPage";
+import NewClientPage from "./pages/NewClientPage";
+import RemindersPage from "./pages/RemindersPage";
+import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +81,7 @@ const App = () => (
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/choose-plan" element={<ChoosePlanPage />} />
             <Route path="/checkout/:planSlug" element={<CheckoutPage />} />
+            <Route path="/payment-callback" element={<PaymentCallbackPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/trial-started" element={<TrialStartedPage />} /> 
             <Route path="/book/:businessId" element={<BookingPage />} />
@@ -90,13 +98,18 @@ const App = () => (
                 <Route path="/dashboard/services" element={<ServicesPage />} />
                 <Route path="/dashboard/employees" element={<EmployeesPage />} />
                 <Route path="/dashboard/agenda" element={<AppointmentsPage />} />
-                <Route path="/dashboard/finance" element={<FinancePage />} /> 
+                <Route path="/dashboard/finance" element={<FinancePage />} />
+                <Route path="/dashboard/balance" element={<BalancePage />} /> 
                 <Route path="/dashboard/reports" element={<ReportsPage />} /> 
                 <Route path="/dashboard/profile" element={<ProfilePage />} />
                 <Route path="/dashboard/qr-code" element={<QRCodePage />} />
                 <Route path="/dashboard/tickets" element={<TicketsPage />} />
                 <Route path="/dashboard/tickets/create" element={<CreateTicketPage />} />
                 <Route path="/dashboard/tickets/:ticketId" element={<TicketDetailPage />} />
+                <Route path="/dashboard/clients" element={<ClientsPage />} />
+                <Route path="/dashboard/clients/new" element={<NewClientPage />} />
+                <Route path="/dashboard/clients/:id" element={<ClientDetailPage />} />
+                <Route path="/dashboard/reminders" element={<RemindersPage />} />
               </Route>
             </Route>
             
@@ -119,6 +132,7 @@ const App = () => (
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
+                <Route path="withdrawals" element={<AdminWithdrawalsPage />} />
                 <Route path="tickets" element={<AdminTicketsPage />} />
                 <Route path="tickets/:ticketId" element={<AdminTicketDetailsPage />} />
               </Route>

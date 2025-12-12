@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, Briefcase, Users, Calendar, BarChart3, Settings, ArrowLeft, DollarSign, Shield, Menu, X, MessageSquare } from 'lucide-react';
+import { Home, Briefcase, Users, Calendar, BarChart3, Settings, ArrowLeft, DollarSign, Shield, Menu, X, MessageSquare, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -15,6 +15,7 @@ const AdminSidebar: React.FC<{ isMobile?: boolean }> = ({ isMobile = false }) =>
     { name: 'Usuários', href: '/admin/users', icon: Users },
     { name: 'Agendamentos', href: '/admin/appointments', icon: Calendar },
     { name: 'Pagamentos', href: '/admin/payments', icon: DollarSign },
+    { name: 'Saques', href: '/admin/withdrawals', icon: Wallet },
     { name: 'Tickets', href: '/admin/tickets', icon: MessageSquare },
     { name: 'Relatórios', href: '/admin/reports', icon: BarChart3 },
     { name: 'Configurações', href: '/admin/settings', icon: Settings },

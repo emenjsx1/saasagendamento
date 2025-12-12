@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode, X, Users } from 'lucide-react';
+import { LogOut, Home, Calendar, Briefcase, DollarSign, BarChart3, User, Shield, MessageSquare, Settings, Plus, Menu, QrCode, X, Users, ContactRound, Bell, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/session-context';
 import { toast } from 'sonner';
@@ -35,9 +35,12 @@ const Sidebar: React.FC = () => {
   const navItems = [
     { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
     { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
+    { name: T('Clientes', 'Clients'), href: '/dashboard/clients', icon: ContactRound },
+    { name: T('Lembretes', 'Reminders'), href: '/dashboard/reminders', icon: Bell },
     { name: T('Serviços', 'Services'), href: '/dashboard/services', icon: Briefcase },
     { name: T('Funcionários', 'Employees'), href: '/dashboard/employees', icon: Users },
     { name: T('Financeiro', 'Finance'), href: '/dashboard/finance', icon: DollarSign },
+    { name: T('Saldo', 'Balance'), href: '/dashboard/balance', icon: Wallet },
     { name: T('Relatórios', 'Reports'), href: '/dashboard/reports', icon: BarChart3 },
     { name: T('Divulgação & QR Code', 'Promotion & QR Code'), href: '/dashboard/qr-code', icon: QrCode },
     { name: T('Configurações do Negócio', 'Business Settings'), href: '/register-business', icon: Settings },
@@ -144,7 +147,7 @@ const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer com Botão Criar Ticket e Logout */}
-      <div className="p-4 border-t border-gray-200 bg-white space-y-3 flex-shrink-0">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-3 flex-shrink-0">
         {/* Botão Destacado: Criar Ticket */}
         <Button
           onClick={() => navigate('/dashboard/tickets/create')}
@@ -156,13 +159,13 @@ const Sidebar: React.FC = () => {
         </Button>
 
         {/* Info do Usuário e Logout */}
-        <div className="pt-2 border-t border-gray-200">
-          <p className="text-xs text-gray-500 mb-2 truncate px-1">
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate px-1">
             {T('Logado como', 'Logged in as')}: {user?.email}
           </p>
           <Button 
             variant="ghost" 
-            className="w-full justify-start text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            className="w-full justify-start text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4 mr-2" />
@@ -218,9 +221,12 @@ const MobileSidebar: React.FC<{
   const navItems = [
     { name: T('Dashboard', 'Dashboard'), href: '/dashboard', icon: Home },
     { name: T('Agenda', 'Agenda'), href: '/dashboard/agenda', icon: Calendar },
+    { name: T('Clientes', 'Clients'), href: '/dashboard/clients', icon: ContactRound },
+    { name: T('Lembretes', 'Reminders'), href: '/dashboard/reminders', icon: Bell },
     { name: T('Serviços', 'Services'), href: '/dashboard/services', icon: Briefcase },
     { name: T('Funcionários', 'Employees'), href: '/dashboard/employees', icon: Users },
     { name: T('Financeiro', 'Finance'), href: '/dashboard/finance', icon: DollarSign },
+    { name: T('Saldo', 'Balance'), href: '/dashboard/balance', icon: Wallet },
     { name: T('Relatórios', 'Reports'), href: '/dashboard/reports', icon: BarChart3 },
     { name: T('Divulgação & QR Code', 'Promotion & QR Code'), href: '/dashboard/qr-code', icon: QrCode },
     { name: T('Configurações do Negócio', 'Business Settings'), href: '/register-business', icon: Settings },

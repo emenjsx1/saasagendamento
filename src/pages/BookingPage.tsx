@@ -26,6 +26,8 @@ import { useSession } from '@/integrations/supabase/session-context';
 import { useEmployees, Employee } from '@/hooks/use-employees';
 import { assignEmployeeAutomatically } from '@/utils/employee-assignment';
 import { Users } from 'lucide-react';
+import { processPaymentApi, validatePhoneNumber } from '@/utils/paymentApi';
+import { processDodoPayment } from '@/utils/dodoPayments';
 
 // Tipos de dados
 interface DaySchedule {
@@ -47,7 +49,8 @@ interface Business {
   working_hours: DaySchedule[] | null;
   theme_color: string | null; 
   instagram_url: string | null; 
-  facebook_url: string | null; 
+  facebook_url: string | null;
+  require_payment_on_booking?: boolean; // Se true, cliente deve pagar durante agendamento
 }
 
 interface Service {
@@ -66,15 +69,17 @@ interface ClientDetails {
 
 // Componente de Indicador de Etapas (Step Indicator)
 const StepIndicator: React.FC<{
-  currentStep: 'service' | 'employee' | 'datetime' | 'details';
+  currentStep: 'service' | 'employee' | 'datetime' | 'details' | 'payment';
   T: (pt: string, en: string) => string;
   showEmployeeStep?: boolean;
-}> = ({ currentStep, T, showEmployeeStep = true }) => {
+  showPaymentStep?: boolean;
+}> = ({ currentStep, T, showEmployeeStep = true, showPaymentStep = false }) => {
   const steps = [
     { key: 'service', label: T('Serviço', 'Service'), number: 1 },
     ...(showEmployeeStep ? [{ key: 'employee', label: T('Atendente', 'Staff'), number: 2 }] : []),
     { key: 'datetime', label: T('Data & Hora', 'Date & Time'), number: showEmployeeStep ? 3 : 2 },
-    { key: 'details', label: T('Seus Dados', 'Your Details'), number: showEmployeeStep ? 4 : 3 },
+    { key: 'details', label: T('Seus Dados', 'Your Details'), number: showEmployeeStep ? (showPaymentStep ? 4 : 4) : (showPaymentStep ? 3 : 3) },
+    ...(showPaymentStep ? [{ key: 'payment', label: T('Pagamento', 'Payment'), number: showEmployeeStep ? 5 : 4 }] : []),
   ];
 
   const getCurrentStepIndex = () => {
@@ -592,6 +597,325 @@ const EmployeeSelector: React.FC<{
   );
 };
 
+// Componente de Pagamento (quando require_payment_on_booking está ativo)
+const PaymentStep: React.FC<{
+  service: Service;
+  selectedDate: Date;
+  selectedTime: string;
+  clientDetails: ClientDetails;
+  businessId: string;
+  selectedPaymentMethod: 'mpesa' | 'emola' | 'card' | 'manual' | null;
+  setSelectedPaymentMethod: (method: 'mpesa' | 'emola' | 'card' | 'manual' | null) => void;
+  paymentPhone: string;
+  setPaymentPhone: (phone: string) => void;
+  isProcessingPayment: boolean;
+  onBack: () => void;
+  onPaymentSuccess: (paymentMethod?: 'mpesa' | 'emola' | 'card' | 'manual') => void;
+  currentCurrency: Currency;
+  T: (pt: string, en: string) => string;
+}> = ({ 
+  service, 
+  selectedDate, 
+  selectedTime, 
+  clientDetails,
+  businessId,
+  selectedPaymentMethod, 
+  setSelectedPaymentMethod,
+  paymentPhone,
+  setPaymentPhone,
+  isProcessingPayment,
+  onBack,
+  onPaymentSuccess,
+  currentCurrency,
+  T 
+}) => {
+  // Taxas de conversão para MZN (quando usar M-Pesa/e-Mola)
+  const EXCHANGE_RATES = {
+    USD: 67,
+    EUR: 77,
+    BRL: 12,
+    MZN: 1,
+  };
+
+  // Converter para MZN se necessário (para M-Pesa/e-Mola)
+  const convertedPriceForMobileMoney = currentCurrency.key === 'MZN' 
+    ? service.price 
+    : Math.round(service.price * (EXCHANGE_RATES[currentCurrency.key as keyof typeof EXCHANGE_RATES] || 1));
+
+  const handlePayment = async () => {
+    if (!selectedPaymentMethod) {
+      toast.error(T('Selecione um método de pagamento.', 'Select a payment method.'));
+      return;
+    }
+
+    // Validar telefone apenas para M-Pesa e e-Mola
+    if (selectedPaymentMethod !== 'card' && selectedPaymentMethod !== 'manual') {
+      if (!paymentPhone) {
+        toast.error(T('Preencha o número de telefone.', 'Fill in the phone number.'));
+        return;
+      }
+      if (!validatePhoneNumber(paymentPhone)) {
+        toast.error(T('Número de telefone inválido. Use um número de Moçambique (84, 85, 86, 87).', 'Invalid phone number. Use a Mozambique number (84, 85, 86, 87).'));
+        return;
+      }
+    }
+
+    // Processar pagamento
+    if (selectedPaymentMethod === 'manual') {
+      // Pagamento no local - criar agendamento pendente (será confirmado quando pagar no local)
+      toast.success(T('Agendamento criado! Você pagará no local.', 'Appointment created! You will pay at the location.'));
+      onPaymentSuccess('manual'); // Criar agendamento com status 'pending'
+      return;
+    } else if (selectedPaymentMethod === 'card') {
+      // Pagamento com cartão via Dodo Payments
+      const reference = `Booking-${Date.now()}`;
+      const dodoResponse = await processDodoPayment({
+        amount: service.price,
+        currency: currentCurrency.key.toLowerCase(),
+        customerEmail: clientDetails.client_email || '',
+        customerName: clientDetails.client_name,
+        reference: reference,
+        metadata: {
+          payment_type: 'appointment', // Indicar que é pagamento de agendamento
+          business_id: businessId, // Incluir business_id para adicionar ao saldo
+          service_id: service.id,
+          service_name: service.name,
+          appointment_date: selectedDate.toISOString(),
+          appointment_time: selectedTime,
+          client_name: clientDetails.client_name,
+          client_email: clientDetails.client_email || undefined,
+          client_whatsapp: clientDetails.client_whatsapp || undefined,
+        },
+      });
+
+      if (!dodoResponse.success) {
+        toast.error(dodoResponse.message || T('Erro ao processar pagamento com cartão.', 'Error processing card payment.'));
+        return;
+      }
+
+      // Redirecionar para checkout do Dodo Payments
+      toast.info(T('Redirecionando para página de pagamento...', 'Redirecting to payment page...'));
+      // O webhook do Dodo Payments processará o agendamento após pagamento
+      return;
+    } else {
+      // Pagamento via M-Pesa/e-Mola
+      const phoneDigits = paymentPhone.replace(/\D/g, '');
+      const amountInMZN = convertedPriceForMobileMoney;
+      const reference = `Booking-${Date.now()}`;
+
+      const paymentResponse = await processPaymentApi({
+        amount: amountInMZN,
+        phone: phoneDigits,
+        method: selectedPaymentMethod,
+        reference,
+      });
+
+      if (!paymentResponse.success) {
+        toast.error(paymentResponse.message || T('Erro ao processar pagamento.', 'Error processing payment.'));
+        return;
+      }
+
+      // Pagamento bem-sucedido - criar agendamento confirmado
+      toast.success(T('Pagamento confirmado! Criando agendamento...', 'Payment confirmed! Creating appointment...'));
+      onPaymentSuccess(selectedPaymentMethod); // Passar método de pagamento
+    }
+  };
+
+  const PAYMENT_METHODS = [
+    {
+      key: 'mpesa' as const,
+      name: 'M-Pesa',
+      icon: 'https://idolo.co.mz/wp-content/uploads/2024/07/MPESA.png',
+      description: undefined,
+    },
+    {
+      key: 'emola' as const,
+      name: 'e-Mola',
+      icon: 'https://play-lh.googleusercontent.com/2TGAhJ55tiyhCwW0ZM43deGv4lUTFTBMoq83mnAO6-bU5hi2NPyKX8BN8iKt13irK7Y=w240-h480-rw',
+      description: undefined,
+    },
+    {
+      key: 'card' as const,
+      name: 'Cartão de Crédito/Débito',
+      icon: 'https://cdn-icons-png.flaticon.com/512/349/349221.png',
+      description: undefined,
+    },
+    {
+      key: 'manual' as const,
+      name: T('Pagamento no Local', 'Pay at Location'),
+      icon: undefined, // Usar emoji como fallback
+      description: T('Você pagará quando chegar no estabelecimento', 'You will pay when you arrive at the establishment'),
+    },
+  ];
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">{T('Pagamento', 'Payment')}</h2>
+        <p className="text-gray-600 text-sm sm:text-sm">{T('Complete o pagamento para confirmar seu agendamento', 'Complete payment to confirm your appointment')}</p>
+      </div>
+
+      <Card className="border-2 border-gray-200">
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          {/* Resumo do Agendamento */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">{service.name}</span>
+              <span className="font-medium">{formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">{T('Data', 'Date')}</span>
+              <span>{format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">{T('Hora', 'Time')}</span>
+              <span>{selectedTime}</span>
+            </div>
+            <div className="pt-2 border-t flex justify-between items-center">
+              <span className="font-semibold">{T('Total', 'Total')}</span>
+              <span className="text-xl font-bold text-green-600">
+                {selectedPaymentMethod && selectedPaymentMethod !== 'card' && currentCurrency.key !== 'MZN'
+                  ? formatCurrency(convertedPriceForMobileMoney, 'MZN', 'pt-MZ')
+                  : formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Seleção de Método de Pagamento */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">{T('Método de Pagamento', 'Payment Method')}</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {PAYMENT_METHODS.map((method) => (
+                <Button
+                  key={method.key}
+                  type="button"
+                  variant={selectedPaymentMethod === method.key ? 'default' : 'outline'}
+                  className={cn(
+                    'h-auto py-4 flex flex-col items-center justify-center gap-2',
+                    selectedPaymentMethod === method.key && 'bg-black text-white hover:bg-gray-900'
+                  )}
+                  onClick={() => setSelectedPaymentMethod(method.key)}
+                >
+                  {method.icon ? (
+                    <img
+                      src={method.icon}
+                      alt={method.name}
+                      className="h-8 w-8 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded text-xl">
+                      💰
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center">
+                    <span className="font-semibold text-xs">{method.name}</span>
+                    {method.description && (
+                      <span className="text-xs text-gray-500 mt-1 text-center px-2">{method.description}</span>
+                    )}
+                  </div>
+                </Button>
+              ))}
+            </div>
+
+            {/* Campo de telefone para M-Pesa/e-Mola */}
+            {selectedPaymentMethod && selectedPaymentMethod !== 'card' && selectedPaymentMethod !== 'manual' && (
+              <div className="space-y-2 pt-4 border-t">
+                <Label className="text-sm font-medium">
+                  {T(`Número de ${PAYMENT_METHODS.find(m => m.key === selectedPaymentMethod)?.name}:`, `Number for ${PAYMENT_METHODS.find(m => m.key === selectedPaymentMethod)?.name}:`)}
+                </Label>
+                <Input
+                  type="tel"
+                  placeholder={T("Ex: 841234567", "Ex: 841234567")}
+                  value={paymentPhone}
+                  onChange={(e) => setPaymentPhone(e.target.value)}
+                  maxLength={9}
+                />
+                <p className="text-xs text-gray-500">
+                  {T("Digite apenas os 9 dígitos (sem espaços)", "Enter only 9 digits (no spaces)")}
+                </p>
+                {paymentPhone && !validatePhoneNumber(paymentPhone) && (
+                  <p className="text-xs text-red-500">
+                    {T("Número inválido. Use 84, 85, 86 ou 87.", "Invalid number. Use 84, 85, 86 or 87.")}
+                  </p>
+                )}
+                {currentCurrency.key !== 'MZN' && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                    <p className="text-xs text-blue-800">
+                      <strong>{T('Conversão automática:', 'Automatic conversion:')}</strong>
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      {formatCurrency(service.price, currentCurrency.key, currentCurrency.locale)} = {formatCurrency(convertedPriceForMobileMoney, 'MZN', 'pt-MZ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedPaymentMethod === 'card' && (
+              <div className="pt-4 border-t">
+                <p className="text-sm text-gray-600">
+                  {T("Você será redirecionado para uma página segura de pagamento com cartão.", "You will be redirected to a secure card payment page.")}
+                </p>
+              </div>
+            )}
+
+            {selectedPaymentMethod === 'manual' && (
+              <div className="pt-4 border-t">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 font-medium mb-2">
+                    {T("ℹ️ Pagamento no Local", "ℹ️ Pay at Location")}
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    {T("Seu agendamento será criado e você pagará quando chegar no estabelecimento. O agendamento ficará pendente até a confirmação do pagamento.", "Your appointment will be created and you will pay when you arrive at the establishment. The appointment will remain pending until payment is confirmed.")}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Botões */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm h-auto w-full sm:w-auto"
+            >
+              <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              {T('Voltar', 'Back')}
+            </Button>
+            
+            <Button
+              onClick={handlePayment}
+              disabled={
+                !selectedPaymentMethod ||
+                isProcessingPayment ||
+                (selectedPaymentMethod !== 'card' && selectedPaymentMethod !== 'manual' && (!paymentPhone || !validatePhoneNumber(paymentPhone)))
+              }
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 text-xs sm:text-base h-auto disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+            >
+              {isProcessingPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                  {T('Processando...', 'Processing...')}
+                </>
+              ) : (
+                <>
+                  {T('Pagar e Confirmar', 'Pay and Confirm')}
+                  <CheckCircle className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 // Componente de Detalhes do Cliente (Estilo Calendly - mais limpo e espaçado)
 const ClientDetailsForm: React.FC<{ 
   clientDetails: ClientDetails, 
@@ -701,7 +1025,7 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado do Agendamento
-  const [currentStep, setCurrentStep] = useState<'service' | 'employee' | 'datetime' | 'details'>('service');
+  const [currentStep, setCurrentStep] = useState<'service' | 'employee' | 'datetime' | 'details' | 'payment'>('service');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -712,6 +1036,11 @@ const BookingPage = () => {
     client_whatsapp: '',
     client_email: '',
   });
+  
+  // Estado de pagamento (quando require_payment_on_booking está ativo)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'mpesa' | 'emola' | 'card' | 'manual' | null>(null);
+  const [paymentPhone, setPaymentPhone] = useState<string>('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   
   // Hook para funcionários
   const { employees, fetchActiveEmployees, isLoading: isLoadingEmployees } = useEmployees(business?.id || null);
@@ -738,30 +1067,34 @@ const BookingPage = () => {
           .eq('slug', businessSlug)
           .maybeSingle();
         
-        // Tentar buscar auto_assign_employees separadamente (pode não existir se migration não foi executada)
+        // Tentar buscar auto_assign_employees e require_payment_on_booking separadamente (pode não existir se migration não foi executada)
         let autoAssignValue = false;
+        let requirePaymentOnBooking = false;
         if (businessData) {
           try {
-            const { data: autoAssignData, error: selectError } = await supabase
+            const { data: configData, error: selectError } = await supabase
               .from('businesses')
-              .select('auto_assign_employees')
+              .select('auto_assign_employees, require_payment_on_booking')
               .eq('id', businessData.id)
               .single();
             
             // Se der erro 400 ou 42703, a coluna não existe
             if (selectError && (selectError.code === '42703' || selectError.message?.includes('does not exist') || selectError.message?.includes('column') || selectError.status === 400)) {
               // Coluna não existe ainda, usar default
-              console.warn('Coluna auto_assign_employees não encontrada. Execute a migration add_auto_assign_to_businesses.sql');
+              console.warn('Colunas auto_assign_employees ou require_payment_on_booking não encontradas. Execute as migrations necessárias.');
               autoAssignValue = false;
-            } else if (autoAssignData) {
-              autoAssignValue = autoAssignData.auto_assign_employees || false;
+              requirePaymentOnBooking = false;
+            } else if (configData) {
+              autoAssignValue = configData.auto_assign_employees || false;
+              requirePaymentOnBooking = configData.require_payment_on_booking || false;
             }
           } catch (e: any) {
             // Coluna não existe ainda, usar default
             if (e.code !== '42703' && !e.message?.includes('does not exist') && !e.message?.includes('column') && e.status !== 400) {
-              console.warn('Erro ao buscar auto_assign_employees:', e);
+              console.warn('Erro ao buscar configurações do negócio:', e);
             }
             autoAssignValue = false;
+            requirePaymentOnBooking = false;
           }
         }
 
@@ -801,7 +1134,10 @@ const BookingPage = () => {
           auto_assign_employees: autoAssignValue,
         });
 
-        setBusiness(businessData as Business);
+        setBusiness({
+          ...businessData,
+          require_payment_on_booking: requirePaymentOnBooking,
+        } as Business);
         setAutoAssignEnabled(autoAssignValue);
         const actualBusinessId = businessData.id;
 
@@ -948,34 +1284,46 @@ const BookingPage = () => {
           currentPlan = 'free'; // Trial = Free
         }
 
-        // Se for plano Free, verificar limite mensal de 30 agendamentos
-        if (currentPlan && (currentPlan.includes('free') || currentPlan.includes('teste') || currentPlan.includes('trial'))) {
+        // Verificar limite mensal de agendamentos baseado no plano
+        // Free: 20, Basic: 100, Standard/Teams: ilimitado
+        const planLower = currentPlan?.toLowerCase() || '';
+        let maxAppointments: number | null = null;
+        
+        if (planLower.includes('free') || planLower.includes('teste') || planLower.includes('trial')) {
+          maxAppointments = 20; // Free: 20 agendamentos
+        } else if (planLower.includes('basic') || planLower.includes('básico')) {
+          maxAppointments = 100; // Basic: 100 agendamentos
+        } else if (planLower.includes('standard') || planLower.includes('profissional') || planLower.includes('teams') || planLower.includes('negócio')) {
+          maxAppointments = null; // Ilimitado
+        }
+
+        // Se tem limite, verificar
+        if (maxAppointments !== null) {
           const now = new Date();
           const monthStart = startOfMonth(now);
           const monthEnd = endOfMonth(now);
 
           // Contar agendamentos do mês atual para este negócio
           const { count: appointmentsThisMonth, error: countError } = await supabase
-          .from('appointments')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', business.id)
+            .from('appointments')
+            .select('id', { count: 'exact', head: true })
+            .eq('business_id', business.id)
             .gte('start_time', monthStart.toISOString())
             .lte('start_time', monthEnd.toISOString())
             .neq('status', 'cancelled');
 
-        if (countError) {
-          console.error('[BOOKING] Erro ao contar agendamentos:', countError);
-        } else {
-            const MAX_MONTHLY_APPOINTMENTS = 30;
-            if ((appointmentsThisMonth || 0) >= MAX_MONTHLY_APPOINTMENTS) {
-            toast.error(
-              T(
-                  "Este negócio atingiu o limite de 30 agendamentos por mês. Tente novamente no próximo mês ou entre em contato com o estabelecimento.",
-                  "This business has reached the 30 appointments per month limit. Try again next month or contact the establishment."
-              ),
+          if (countError) {
+            console.error('[BOOKING] Erro ao contar agendamentos:', countError);
+          } else {
+            if ((appointmentsThisMonth || 0) >= maxAppointments) {
+              toast.error(
+                T(
+                  `Este negócio atingiu o limite de ${maxAppointments} agendamentos por mês. Tente novamente no próximo mês ou entre em contato com o estabelecimento.`,
+                  `This business has reached the limit of ${maxAppointments} appointments per month. Try again next month or contact the establishment.`
+                ),
                 { duration: 7000 }
-            );
-            return;
+              );
+              return;
             }
           }
         }
@@ -1026,7 +1374,7 @@ const BookingPage = () => {
       client_email: clientDetails.client_email || null,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
-      status: 'pending',
+      status: (paymentSuccessful && paymentMethod !== 'manual') ? 'confirmed' : 'pending', // Confirmar automaticamente se pagamento foi bem-sucedido (exceto pagamento manual)
       client_code: clientCode,
       user_id: user?.id || null, // Vincular ao usuário se estiver logado
       employee_id: finalEmployeeId, // Adicionar employee_id
@@ -1104,7 +1452,75 @@ const BookingPage = () => {
 
       console.log('[BOOKING] ✅ Agendamento criado com sucesso! ID:', createdAppointment.id);
 
-      // Enviar dados para o webhook
+      // Registrar pagamento e adicionar ao saldo se pagamento foi bem-sucedido (M-Pesa, e-Mola ou Cartão)
+      if (paymentSuccessful && paymentMethod && paymentMethod !== 'manual' && business?.require_payment_on_booking) {
+        try {
+          // Buscar o valor do serviço
+          const serviceAmount = selectedService.price;
+          
+          // Registrar pagamento na tabela payments
+          const paymentReference = `Booking-${createdAppointment.id}-${Date.now()}`;
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              user_id: user?.id || null,
+              amount: serviceAmount,
+              status: 'confirmed',
+              payment_type: 'appointment',
+              method: paymentMethod === 'card' ? 'card' : paymentMethod,
+              transaction_id: paymentReference,
+              notes: `Pagamento do agendamento ${selectedService.name} - ${format(startTime, 'dd/MM/yyyy', { locale: ptBR })} às ${selectedTime} via ${paymentMethod === 'card' ? 'Dodo Payments' : paymentMethod === 'mpesa' ? 'M-Pesa' : 'e-Mola'}`,
+              payment_date: new Date().toISOString(),
+            });
+
+          if (paymentError) {
+            console.warn('⚠️ Erro ao registrar pagamento (não crítico):', paymentError);
+          } else {
+            console.log('✅ Pagamento registrado');
+          }
+          
+          // Adicionar ao saldo (a função já calcula a taxa de 8% automaticamente)
+          const { error: balanceError } = await supabase.rpc('add_to_business_balance', {
+            p_business_id: business.id,
+            p_amount: serviceAmount,
+            p_currency: currentCurrency.key,
+          });
+
+          if (balanceError) {
+            console.warn('⚠️ Erro ao adicionar ao saldo do negócio (não crítico):', balanceError);
+          } else {
+            console.log('✅ Saldo do negócio atualizado');
+          }
+        } catch (balanceErr) {
+          console.warn('⚠️ Função add_to_business_balance não disponível ou erro:', balanceErr);
+        }
+      }
+
+      // Linkar agendamento com cliente no CRM (não bloqueia se falhar)
+      try {
+        const { linkAppointmentToClient } = await import('@/utils/crm-helpers');
+        await linkAppointmentToClient(
+          createdAppointment.id,
+          business.id,
+          {
+            name: clientDetails.client_name,
+            email: clientDetails.client_email || null,
+            phone: null,
+            whatsapp: clientDetails.client_whatsapp || null,
+          },
+          {
+            service_name: selectedService.name,
+            start_time: startTime.toISOString(),
+            status: 'pending',
+          }
+        );
+        console.log('[BOOKING] ✅ Cliente linkado e interação criada no CRM');
+      } catch (crmError: any) {
+        // Não bloquear o fluxo se o CRM falhar
+        console.warn('[BOOKING] ⚠️ Erro ao linkar com CRM (não crítico):', crmError);
+      }
+
+      // Enviar dados para os webhooks
       try {
         const webhookPayload = {
           appointment_id: createdAppointment.id,
@@ -1128,24 +1544,48 @@ const BookingPage = () => {
           created_at: new Date().toISOString(),
         };
 
-        console.log('[BOOKING] 📤 Enviando dados para webhook:', webhookPayload);
+        console.log('[BOOKING] 📤 Enviando dados para webhooks:', webhookPayload);
 
-        const webhookResponse = await fetch('https://srv-4544.cloudnuvem.net/webhook/agencodes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(webhookPayload),
-        });
+        // Webhook 1: https://n8n.ejss.space/webhook/agencodes
+        try {
+          const webhookResponse1 = await fetch('https://n8n.ejss.space/webhook/agencodes', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookPayload),
+          });
 
-        if (webhookResponse.ok) {
-          console.log('[BOOKING] ✅ Webhook enviado com sucesso!');
-        } else {
-          console.warn('[BOOKING] ⚠️ Webhook retornou status não-OK:', webhookResponse.status, webhookResponse.statusText);
+          if (webhookResponse1.ok) {
+            console.log('[BOOKING] ✅ Webhook 1 enviado com sucesso!');
+          } else {
+            console.warn('[BOOKING] ⚠️ Webhook 1 retornou status não-OK:', webhookResponse1.status, webhookResponse1.statusText);
+          }
+        } catch (webhookError1: any) {
+          console.error('[BOOKING] ⚠️ Erro ao enviar webhook 1 (não crítico):', webhookError1);
+        }
+
+        // Webhook 2: https://n8n.ejss.space/webhook/agencodess
+        try {
+          const webhookResponse2 = await fetch('https://n8n.ejss.space/webhook/agencodess', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookPayload),
+          });
+
+          if (webhookResponse2.ok) {
+            console.log('[BOOKING] ✅ Webhook 2 enviado com sucesso!');
+          } else {
+            console.warn('[BOOKING] ⚠️ Webhook 2 retornou status não-OK:', webhookResponse2.status, webhookResponse2.statusText);
+          }
+        } catch (webhookError2: any) {
+          console.error('[BOOKING] ⚠️ Erro ao enviar webhook 2 (não crítico):', webhookError2);
         }
       } catch (webhookError: any) {
         // Não bloquear o fluxo se o webhook falhar
-        console.error('[BOOKING] ⚠️ Erro ao enviar webhook (não crítico):', webhookError);
+        console.error('[BOOKING] ⚠️ Erro ao enviar webhooks (não crítico):', webhookError);
       }
 
       toast.success(T("Agendamento realizado com sucesso!", "Appointment successfully scheduled!"));
@@ -1513,6 +1953,7 @@ const BookingPage = () => {
           currentStep={currentStep} 
           T={T} 
           showEmployeeStep={employees.length > 0}
+          showPaymentStep={business.require_payment_on_booking || false}
         />
             
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1605,8 +2046,41 @@ const BookingPage = () => {
                   // Sempre voltar para datetime (etapa anterior)
                   setCurrentStep('datetime');
                 }}
-                onSubmit={handleBooking}
+                onSubmit={() => {
+                  // Se requer pagamento, ir para etapa de pagamento
+                  if (business?.require_payment_on_booking) {
+                    setCurrentStep('payment');
+                  } else {
+                    // Se não requer pagamento, criar agendamento direto
+                    handleBooking(false);
+                  }
+                }}
                 isSubmitting={isSubmitting}
+                T={T}
+              />
+            )}
+
+            {/* Etapa 5: Pagamento (quando require_payment_on_booking está ativo) */}
+            {currentStep === 'payment' && selectedService && selectedDate && selectedTime && business?.require_payment_on_booking && (
+              <PaymentStep
+                service={selectedService}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                clientDetails={clientDetails}
+                businessId={business.id}
+                selectedPaymentMethod={selectedPaymentMethod}
+                setSelectedPaymentMethod={setSelectedPaymentMethod}
+                paymentPhone={paymentPhone}
+                setPaymentPhone={setPaymentPhone}
+                isProcessingPayment={isProcessingPayment}
+                onBack={() => setCurrentStep('details')}
+                onPaymentSuccess={(paymentMethod) => {
+                  setIsProcessingPayment(true);
+                  // Se for pagamento manual, criar com status 'pending', senão 'confirmed'
+                  const isPaymentSuccessful = paymentMethod !== 'manual';
+                  handleBooking(isPaymentSuccessful, paymentMethod || null);
+                }}
+                currentCurrency={currentCurrency}
                 T={T}
               />
             )}

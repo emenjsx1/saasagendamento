@@ -152,7 +152,7 @@ const VirtualAssistant: React.FC<{ variant?: 'floating' | 'inline' }> = ({ varia
         {isOpen && (
           <div
             className={cn(
-              'fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col transition-all duration-300',
+              'fixed z-50 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300',
               // Mobile: tamanho menor, posicionado no canto inferior direito
               'bottom-4 right-4 w-[calc(100vw-2rem)] max-w-sm h-[500px] max-h-[70vh]',
               // Desktop: tamanho maior
@@ -211,14 +211,14 @@ const VirtualAssistant: React.FC<{ variant?: 'floating' | 'inline' }> = ({ varia
                           'max-w-[75%] rounded-2xl px-3 py-2 md:px-4 md:py-2',
                           message.sender === 'user'
                             ? 'bg-gradient-to-r from-black to-gray-900 text-white'
-                            : 'bg-gray-100 text-gray-900'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                         )}
                       >
                         <p className="text-xs md:text-sm leading-relaxed">{message.text}</p>
                       </div>
                       {message.sender === 'user' && (
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[10px] md:text-xs font-bold text-gray-700">U</span>
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] md:text-xs font-bold text-gray-700 dark:text-gray-200">U</span>
                         </div>
                       )}
                     </div>
@@ -228,11 +228,11 @@ const VirtualAssistant: React.FC<{ variant?: 'floating' | 'inline' }> = ({ varia
                       <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-black to-gray-700 flex items-center justify-center flex-shrink-0">
                         <Bot className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
                       </div>
-                      <div className="bg-gray-100 rounded-2xl px-3 py-2 md:px-4 md:py-2">
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-3 py-2 md:px-4 md:py-2">
                         <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                         </div>
                       </div>
                     </div>
@@ -241,7 +241,7 @@ const VirtualAssistant: React.FC<{ variant?: 'floating' | 'inline' }> = ({ varia
                 </div>
 
                 {/* Input */}
-                <div className="p-3 md:p-4 border-t border-gray-200">
+                <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-800">
                   <div className="flex gap-2">
                     <Input
                       ref={inputRef}
@@ -333,7 +333,7 @@ const VirtualAssistant: React.FC<{ variant?: 'floating' | 'inline' }> = ({ varia
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-6 border-t border-gray-200">
+        <div className="p-6 border-t border-gray-200 dark:border-gray-800">
           <div className="flex gap-2">
             <Input
               ref={inputRef}

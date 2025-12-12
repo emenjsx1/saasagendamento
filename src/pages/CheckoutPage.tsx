@@ -19,6 +19,7 @@ import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { processPaymentApi, validatePhoneNumber } from '@/utils/paymentApi';
+import { processDodoPayment } from '@/utils/dodoPayments';
 import { useEmailNotifications } from '@/hooks/use-email-notifications';
 import { refreshConsolidatedUserData } from '@/utils/user-consolidated-data';
 import { ensureBusinessAccount } from '@/utils/business-helpers';
@@ -41,7 +42,7 @@ const BILLING_PERIODS = [
 
 // Métodos de pagamento
 interface PaymentMethod {
-  key: 'mpesa' | 'emola';
+  key: 'mpesa' | 'emola' | 'card';
   name: string;
   icon: string;
 }
@@ -57,6 +58,11 @@ const PAYMENT_METHODS: PaymentMethod[] = [
     name: 'e-Mola',
     icon: 'https://play-lh.googleusercontent.com/2TGAhJ55tiyhCwW0ZM43deGv4lUTFTBMoq83mnAO6-bU5hi2NPyKX8BN8iKt13irK7Y=w240-h480-rw',
   },
+  {
+    key: 'card',
+    name: 'Cartão de Crédito/Débito',
+    icon: 'https://cdn-icons-png.flaticon.com/512/349/349221.png',
+  },
 ];
 
 const CheckoutPage: React.FC = () => {
@@ -70,7 +76,7 @@ const CheckoutPage: React.FC = () => {
   // Estados
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<1 | 3 | 6 | 12>(1);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'mpesa' | 'emola' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'mpesa' | 'emola' | 'card' | null>(null);
   const [paymentPhone, setPaymentPhone] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
@@ -136,6 +142,14 @@ const CheckoutPage: React.FC = () => {
     }
   }, [user, isSessionLoading, navigate, T]);
 
+  // Taxas de conversão para MZN (quando usar M-Pesa/e-Mola)
+  const EXCHANGE_RATES = {
+    USD: 67, // 1 USD = 67 MZN
+    EUR: 77, // 1 EUR = 77 MZN
+    BRL: 12, // 1 BRL = 12 MZN
+    MZN: 1,  // 1 MZN = 1 MZN
+  };
+
   // Calcular preço baseado no período selecionado
   const calculatedPrice = useMemo(() => {
     if (!selectedPlan) return 0;
@@ -144,17 +158,39 @@ const CheckoutPage: React.FC = () => {
     return monthlyPrice * billingPeriod;
   }, [selectedPlan, billingPeriod]);
 
+  // Converter para MZN se necessário (para M-Pesa/e-Mola)
+  const convertedPriceForMobileMoney = useMemo(() => {
+    if (!selectedPaymentMethod || selectedPaymentMethod === 'card') {
+      return calculatedPrice; // Não precisa converter para cartão
+    }
+
+    // Se já está em MZN, retorna direto
+    if (currentCurrency.key === 'MZN') {
+      return calculatedPrice;
+    }
+
+    // Converter para MZN usando a taxa de câmbio
+    const rate = EXCHANGE_RATES[currentCurrency.key as keyof typeof EXCHANGE_RATES] || 1;
+    return Math.round(calculatedPrice * rate);
+  }, [calculatedPrice, selectedPaymentMethod, currentCurrency.key]);
+
   // Processar pagamento
   const handlePayment = async () => {
-    if (!user || !selectedPlan || !selectedPaymentMethod || !paymentPhone) {
+    if (!user || !selectedPlan || !selectedPaymentMethod) {
       toast.error(T('Preencha todos os campos necessários.', 'Fill in all required fields.'));
       return;
     }
 
-    // Validar telefone
-    if (!validatePhoneNumber(paymentPhone)) {
-      toast.error(T('Número de telefone inválido. Use um número de Moçambique (84, 85, 86, 87).', 'Invalid phone number. Use a Mozambique number (84, 85, 86, 87).'));
-      return;
+    // Validar telefone apenas para M-Pesa e e-Mola
+    if (selectedPaymentMethod !== 'card') {
+      if (!paymentPhone) {
+        toast.error(T('Preencha o número de telefone.', 'Fill in the phone number.'));
+        return;
+      }
+      if (!validatePhoneNumber(paymentPhone)) {
+        toast.error(T('Número de telefone inválido. Use um número de Moçambique (84, 85, 86, 87).', 'Invalid phone number. Use a Mozambique number (84, 85, 86, 87).'));
+        return;
+      }
     }
 
     // Validar formulário
@@ -176,19 +212,65 @@ const CheckoutPage: React.FC = () => {
       // 2. Gerar referência única
       const reference = `AgenCode-${Date.now()}`;
 
-      // 3. Processar pagamento via API
-      const phoneDigits = paymentPhone.replace(/\D/g, '');
-      const paymentResponse = await processPaymentApi({
-        amount: calculatedPrice,
-        phone: phoneDigits,
-        method: selectedPaymentMethod,
-        reference,
-      });
+      // 3. Processar pagamento - diferente para cartão vs mobile money
+      if (selectedPaymentMethod === 'card') {
+        // Processar pagamento via Dodo Payments (cartão)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email')
+          .eq('id', user.id)
+          .single();
 
-      setShowProcessingModal(false);
+        const customerName = profileData 
+          ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() 
+          : user.email?.split('@')[0] || 'Cliente';
+        const customerEmail = profileData?.email || user.email || '';
 
-      if (!paymentResponse.success) {
-        throw new Error(paymentResponse.message || T('Erro ao processar pagamento.', 'Error processing payment.'));
+        const dodoResponse = await processDodoPayment({
+          amount: calculatedPrice,
+          currency: currentCurrency.key.toLowerCase(),
+          customerEmail: customerEmail,
+          customerName: customerName,
+          reference: reference,
+          metadata: {
+            user_id: user.id,
+            plan_name: selectedPlan.name,
+            billing_period: billingPeriod,
+            business_id: businessId,
+          },
+        });
+
+        setShowProcessingModal(false);
+
+        if (!dodoResponse.success) {
+          throw new Error(dodoResponse.message || T('Erro ao processar pagamento com cartão.', 'Error processing card payment.'));
+        }
+
+        // O usuário será redirecionado para a página de checkout do Dodo Payments
+        // O pagamento será processado lá e depois retornará via webhook ou callback
+        toast.info(T('Redirecionando para página de pagamento...', 'Redirecting to payment page...'));
+        return; // Não continuar o fluxo aqui, pois será redirecionado
+      } else {
+        // Processar pagamento via M-Pesa/e-Mola (mobile money)
+        // IMPORTANTE: Converter para MZN se necessário
+        const phoneDigits = paymentPhone.replace(/\D/g, '');
+        const amountInMZN = convertedPriceForMobileMoney;
+        
+        const paymentResponse = await processPaymentApi({
+          amount: amountInMZN,
+          phone: phoneDigits,
+          method: selectedPaymentMethod,
+          reference,
+        });
+
+        setShowProcessingModal(false);
+
+        if (!paymentResponse.success) {
+          throw new Error(paymentResponse.message || T('Erro ao processar pagamento.', 'Error processing payment.'));
+        }
+
+        // Continuar com o fluxo de criação de assinatura para M-Pesa/e-Mola
+        // (o código abaixo será executado apenas para mobile money)
       }
 
       // 4. Calcular data de expiração baseada no período selecionado
@@ -249,7 +331,7 @@ const CheckoutPage: React.FC = () => {
         const userName = profileData ? `${profileData.first_name} ${profileData.last_name}` : user.email || 'Usuário';
         const paymentDate = format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
         const paymentAmount = formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale);
-        const paymentMethod = selectedPaymentMethod === 'mpesa' ? 'M-Pesa' : 'e-Mola';
+        const paymentMethod = selectedPaymentMethod === 'mpesa' ? 'M-Pesa' : selectedPaymentMethod === 'emola' ? 'e-Mola' : 'Cartão de Crédito/Débito';
 
         const adminEmailSubject = `💳 Novo Pagamento - ${userName} - ${selectedPlan.name}`;
         const adminEmailBody = `
@@ -498,7 +580,7 @@ const CheckoutPage: React.FC = () => {
                   ))}
                 </div>
 
-                {selectedPaymentMethod && (
+                {selectedPaymentMethod && selectedPaymentMethod !== 'card' && (
                   <div className="space-y-2 pt-4 border-t">
                     <label className="text-sm font-medium text-gray-700">
                       {T(`Número de ${PAYMENT_METHODS.find(m => m.key === selectedPaymentMethod)?.name}:`, `Number for ${PAYMENT_METHODS.find(m => m.key === selectedPaymentMethod)?.name}:`)}
@@ -518,6 +600,27 @@ const CheckoutPage: React.FC = () => {
                         {T("Número inválido. Use 84, 85, 86 ou 87.", "Invalid number. Use 84, 85, 86 or 87.")}
                       </p>
                     )}
+                    {/* Mostrar conversão para MZN se necessário */}
+                    {currentCurrency.key !== 'MZN' && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                        <p className="text-xs text-blue-800">
+                          <strong>{T('Conversão automática:', 'Automatic conversion:')}</strong>
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          {formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)} = {formatCurrency(convertedPriceForMobileMoney, 'MZN', 'pt-MZ')}
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          {T('O pagamento será processado em Metical (MZN)', 'Payment will be processed in Metical (MZN)')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {selectedPaymentMethod === 'card' && (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-gray-600">
+                      {T("Você será redirecionado para uma página segura de pagamento com cartão.", "You will be redirected to a secure card payment page.")}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -526,14 +629,15 @@ const CheckoutPage: React.FC = () => {
             {/* Botão de Pagamento */}
             <Button
               type="button"
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg"
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handlePayment}
               disabled={
                 isSubmitting ||
                 !selectedPaymentMethod ||
-                !paymentPhone ||
-                !validatePhoneNumber(paymentPhone) ||
-                !form.formState.isValid
+                !selectedPlan ||
+                (selectedPaymentMethod !== 'card' && (!paymentPhone || !validatePhoneNumber(paymentPhone))) ||
+                !form.formState.isValid ||
+                calculatedPrice <= 0
               }
             >
               {isSubmitting ? (
@@ -543,7 +647,11 @@ const CheckoutPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {T('Pagar', 'Pay')} {formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)}
+                  {T('Pagar', 'Pay')} {
+                    selectedPaymentMethod && selectedPaymentMethod !== 'card' && currentCurrency.key !== 'MZN'
+                      ? formatCurrency(convertedPriceForMobileMoney, 'MZN', 'pt-MZ')
+                      : formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)
+                  }
                 </>
               )}
             </Button>
@@ -568,9 +676,17 @@ const CheckoutPage: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold">{T('Total:', 'Total:')}</span>
                     <span className="text-2xl font-extrabold text-green-600">
-                      {formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)}
+                      {selectedPaymentMethod && selectedPaymentMethod !== 'card' && currentCurrency.key !== 'MZN'
+                        ? formatCurrency(convertedPriceForMobileMoney, 'MZN', 'pt-MZ')
+                        : formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)
+                      }
                     </span>
                   </div>
+                  {selectedPaymentMethod && selectedPaymentMethod !== 'card' && currentCurrency.key !== 'MZN' && (
+                    <p className="text-xs text-gray-500 mt-2 text-right">
+                      {T('Convertido de', 'Converted from')} {formatCurrency(calculatedPrice, currentCurrency.key, currentCurrency.locale)}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

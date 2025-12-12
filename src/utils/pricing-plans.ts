@@ -22,11 +22,15 @@ export interface PricingPlan {
 }
 
 // Preços fixos em MTn (convertidos conforme a moeda)
+// Baseado em análise de precificação: posicionamento agressivo para mercado moçambicano
+// Documento original sugeria R$ 49,90 (Básico) e R$ 79,90 (Profissional)
+// Ajustado para mercado local: 20% abaixo da conversão direta para melhor penetração
 const FREE_PRICE = 0;
-const STANDARD_MONTHLY_PRICE_MTN = 3;
-const TEAMS_MONTHLY_PRICE_MTN = 31;
-const STANDARD_ANNUAL_DISCOUNT = 10; // 10%
-const TEAMS_ANNUAL_DISCOUNT = 40; // 40%
+const BASIC_MONTHLY_PRICE_MTN = 180; // ~R$ 40 (ajustado de R$ 49,90)
+const STANDARD_MONTHLY_PRICE_MTN = 300; // ~R$ 67 (ajustado de R$ 79,90) - Plano Profissional
+const TEAMS_MONTHLY_PRICE_MTN = 500; // ~R$ 111 (ajustado de R$ 129,90) - Plano Negócio
+const STANDARD_ANNUAL_DISCOUNT = 20; // 20% desconto anual (aumentado de 10%)
+const TEAMS_ANNUAL_DISCOUNT = 25; // 25% desconto anual (ajustado de 40% para ser mais realista)
 
 // Função para converter preço de MTn para outra moeda
 const convertPrice = (priceMTN: number, currency: Currency): number => {
@@ -45,12 +49,17 @@ const convertPrice = (priceMTN: number, currency: Currency): number => {
 export const generatePricingPlans = (config: PublicSubscriptionConfig, currency: Currency): PricingPlan[] => {
   const { trial_days } = config;
   
-  // Calcular preços Standard
+  // Calcular preços Básico
+  const BASIC_MONTHLY = convertPrice(BASIC_MONTHLY_PRICE_MTN, currency);
+  const BASIC_ANNUAL_BASE = BASIC_MONTHLY * 12;
+  const BASIC_ANNUAL = parseFloat((BASIC_ANNUAL_BASE * (1 - STANDARD_ANNUAL_DISCOUNT / 100)).toFixed(2));
+  
+  // Calcular preços Standard (Profissional)
   const STANDARD_MONTHLY = convertPrice(STANDARD_MONTHLY_PRICE_MTN, currency);
   const STANDARD_ANNUAL_BASE = STANDARD_MONTHLY * 12;
   const STANDARD_ANNUAL = parseFloat((STANDARD_ANNUAL_BASE * (1 - STANDARD_ANNUAL_DISCOUNT / 100)).toFixed(2));
   
-  // Calcular preços Teams
+  // Calcular preços Teams (Negócio)
   const TEAMS_MONTHLY = convertPrice(TEAMS_MONTHLY_PRICE_MTN, currency);
   const TEAMS_ANNUAL_BASE = TEAMS_MONTHLY * 12;
   const TEAMS_ANNUAL = parseFloat((TEAMS_ANNUAL_BASE * (1 - TEAMS_ANNUAL_DISCOUNT / 100)).toFixed(2));
@@ -63,24 +72,16 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       freeName: 'Gratis',
       freePeriod: 'por 3 dias',
       freeCta: 'Começar',
-      standardName: 'Standard',
+      basicName: 'Básico',
+      basicCta: 'Começar',
+      standardName: 'Profissional',
       standardCta: 'Começar',
-      teamsName: 'Teams',
+      teamsName: 'Negócio',
       teamsCta: 'Experimente grátis',
   };
 
   return [
-    {
-      name: texts.trialName,
-      price: 0,
-      billingPeriod: texts.trialPeriod,
-      isTrial: true,
-      isPopular: false,
-      features: [],
-      planKey: 'trial',
-      planSlug: 'trial',
-      ctaText: texts.trialCta,
-    },
+    // Removido plano "trial" - não funcional (sem features)
     {
       name: texts.freeName,
       price: 0,
@@ -89,11 +90,13 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       isFree: true,
       isPopular: false,
       features: [
-        '10 agendamentos por mês',
+        '20 agendamentos por mês',
         '1 negócio',
-        '10 mensagens WhatsApp por mês',
-        '10 emails por mês',
-        'Gestão Financeira habilitada',
+        '1 colaborador',
+        '50 mensagens WhatsApp/SMS por mês',
+        'Agendamento online',
+        'Checkout M-Pesa/e-Mola',
+        'App mobile',
         'Página de agendamento personalizada',
         'Gestão de serviços',
         'Relatórios básicos',
@@ -102,6 +105,32 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       planKey: 'free',
       planSlug: 'free',
       ctaText: texts.freeCta,
+    },
+    {
+      name: texts.basicName,
+      price: BASIC_MONTHLY,
+      monthlyPrice: BASIC_MONTHLY,
+      annualPrice: BASIC_ANNUAL,
+      annualBasePrice: BASIC_ANNUAL_BASE,
+      billingPeriod: 'por mês',
+      discount: STANDARD_ANNUAL_DISCOUNT,
+      isPopular: false,
+      isTrial: false,
+      features: [
+        'Até 100 agendamentos por mês',
+        '1 colaborador',
+        'Agendamento online',
+        'Lembretes SMS/WhatsApp (50/mês)',
+        'Checkout M-Pesa/e-Mola',
+        'App mobile',
+        'Página de agendamento personalizada',
+        'Gestão de serviços',
+        'Relatórios básicos',
+        'Suporte padrão'
+      ],
+      planKey: 'monthly',
+      planSlug: 'basic',
+      ctaText: texts.basicCta,
     },
     {
       name: texts.standardName,
@@ -115,12 +144,13 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       isTrial: false,
       features: [
         'Agendamentos ilimitados',
-        'Mensagens WhatsApp ilimitadas',
-        'Emails ilimitados',
-        'Página de agendamento totalmente personalizável',
-        'Gestão de serviços completa',
+        'Até 3 colaboradores',
+        'Tudo do plano Básico',
+        'Gestão de clientes (histórico de agendamentos)',
         'Gestão financeira completa',
-        'Relatórios básicos',
+        'Relatórios mensais',
+        'SMS/WhatsApp ilimitado',
+        'Página totalmente personalizável',
         'Suporte prioritário',
         'Máximo 1 negócio criado'
       ],
@@ -139,11 +169,14 @@ export const generatePricingPlans = (config: PublicSubscriptionConfig, currency:
       isPopular: false,
       isTrial: false,
       features: [
-        'Tudo do plano Standard',
-        'Múltiplos negócios (sem limite)',
+        'Tudo do plano Profissional',
+        'Até 10 colaboradores',
+        'Marketplace (listagem do negócio público)',
+        'Automações avançadas (lembretes inteligentes)',
         'Relatórios avançados',
-        'Consultoria de setup',
-        'Melhor custo-benefício'
+        'Integrações via webhooks',
+        'Suporte prioritário',
+        'Múltiplos negócios (sem limite)'
       ],
       planKey: 'annual',
       planSlug: 'teams',

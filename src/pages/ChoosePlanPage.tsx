@@ -133,7 +133,7 @@ const ChoosePlanPage: React.FC = () => {
       }
     } else {
       // Para outros planos, ir para checkout
-      navigate(`/checkout/${plan.slug}`);
+      navigate(`/checkout/${plan.planSlug}`);
     }
   };
 
@@ -150,11 +150,21 @@ const ChoosePlanPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {pricingPlans.map((plan) => (
+          {pricingPlans
+            .filter(plan => {
+              // Remover planos que não estão funcionais
+              // Manter apenas: free, basic, standard, teams
+              const validPlans = ['free', 'basic', 'standard', 'teams'];
+              const isValid = validPlans.includes(plan.planSlug);
+              // Também remover planos sem features (exceto free que tem features)
+              const hasFeatures = plan.features && plan.features.length > 0;
+              return isValid && (hasFeatures || plan.planSlug === 'free');
+            })
+            .map((plan) => (
             <Card 
-              key={plan.slug} 
+              key={`${plan.planSlug}-${plan.planKey}-${plan.name}`} 
               className={`relative transition-all hover:shadow-xl cursor-pointer ${
-                selectedPlan?.slug === plan.slug ? 'ring-2 ring-primary' : ''
+                selectedPlan?.planSlug === plan.planSlug ? 'ring-2 ring-primary' : ''
               } ${plan.isPopular ? 'border-primary border-2' : ''}`}
               onClick={() => handleSelectPlan(plan)}
             >
@@ -180,12 +190,16 @@ const ChoosePlanPage: React.FC = () => {
               
               <CardContent className="space-y-4">
                 <ul className="space-y-3">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
+                  {plan.features && plan.features.length > 0 ? (
+                    plan.features.map((feature, index) => (
+                      <li key={`${plan.planSlug}-feature-${index}`} className="flex items-start gap-2">
+                        <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-gray-500 text-sm">{T('Sem recursos listados', 'No features listed')}</li>
+                  )}
                 </ul>
                 
                 <Button 
